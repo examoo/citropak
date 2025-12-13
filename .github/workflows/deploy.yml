@@ -73,13 +73,25 @@ jobs:
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      # Deploy to Hostinger via Webhook
-      - name: Deploy to Hostinger
+      # Deploy to Server via FTP
+      - name: Deploy to Server via FTP
         if: success()
-        run: |
-          curl -X POST https://webhooks.hostinger.com/deploy/195c5d26d01b40e470c3be8681d10ab9
-          echo "✅ Build completed successfully!"
-          echo "🚀 Deployment webhook triggered - Hostinger will deploy the latest code."
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/.env
+            **/.github/**
+            
+      - name: Deployment Success
+        if: success()
+        run: echo "✅ Build and deployment completed successfully!"
         
       - name: Build Failure Notification
         if: failure()

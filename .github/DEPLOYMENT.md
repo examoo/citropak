@@ -47,36 +47,46 @@ Since Hostinger handles the deployment via webhook, you **don't need to configur
 ```bash
 #!/bin/bash
 
-# Navigate to deployment directory
-cd $DEPLOYMENT_PATH
+# Navigate to your deployment directory
+cd $DEPLOYMENT_PATH || exit
 
-# Install composer dependencies
-composer install --optimize-autoloader --no-dev
+echo "🚀 Starting CitroPak deployment..."
 
-# Install NPM dependencies
-npm ci
+# Install/Update Composer dependencies
+echo "📦 Installing Composer dependencies..."
+composer install --optimize-autoloader --no-dev --no-interaction
 
-# Build frontend assets
+# Install/Update NPM dependencies
+echo "📦 Installing NPM dependencies..."
+npm install --force
+
+# Build Vue/Vite assets
+echo "🔨 Building frontend assets..."
 npm run build
 
 # Clear Laravel caches
+echo "🧹 Clearing caches..."
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
 php artisan view:clear
 
-# Run migrations
+# Run database migrations (optional - comment out if you don't want auto-migrations)
+echo "🗄️ Running migrations..."
 php artisan migrate --force
 
 # Optimize for production
+echo "⚡ Optimizing for production..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Set permissions
-chmod -R 755 storage bootstrap/cache
+# Set proper permissions
+echo "🔐 Setting permissions..."
+chmod -R 755 storage
+chmod -R 755 bootstrap/cache
 
-echo "Deployment completed!"
+echo "✅ Deployment completed successfully!"
 ```
 
 6. **Save and Enable** automatic deployment
