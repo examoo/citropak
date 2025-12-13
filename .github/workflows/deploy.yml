@@ -43,11 +43,12 @@ jobs:
       - name: Build Frontend Assets
         run: npm run build
         
-      - name: Build Success Notification
+      - name: Trigger Hostinger Deployment
         if: success()
         run: |
+          curl -X POST https://webhooks.hostinger.com/deploy/195c5d26d01b40e470c3be8681d10ab9
           echo "✅ Build completed successfully!"
-          echo "Hostinger webhook will handle the deployment automatically."
+          echo "🚀 Deployment webhook triggered - Hostinger will deploy the latest code."
         
       - name: Build Failure Notification
         if: failure()
