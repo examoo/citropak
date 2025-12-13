@@ -1,0 +1,93 @@
+name: Code Quality
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    name: Code Style & Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, dom, fileinfo, mysql
+          tools: phpcs, php-cs-fixer
+          coverage: none
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        
+      - name: Install NPM Dependencies
+        run: npm ci
+        
+      - name: Run PHP Code Style Fixer (Dry Run)
+        run: |
+          if [ -f "vendor/bin/php-cs-fixer" ]; then
+            vendor/bin/php-cs-fixer fix --dry-run --diff
+          else
+            echo "PHP CS Fixer not installed, skipping..."
+          fi
+        continue-on-error: true
+        
+      - name: Run ESLint
+        run: |
+          if [ -f "node_modules/.bin/eslint" ]; then
+            npm run lint || true
+          else
+            echo "ESLint not configured, skipping..."
+          fi
+        continue-on-error: true
+        
+      - name: Check for TODO comments
+        run: |
+          grep -r "TODO\|FIXME\|XXX" app/ resources/js/ || echo "No TODO comments found"
+        continue-on-error: true
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist
+        
+      - name: Run Composer Security Audit
+        run: composer audit
+        continue-on-error: true
+        
+      - name: Run NPM Security Audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
