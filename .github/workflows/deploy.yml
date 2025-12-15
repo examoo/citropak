@@ -102,7 +102,6 @@ jobs:
             **/node_modules/**
             **/vendor/**
             **/tests/**
-            **/.env
             **/.github/**
             
       - name: Deployment Success
