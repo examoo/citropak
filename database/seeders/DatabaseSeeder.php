@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@citropak.com',
-            'password' => bcrypt('1234568'),
+            'password' => bcrypt('12345678'),
         ]);
     }
 }
