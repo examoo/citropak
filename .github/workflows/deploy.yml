@@ -3,10 +3,10 @@ name: Laravel CI/CD
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     steps:
       # Set up PHP environment
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@v3
         with:
           php-version: '8.3'
           extensions: mbstring, bcmath, curl, xml, zip, dom, fileinfo, mysql, pdo_mysql, gd
@@ -68,19 +68,34 @@ jobs:
         
       - name: Build Vue Assets
         run: npm run build
+
+      # Replace @vite directive with actual asset paths
+      - name: Replace @vite directive
+        run: |
+          # Parse manifest.json and extract asset paths
+          ASSET_JS=$(jq -r '.["resources/js/app.js"].file' public/build/manifest.json)
+          ASSET_CSS=$(jq -r '.["resources/sass/app.scss"].file' public/build/manifest.json)
+          
+          # Replace the @vite directive in the Blade file
+          sed -i "s|@vite(\['resources/sass/app.scss', 'resources/js/app.js'\])|<link rel='stylesheet' href='/build/${ASSET_CSS}'>\n<script src='/build/${ASSET_JS}' type='module'></script>|g" resources/views/layouts/app.blade.php
           
       # Set proper directory permissions
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      # Deploy to Server via FTP
-      - name: Deploy to Server via FTP
+      # Create vendor zip
+      - name: Create vendor zip
+        run: zip -r vendor.zip vendor/
+
+      # Upload zip to Server via FTP
+      - name: Upload zip to Server via FTP
         if: success()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
           exclude: |
             **/.git*
             **/.git*/**
@@ -88,6 +103,7 @@ jobs:
             **/tests/**
             **/.env
             **/.github/**
+            !deploy.zip
             
       - name: Deployment Success
         if: success()
