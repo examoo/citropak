@@ -1,17 +1,21 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { usePermissions } from '@/Composables/usePermissions.js';
+
+const { can } = usePermissions();
 
 // Stats data
-const stats = ref([
+const allStats = [
     {
         title: 'Total Sales',
         value: '842,003.77',
         prefix: 'Rs.',
         color: 'from-emerald-500 to-teal-500',
         shadowColor: 'shadow-emerald-500/30',
-        icon: 'sales'
+        icon: 'sales',
+        permission: 'orders.view'
     },
     {
         title: 'Orders This Month',
@@ -19,7 +23,8 @@ const stats = ref([
         prefix: '',
         color: 'from-amber-500 to-orange-500',
         shadowColor: 'shadow-amber-500/30',
-        icon: 'orders'
+        icon: 'orders',
+        permission: 'orders.view'
     },
     {
         title: 'Total Credit',
@@ -27,7 +32,8 @@ const stats = ref([
         prefix: 'Rs.',
         color: 'from-blue-500 to-indigo-500',
         shadowColor: 'shadow-blue-500/30',
-        icon: 'credit'
+        icon: 'credit',
+        permission: 'invoices.view'
     },
     {
         title: 'Total Products',
@@ -35,17 +41,26 @@ const stats = ref([
         prefix: '',
         color: 'from-purple-500 to-pink-500',
         shadowColor: 'shadow-purple-500/30',
-        icon: 'products'
+        icon: 'products',
+        permission: 'products.view'
     }
-]);
+];
+
+const stats = computed(() => {
+    return allStats.filter(stat => !stat.permission || can(stat.permission));
+});
 
 // Quick Actions
-const quickActions = [
-    { name: 'New Order', icon: 'order', color: 'from-emerald-500 to-teal-500' },
-    { name: 'Add Product', icon: 'product', color: 'from-blue-500 to-indigo-500' },
-    { name: 'Create Invoice', icon: 'invoice', color: 'from-amber-500 to-orange-500' },
-    { name: 'View Reports', icon: 'report', color: 'from-purple-500 to-pink-500' },
+const allQuickActions = [
+    { name: 'New Order', icon: 'order', color: 'from-emerald-500 to-teal-500', permission: 'orders.create' },
+    { name: 'Add Product', icon: 'product', color: 'from-blue-500 to-indigo-500', permission: 'products.create' },
+    { name: 'Create Invoice', icon: 'invoice', color: 'from-amber-500 to-orange-500', permission: 'invoices.create' },
+    { name: 'View Reports', icon: 'report', color: 'from-purple-500 to-pink-500', permission: 'reports.view' },
 ];
+
+const quickActions = computed(() => {
+    return allQuickActions.filter(action => !action.permission || can(action.permission));
+});
 </script>
 
 <template>
@@ -59,7 +74,10 @@ const quickActions = [
                     <h1 class="text-2xl font-bold text-gray-900">Welcome back! 👋</h1>
                     <p class="text-gray-500 mt-1">Here's what's happening with your business today.</p>
                 </div>
-                <button class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5">
+                <button 
+                    v-if="can('orders.create')"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5"
+                >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>

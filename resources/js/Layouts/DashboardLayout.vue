@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Link, usePage, useForm } from '@inertiajs/vue3';
+import { usePermissions } from '@/Composables/usePermissions.js';
 
 const props = defineProps({
     sidebarOpen: {
@@ -10,6 +11,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const { can, canAny, isSuperAdmin } = usePermissions();
 const isSidebarOpen = ref(true);
 const currentTime = ref('');
 const currentDate = ref('');
@@ -61,50 +63,92 @@ const updatePassword = () => {
     });
 };
 
-// Navigation items
+// Navigation items with permissions
 const navigation = [
-    { name: 'Dashboard', href: 'dashboard', icon: 'dashboard', current: true },
+    { 
+        name: 'Dashboard', 
+        href: 'dashboard', 
+        icon: 'dashboard', 
+        current: true,
+        permission: 'view dashboard'
+    },
     { 
         name: 'Admin', 
         icon: 'admin',
+        permission: 'users.view',
         children: [
-            { name: 'Users', href: 'dashboard' },
-            { name: 'Roles', href: 'dashboard' },
+            { name: 'Users', href: 'dashboard', permission: 'users.view' },
+            { name: 'Roles', href: 'roles.index', permission: 'roles.view' },
         ]
     },
     { 
         name: 'Order Management', 
         icon: 'orders',
+        permission: 'orders.view',
         children: [
-            { name: 'Orders', href: 'dashboard' },
-            { name: 'New Order', href: 'dashboard' },
+            { name: 'Orders', href: 'dashboard', permission: 'orders.view' },
+            { name: 'New Order', href: 'dashboard', permission: 'orders.create' },
         ]
     },
     { 
         name: 'Stock Management', 
         icon: 'stock',
+        permission: 'stock.view',
         children: [
-            { name: 'Inventory', href: 'dashboard' },
-            { name: 'Products', href: 'dashboard' },
+            { name: 'Inventory', href: 'dashboard', permission: 'stock.view' },
+            { name: 'Products', href: 'dashboard', permission: 'products.view' },
         ]
     },
     { 
         name: 'Invoicing', 
         icon: 'invoice',
+        permission: 'invoices.view',
         children: [
-            { name: 'Invoices', href: 'dashboard' },
-            { name: 'Create Invoice', href: 'dashboard' },
+            { name: 'Invoices', href: 'dashboard', permission: 'invoices.view' },
+            { name: 'Create Invoice', href: 'dashboard', permission: 'invoices.create' },
         ]
     },
     { 
         name: 'Reports', 
         icon: 'reports',
+        permission: 'reports.view',
         children: [
-            { name: 'Sales Report', href: 'dashboard' },
-            { name: 'Stock Report', href: 'dashboard' },
+            { name: 'Sales Report', href: 'dashboard', permission: 'reports.view' },
+            { name: 'Stock Report', href: 'dashboard', permission: 'reports.view' },
         ]
     },
 ];
+
+// Filter navigation based on permissions
+const filteredNavigation = computed(() => {
+    return navigation.filter(item => {
+        // Check if user has permission for this item
+        if (!hasPermission(item.permission)) {
+            return false;
+        }
+        
+        // Filter children if they exist
+        if (item.children) {
+            const filteredChildren = item.children.filter(child => 
+                hasPermission(child.permission)
+            );
+            // Only show parent if at least one child is visible
+            if (filteredChildren.length === 0) {
+                return false;
+            }
+            // Replace children with filtered children
+            item.children = filteredChildren;
+        }
+        
+        return true;
+    });
+});
+
+// Check permission helper
+const hasPermission = (permission) => {
+    if (!permission) return true;
+    return can(permission);
+};
 
 const expandedMenus = ref([]);
 
@@ -191,7 +235,7 @@ const handleClickOutside = (event) => {
 
             <!-- Navigation -->
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <template v-for="item in navigation" :key="item.name">
+                <template v-for="item in filteredNavigation" :key="item.name">
                     <!-- Single Link -->
                     <Link
                         v-if="!item.children"

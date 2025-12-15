@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create Admin user
         User::updateOrCreate(
             ['email' => 'admin@citropak.com'],
             [
