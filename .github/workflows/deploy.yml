@@ -16,7 +16,7 @@ jobs:
     steps:
       # Set up PHP environment
       - name: Set up PHP
-        uses: shivammathur/setup-php@v3
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: mbstring, bcmath, curl, xml, zip, dom, fileinfo, mysql, pdo_mysql, gd
