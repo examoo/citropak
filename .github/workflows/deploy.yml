@@ -77,7 +77,7 @@ jobs:
           ASSET_CSS=$(jq -r '.["resources/sass/app.scss"].file' public/build/manifest.json)
           
           # Replace the @vite directive in the Blade file
-          sed -i "s|@vite(\['resources/sass/app.scss', 'resources/js/app.js'\])|<link rel='stylesheet' href='/build/${ASSET_CSS}'>\n<script src='/build/${ASSET_JS}' type='module'></script>|g" resources/views/layouts/app.blade.php
+          sed -i "s|@vite(\['resources/sass/app.scss', 'resources/js/app.js'\])|<link rel='stylesheet' href='/build/${ASSET_CSS}'>\n<script src='/build/${ASSET_JS}' type='module'></script>|g" resources/views/app.blade.php
           
       # Set proper directory permissions
       - name: Directory Permissions
