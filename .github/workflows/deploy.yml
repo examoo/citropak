@@ -1,0 +1,98 @@
+name: Laravel CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  laravel-build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Set up PHP environment
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, bcmath, curl, xml, zip, dom, fileinfo, mysql, pdo_mysql, gd
+          coverage: none
+
+      # Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Copy .env file if not present
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      # Cache Composer dependencies
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      # Install Composer dependencies
+      - name: Install Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-dev
+
+      # Generate application key
+      - name: Generate key
+        run: php artisan key:generate --force
+
+      # Cache Node.js modules
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Install and build front-end assets
+      - name: Install Node.js dependencies
+        run: npm install --force
+        
+      - name: Build Vue Assets
+        run: npm run build
+          
+      # Set proper directory permissions
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+
+      # Deploy to Server via FTP
+      - name: Deploy to Server via FTP
+        if: success()
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/.env
+            **/.github/**
+            
+      - name: Deployment Success
+        if: success()
+        run: echo "✅ Build and deployment completed successfully!"
+        
+      - name: Build Failure Notification
+        if: failure()
+        run: echo "❌ Build failed! Please check the logs above."
