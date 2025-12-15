@@ -4,6 +4,8 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { usePermissions } from '@/Composables/usePermissions.js';
 
+import Swal from 'sweetalert2';
+
 const props = defineProps({
     roles: {
         type: Array,
@@ -14,9 +16,28 @@ const props = defineProps({
 const { can, isSuperAdmin } = usePermissions();
 
 const deleteRole = (role) => {
-    if (confirm(`Are you sure you want to delete the role "${role.name}"?`)) {
-        router.delete(route('roles.destroy', role.id));
-    }
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `You want to delete the role "${role.name}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('roles.destroy', role.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire(
+                        'Deleted!',
+                        'Role has been deleted.',
+                        'success'
+                    )
+                }
+            });
+        }
+    })
 };
 </script>
 

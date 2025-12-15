@@ -75,9 +75,8 @@ const navigation = [
     { 
         name: 'Admin', 
         icon: 'admin',
-        permission: 'users.view',
         children: [
-            { name: 'Users', href: 'dashboard', permission: 'users.view' },
+            { name: 'Users', href: 'users.index', permission: 'users.view' },
             { name: 'Roles', href: 'roles.index', permission: 'roles.view' },
         ]
     },
@@ -96,7 +95,15 @@ const navigation = [
         permission: 'stock.view',
         children: [
             { name: 'Inventory', href: 'dashboard', permission: 'stock.view' },
-            { name: 'Products', href: 'dashboard', permission: 'products.view' },
+        ]
+    },
+    { 
+        name: 'Product Management', 
+        icon: 'box', 
+        permission: 'products.view',
+        children: [
+            { name: 'Products', href: 'products.index', permission: 'products.view', icon: 'cube' },
+            { name: 'Types', href: 'product-types.index', permission: 'products.view', icon: 'tag' },
         ]
     },
     { 
@@ -286,6 +293,10 @@ const handleClickOutside = (event) => {
                                 <svg v-else-if="item.icon === 'reports'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
+                                <!-- Box Icon (Product Management) -->
+                                <svg v-else-if="item.icon === 'box'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
                                 <span v-if="isSidebarOpen" class="text-sm font-medium">{{ item.name }}</span>
                             </div>
                             <svg 
@@ -308,8 +319,19 @@ const handleClickOutside = (event) => {
                                 v-for="child in item.children"
                                 :key="child.name"
                                 :href="route(child.href)"
-                                class="block px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/30 transition-colors"
+                                class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/30 transition-colors"
                             >
+                                <!-- Cube Icon (Products) -->
+                                <svg v-if="child.icon === 'cube'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <!-- Tag Icon (Types) -->
+                                <svg v-else-if="child.icon === 'tag'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                <!-- Default Dot for other children -->
+                                <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-slate-400"></div>
+
                                 {{ child.name }}
                             </Link>
                         </div>
