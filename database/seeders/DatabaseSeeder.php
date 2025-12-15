@@ -15,10 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@citropak.com',
-            'password' => bcrypt('12345678'),
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@citropak.com'],
+            [
+                'name' => 'Admin',
+                'password' => bcrypt('12345678'),
+            ]
+        );
     }
 }
