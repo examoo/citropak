@@ -100,10 +100,10 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+            **/vendor/**
             **/tests/**
             **/.env
             **/.github/**
-            !deploy.zip
             
       - name: Deployment Success
         if: success()
