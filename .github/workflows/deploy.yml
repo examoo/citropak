@@ -103,6 +103,14 @@ jobs:
             **/vendor/**
             **/tests/**
             **/.github/**
+
+      # Call extract.php to run migrations and seeders
+      - name: Run Post-Deploy Setup
+        if: success()
+        run: |
+          echo "🔄 Calling extract.php to run migrations and seeders..."
+          curl -s "https://staging.citropakdms.com/extract.php?key=citropak_extract_2024"
+          echo "✅ Post-deploy setup completed!"
             
       - name: Deployment Success
         if: success()
