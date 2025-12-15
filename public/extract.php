@@ -12,8 +12,8 @@ if (!isset($_GET['key']) || $_GET['key'] !== $secret_key) {
     die('Unauthorized. Use: ?key=YOUR_SECRET_KEY');
 }
 
-$zipFile = __DIR__ . '/vendor.zip';
-$extractTo = __DIR__ . '/';
+$zipFile = __DIR__ . '/../vendor.zip';
+$extractTo = __DIR__ . '/../';
 
 if (!file_exists($zipFile)) {
     die('Error: vendor.zip not found!');
