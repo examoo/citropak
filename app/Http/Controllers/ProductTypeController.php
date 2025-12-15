@@ -40,11 +40,9 @@ class ProductTypeController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(\App\Http\Requests\ProductTypeRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:product_types',
-        ]);
+        $validated = $request->validated();
 
         ProductType::create([
             'name' => $validated['name'],
@@ -54,11 +52,9 @@ class ProductTypeController extends Controller
         return redirect()->back()->with('success', 'Type created successfully.');
     }
 
-    public function update(Request $request, ProductType $productType)
+    public function update(\App\Http\Requests\ProductTypeRequest $request, ProductType $productType)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:product_types,name,' . $productType->id,
-        ]);
+        $validated = $request->validated();
 
         $productType->update([
             'name' => $validated['name'],

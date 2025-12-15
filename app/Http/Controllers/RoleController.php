@@ -35,15 +35,12 @@ class RoleController extends Controller
     /**
      * Store a newly created role.
      */
-    public function store(Request $request)
+    /**
+     * Store a newly created role.
+     */
+    public function store(\App\Http\Requests\RoleRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|exists:permissions,name',
-        ]);
-
-        $this->service->create($validated);
+        $this->service->create($request->validated());
 
         return redirect()
             ->route('roles.index')
@@ -75,15 +72,9 @@ class RoleController extends Controller
     /**
      * Update the specified role.
      */
-    public function update(Request $request, int $id)
+    public function update(\App\Http\Requests\RoleRequest $request, int $id)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $id,
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string|exists:permissions,name',
-        ]);
-
-        $this->service->update($id, $validated);
+        $this->service->update($id, $request->validated());
 
         return redirect()
             ->route('roles.index')

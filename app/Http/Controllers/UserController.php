@@ -33,17 +33,12 @@ class UserController extends Controller
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    /**
+     * Store a newly created user.
+     */
+    public function store(\App\Http\Requests\UserRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'roles' => 'nullable|array',
-            'roles.*' => 'string|exists:roles,name',
-        ]);
-
-        $this->userService->create($validated);
+        $this->userService->create($request->validated());
 
         return redirect()
             ->route('users.index')
@@ -53,17 +48,9 @@ class UserController extends Controller
     /**
      * Update the specified user.
      */
-    public function update(Request $request, int $id)
+    public function update(\App\Http\Requests\UserRequest $request, int $id)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
-            'roles' => 'nullable|array',
-            'roles.*' => 'string|exists:roles,name',
-        ]);
-
-        $this->userService->update($id, $validated);
+        $this->userService->update($id, $request->validated());
 
         return redirect()
             ->route('users.index')

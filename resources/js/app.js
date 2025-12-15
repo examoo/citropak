@@ -22,6 +22,7 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#4B5563',
+        color: '#10B981', // Emerald 500
+        showSpinner: true,
     },
 });

@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { Link, usePage, useForm } from '@inertiajs/vue3';
+import { Link, usePage, useForm, router } from '@inertiajs/vue3';
 import { usePermissions } from '@/Composables/usePermissions.js';
+
+const isLoading = ref(false);
+
+router.on('start', () => isLoading.value = true);
+router.on('finish', () => isLoading.value = false);
+
 
 const props = defineProps({
     sidebarOpen: {
@@ -464,8 +470,26 @@ const handleClickOutside = (event) => {
             </header>
 
             <!-- Page Content -->
-            <main class="p-6">
-                <slot />
+            <main class="p-6 relative min-h-[calc(100vh-4rem)]">
+                <!-- Global Page Loading Overlay (Spinner) -->
+                <div v-if="isLoading" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-50/50 backdrop-blur-sm transition-opacity duration-300">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-600 rounded-full animate-spin"></div>
+                        <span class="text-sm font-medium text-emerald-600 animate-pulse">Loading...</span>
+                    </div>
+                </div>
+
+                <Transition
+                    enter-active-class="transition ease-out duration-300 transform"
+                    enter-from-class="opacity-0 translate-y-4"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition ease-in duration-200 transform"
+                    leave-from-class="opacity-100 translate-y-0"
+                    leave-to-class="opacity-0 -translate-y-4"
+                    mode="out-in"
+                >
+                    <slot />
+                </Transition>
             </main>
         </div>
 
