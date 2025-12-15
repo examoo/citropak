@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     sidebarOpen: {
@@ -13,6 +13,53 @@ const page = usePage();
 const isSidebarOpen = ref(true);
 const currentTime = ref('');
 const currentDate = ref('');
+
+// User dropdown state
+const isUserDropdownOpen = ref(false);
+const showPasswordModal = ref(false);
+
+// Password update form
+const passwordForm = useForm({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+});
+
+const toggleUserDropdown = () => {
+    isUserDropdownOpen.value = !isUserDropdownOpen.value;
+};
+
+const closeUserDropdown = () => {
+    isUserDropdownOpen.value = false;
+};
+
+const openPasswordModal = () => {
+    isUserDropdownOpen.value = false;
+    showPasswordModal.value = true;
+};
+
+const closePasswordModal = () => {
+    showPasswordModal.value = false;
+    passwordForm.reset();
+};
+
+const updatePassword = () => {
+    passwordForm.put(route('password.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closePasswordModal();
+            passwordForm.reset();
+        },
+        onError: () => {
+            if (passwordForm.errors.password) {
+                passwordForm.reset('password', 'password_confirmation');
+            }
+            if (passwordForm.errors.current_password) {
+                passwordForm.reset('current_password');
+            }
+        },
+    });
+};
 
 // Navigation items
 const navigation = [
@@ -92,11 +139,23 @@ let timeInterval;
 onMounted(() => {
     updateDateTime();
     timeInterval = setInterval(updateDateTime, 1000);
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
     clearInterval(timeInterval);
+    document.removeEventListener('click', handleClickOutside);
 });
+
+const handleClickOutside = (event) => {
+    const dropdown = document.getElementById('user-dropdown');
+    const trigger = document.getElementById('user-dropdown-trigger');
+    if (dropdown && trigger && !dropdown.contains(event.target) && !trigger.contains(event.target)) {
+        isUserDropdownOpen.value = false;
+    }
+};
 </script>
 
 <template>
@@ -258,14 +317,71 @@ onUnmounted(() => {
                             <span>{{ currentDate }}</span>
                         </div>
 
-                        <!-- User -->
-                        <div class="flex items-center gap-3 pl-4 border-l border-gray-200">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm shadow-lg shadow-indigo-500/30">
-                                {{ page.props.auth.user.name.charAt(0) }}
-                            </div>
-                            <div class="hidden sm:block">
-                                <p class="text-sm font-medium text-gray-800">{{ page.props.auth.user.name }}</p>
-                                <p class="text-xs text-gray-500">Administrator</p>
+                        <!-- User Dropdown -->
+                        <div class="relative pl-4 border-l border-gray-200">
+                            <button 
+                                id="user-dropdown-trigger"
+                                @click="toggleUserDropdown"
+                                class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                            >
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm shadow-lg shadow-indigo-500/30">
+                                    {{ page.props.auth.user.name.charAt(0).toUpperCase() }}
+                                </div>
+                                <div class="hidden sm:block text-left">
+                                    <p class="text-sm font-medium text-gray-800">{{ page.props.auth.user.name }}</p>
+                                    <p class="text-xs text-gray-500">{{ page.props.auth.user.email }}</p>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-400" :class="{ 'rotate-180': isUserDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div 
+                                v-if="isUserDropdownOpen"
+                                id="user-dropdown"
+                                class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                            >
+                                <!-- User Info -->
+                                <div class="px-4 py-3 border-b border-gray-100">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/30">
+                                            {{ page.props.auth.user.name.charAt(0).toUpperCase() }}
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">{{ page.props.auth.user.name }}</p>
+                                            <p class="text-sm text-gray-500">{{ page.props.auth.user.email }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Menu Items -->
+                                <div class="py-2">
+                                    <button 
+                                        @click="openPasswordModal"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                        </svg>
+                                        <span>Update Password</span>
+                                    </button>
+                                </div>
+
+                                <!-- Logout -->
+                                <div class="border-t border-gray-100 pt-2">
+                                    <Link
+                                        :href="route('logout')"
+                                        method="post"
+                                        as="button"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        <span>Logout</span>
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -286,6 +402,93 @@ onUnmounted(() => {
                 <slot />
             </main>
         </div>
+
+        <!-- Password Update Modal -->
+        <Teleport to="body">
+            <div v-if="showPasswordModal" class="fixed inset-0 z-[100] overflow-y-auto">
+                <!-- Backdrop -->
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="closePasswordModal"></div>
+                
+                <!-- Modal -->
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-gray-800">Update Password</h3>
+                            <button @click="closePasswordModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <p class="text-sm text-gray-500 mb-6">
+                            Ensure your account is using a strong password to stay secure.
+                        </p>
+
+                        <!-- Form -->
+                        <form @submit.prevent="updatePassword" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                                <input 
+                                    v-model="passwordForm.current_password"
+                                    type="password" 
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    placeholder="Enter current password"
+                                />
+                                <p v-if="passwordForm.errors.current_password" class="mt-1 text-sm text-red-600">
+                                    {{ passwordForm.errors.current_password }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                                <input 
+                                    v-model="passwordForm.password"
+                                    type="password" 
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    placeholder="Enter new password"
+                                />
+                                <p v-if="passwordForm.errors.password" class="mt-1 text-sm text-red-600">
+                                    {{ passwordForm.errors.password }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                                <input 
+                                    v-model="passwordForm.password_confirmation"
+                                    type="password" 
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    placeholder="Confirm new password"
+                                />
+                                <p v-if="passwordForm.errors.password_confirmation" class="mt-1 text-sm text-red-600">
+                                    {{ passwordForm.errors.password_confirmation }}
+                                </p>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex gap-3 pt-4">
+                                <button 
+                                    type="button"
+                                    @click="closePasswordModal"
+                                    class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    :disabled="passwordForm.processing"
+                                    class="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-colors font-medium disabled:opacity-50"
+                                >
+                                    {{ passwordForm.processing ? 'Updating...' : 'Update Password' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
 
