@@ -34,7 +34,12 @@ $composerOutput = shell_exec("$composerCmd install --no-dev --optimize-autoloade
 echo $composerOutput . "\n";
 echo "✅ Composer dependencies installed.\n\n";
 
-// Step 2: Run migrations
+// Step 2: Generate App Key if missing
+echo "🔑 Generating application key...\n";
+echo shell_exec('php artisan key:generate --force 2>&1');
+echo "\n";
+
+// Step 3: Run migrations
 echo "🔄 Running migrations...\n";
 chdir($basePath);
 $migrateOutput = shell_exec('php artisan migrate --force 2>&1');
