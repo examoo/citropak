@@ -95,6 +95,7 @@ const navigation = [
             { name: 'Orders', href: 'dashboard', permission: 'orders.view' },
             { name: 'New Order', href: 'dashboard', permission: 'orders.create' },
             { name: 'Order Bookers', href: 'order-bookers.index', icon: 'users', permission: 'order_bookers.view' },
+            { name: 'Customer Sheets', href: 'customer-sheets.index', permission: 'order_bookers.view' },
         ]
     },
     { 
@@ -233,7 +234,7 @@ const handleClickOutside = (event) => {
         <!-- Sidebar -->
         <aside 
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out',
+                'fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out print:hidden',
                 isSidebarOpen ? 'w-64' : 'w-20'
             ]"
             class="bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 shadow-2xl"
@@ -395,9 +396,9 @@ const handleClickOutside = (event) => {
         </aside>
 
         <!-- Main Content -->
-        <div :class="['transition-all duration-300', isSidebarOpen ? 'ml-64' : 'ml-20']">
+        <div :class="['transition-all duration-300 print:ml-0', isSidebarOpen ? 'ml-64' : 'ml-20']">
             <!-- Top Header -->
-            <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+            <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm print:hidden">
                 <div class="flex items-center justify-between h-16 px-6">
                     <!-- Logo/Brands -->
                     <div class="flex items-center gap-6">
