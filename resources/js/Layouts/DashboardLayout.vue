@@ -509,7 +509,9 @@ const handleClickOutside = (event) => {
                     leave-to-class="opacity-0 -translate-y-4"
                     mode="out-in"
                 >
-                    <slot />
+                    <div :key="$page.url">
+                        <slot />
+                    </div>
                 </Transition>
             </main>
         </div>
