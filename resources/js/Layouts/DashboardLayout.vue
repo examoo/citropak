@@ -84,6 +84,7 @@ const navigation = [
         children: [
             { name: 'Users', href: 'users.index', permission: 'users.view' },
             { name: 'Roles', href: 'roles.index', permission: 'roles.view' },
+            { name: 'VAN', href: 'vans.index', icon: 'truck', permission: 'vans.view' },
         ]
     },
     { 
@@ -93,6 +94,7 @@ const navigation = [
         children: [
             { name: 'Orders', href: 'dashboard', permission: 'orders.view' },
             { name: 'New Order', href: 'dashboard', permission: 'orders.create' },
+            { name: 'Order Bookers', href: 'order-bookers.index', icon: 'users', permission: 'order_bookers.view' },
         ]
     },
     { 

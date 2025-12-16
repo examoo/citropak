@@ -201,6 +201,38 @@ const quickAddAttribute = async (type, title) => {
     });
 
     if (newValue) {
+        // Special handling for VAN module
+        if (type === 'van') {
+            router.post(route('vans.store'), {
+                name: newValue,
+                status: 'active'
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                     Swal.fire({
+                        title: 'Success', 
+                        text: 'VAN added successfully', 
+                        icon: 'success',
+                        target: openDialog || 'body',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    form.van = newValue;
+                },
+                onError: () => {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to add VAN',
+                        icon: 'error',
+                        target: openDialog || 'body'
+                    });
+                }
+            });
+            return;
+        }
+
+        // Default logic for other attributes
         router.post(route('customer-attributes.store'), {
             type: type,
             value: newValue

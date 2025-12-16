@@ -48,7 +48,16 @@ class CustomerService
 
     public function getAttributes()
     {
-        return \App\Models\CustomerAttribute::all()->groupBy('type');
+        $attributes = \App\Models\CustomerAttribute::all()->groupBy('type');
+        
+        // Fetch Vans and map to structure expected by frontend (value property)
+        $vans = \App\Models\Van::where('status', 'active')->latest()->get()->map(function($van) {
+            return ['id' => $van->id, 'value' => $van->name, 'type' => 'van'];
+        });
+
+        $attributes->put('van', $vans);
+
+        return $attributes;
     }
 
     /**

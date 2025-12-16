@@ -35,6 +35,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
+    Route::resource('order-bookers', \App\Http\Controllers\OrderBookerController::class);
+    Route::resource('vans', \App\Http\Controllers\VanController::class);
 });
 
 require __DIR__.'/auth.php';
