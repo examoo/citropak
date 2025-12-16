@@ -19,9 +19,13 @@ class Customer extends Model
         'category',
         'channel',
         'ntn_number',
+        'cnic',
+        'sales_tax_number',
         'distribution',
+        'day',
         'status',
-        'adv_tax_percent'
+        'adv_tax_percent',
+        'percentage'
     ];
     //
 }

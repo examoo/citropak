@@ -115,10 +115,12 @@ const navigation = [
     { 
         name: 'Customer Management', 
         icon: 'customer', 
+        permission: 'customers.view',
         children: [
-            { name: 'Items', href: 'dashboard', icon: 'cube' },
-            { name: 'Customers', href: 'customers.index', icon: 'users' },
-            { name: 'Customer Sheets', href: 'dashboard', icon: 'document' },
+            { name: 'Customers', href: 'customers.index', icon: 'users', permission: 'customers.view' },
+            { name: 'Category', href: 'customer-attributes.index', params: { type: 'category' }, icon: 'tag', permission: 'customer_attributes.view' },
+            { name: 'Channel', href: 'customer-attributes.index', params: { type: 'channel' }, icon: 'globe', permission: 'customer_attributes.view' },
+            { name: 'Distribution', href: 'customer-attributes.index', params: { type: 'distribution' }, icon: 'truck', permission: 'customer_attributes.view' },
         ]
     },
     { 
@@ -273,7 +275,7 @@ const handleClickOutside = (event) => {
                         <svg v-if="item.icon === 'dashboard'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        <span v-if="isSidebarOpen" class="text-sm font-medium">{{ item.name }}</span>
+                        <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name }}</span>
                     </Link>
 
                     <!-- Dropdown Menu -->
@@ -316,7 +318,7 @@ const handleClickOutside = (event) => {
                                 <svg v-else-if="item.icon === 'customer'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
-                                <span v-if="isSidebarOpen" class="text-sm font-medium">{{ item.name }}</span>
+                                <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name }}</span>
                             </div>
                             <svg 
                                 v-if="isSidebarOpen"
@@ -337,14 +339,14 @@ const handleClickOutside = (event) => {
                             <Link
                                 v-for="child in item.children"
                                 :key="child.name"
-                                :href="route(child.href)"
+                                :href="route(child.href, child.params)"
                                 class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/30 transition-colors"
                             >
                                 <!-- Cube Icon (Products) -->
                                 <svg v-if="child.icon === 'cube'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                 </svg>
-                                <!-- Tag Icon (Types) -->
+                                <!-- Tag Icon (Types/Category) -->
                                 <svg v-else-if="child.icon === 'tag'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                 </svg>
@@ -355,6 +357,14 @@ const handleClickOutside = (event) => {
                                 <!-- Document Icon -->
                                 <svg v-else-if="child.icon === 'document'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <!-- Globe Icon (Channel) -->
+                                <svg v-else-if="child.icon === 'globe'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                </svg>
+                                <!-- Truck Icon (Distribution) -->
+                                <svg v-else-if="child.icon === 'truck'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 <!-- Default Dot for other children -->
                                 <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-slate-400"></div>

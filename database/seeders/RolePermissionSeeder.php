@@ -19,6 +19,8 @@ class RolePermissionSeeder extends Seeder
         'stock',
         'invoices',
         'reports',
+        'customers',
+        'customer_attributes',
     ];
 
     /**

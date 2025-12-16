@@ -31,9 +31,13 @@ class CustomerRequest extends FormRequest
             'category' => 'nullable|string|max:100',
             'channel' => 'nullable|string|max:100',
             'ntn_number' => 'nullable|string|max:50',
+            'cnic' => 'nullable|string|max:50',
+            'sales_tax_number' => 'nullable|string|max:50',
             'distribution' => 'nullable|string|max:100',
+            'day' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
             'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
+            'percentage' => 'nullable|numeric|min:0|max:100',
         ];
     }
 }

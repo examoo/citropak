@@ -75,8 +75,12 @@ const form = useForm({
     channel: '',
     ntn_number: '',
     distribution: '',
+    day: '',
     status: 'active',
-    adv_tax_percent: '0.00'
+    adv_tax_percent: '0.00',
+    percentage: '0.00',
+    cnic: '',
+    sales_tax_number: ''
 });
 
 const openModal = (customer = null) => {
@@ -94,12 +98,17 @@ const openModal = (customer = null) => {
         form.channel = customer.channel;
         form.ntn_number = customer.ntn_number;
         form.distribution = customer.distribution;
+        form.day = customer.day;
         form.status = customer.status;
         form.adv_tax_percent = customer.adv_tax_percent;
+        form.percentage = customer.percentage;
+        form.cnic = customer.cnic;
+        form.sales_tax_number = customer.sales_tax_number;
     } else {
         form.reset();
         form.status = 'active';
         form.adv_tax_percent = '0.00';
+        form.percentage = '0.00';
     }
     
     isModalOpen.value = true;
@@ -111,7 +120,28 @@ const closeModal = () => {
     form.clearErrors();
 };
 
+const validateForm = () => {
+    form.clearErrors();
+    let isValid = true;
+
+    if (!form.shop_name) {
+        form.setError('shop_name', 'The shop name field is required.');
+        isValid = false;
+    }
+
+    if (!form.status) {
+        form.setError('status', 'The status field is required.');
+        isValid = false;
+    }
+
+    return isValid;
+};
+
 const submit = () => {
+    if (!validateForm()) {
+        return;
+    }
+
     if (isEditing.value) {
         form.put(route('customers.update', editingCustomerId.value), {
             onSuccess: () => closeModal(),
@@ -269,6 +299,15 @@ const getAttributes = (type) => props.attributes[type] || [];
                                 <th @click="handleSort('van')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     VAN {{ getSortIcon('van') }}
                                 </th>
+                                <th @click="handleSort('channel')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                    Channel {{ getSortIcon('channel') }}
+                                </th>
+                                <th class="px-6 py-4">Category</th>
+                                <th class="px-6 py-4">Distribution</th>
+                                <th class="px-6 py-4">Day</th>
+                                <th class="px-6 py-4">NTN/STRN</th>
+                                <th class="px-6 py-4">CNIC</th>
+                                <th class="px-6 py-4">Percentage</th>
                                 <th @click="handleSort('phone')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Telephone {{ getSortIcon('phone') }}
                                 </th>
@@ -288,6 +327,29 @@ const getAttributes = (type) => props.attributes[type] || [];
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.van || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.channel || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.category || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.distribution || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.day || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500 text-xs">
+                                     <div v-if="customer.ntn_number">NTN: {{ customer.ntn_number }}</div>
+                                     <div v-if="customer.sales_tax_number">STRN: {{ customer.sales_tax_number }}</div>
+                                     <div v-if="!customer.ntn_number && !customer.sales_tax_number">-</div>
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.cnic || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.percentage || '0.00' }}%
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.phone || 'N/A' }}
@@ -359,7 +421,13 @@ const getAttributes = (type) => props.attributes[type] || [];
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Customer Code" />
-                            <TextInput v-model="form.customer_code" type="text" class="mt-1 block w-full" placeholder="e.g. CPSSGD03739" />
+                            <TextInput 
+                                v-model="form.customer_code" 
+                                type="text" 
+                                class="mt-1 block w-full" 
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.customer_code }"
+                                placeholder="e.g. CPSSGD03739" 
+                            />
                             <div v-if="form.errors.customer_code" class="text-xs text-red-600 mt-1">{{ form.errors.customer_code }}</div>
                         </div>
                         <div>
@@ -383,7 +451,12 @@ const getAttributes = (type) => props.attributes[type] || [];
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Shop Name" />
-                            <TextInput v-model="form.shop_name" type="text" class="mt-1 block w-full" required />
+                            <TextInput 
+                                v-model="form.shop_name" 
+                                type="text" 
+                                class="mt-1 block w-full" 
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.shop_name }"
+                            />
                             <div v-if="form.errors.shop_name" class="text-xs text-red-600 mt-1">{{ form.errors.shop_name }}</div>
                         </div>
                          <div>
@@ -452,10 +525,6 @@ const getAttributes = (type) => props.attributes[type] || [];
                     <!-- Row 5 -->
                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
-                            <InputLabel value="NTN Number" />
-                            <TextInput v-model="form.ntn_number" type="text" class="mt-1 block w-full" />
-                        </div>
-                         <div>
                             <InputLabel value="Distribution" />
                             <div class="flex gap-2">
                                 <select 
@@ -470,10 +539,88 @@ const getAttributes = (type) => props.attributes[type] || [];
                                 </button>
                             </div>
                         </div>
+                        <div>
+                            <InputLabel value="Day" />
+                            <select 
+                                v-model="form.day"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.day }"
+                            >
+                                <option value="">Select Day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                            <div v-if="form.errors.day" class="text-xs text-red-600 mt-1">{{ form.errors.day }}</div>
+                        </div>
                     </div>
 
                     <!-- Row 6 -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel value="NTN Number" />
+                            <TextInput 
+                                v-model="form.ntn_number" 
+                                type="text" 
+                                class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.ntn_number }"
+                            />
+                            <div v-if="form.errors.ntn_number" class="text-xs text-red-600 mt-1">{{ form.errors.ntn_number }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="CNIC" />
+                            <TextInput 
+                                v-model="form.cnic" 
+                                type="text" 
+                                class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.cnic }"
+                            />
+                            <div v-if="form.errors.cnic" class="text-xs text-red-600 mt-1">{{ form.errors.cnic }}</div>
+                        </div>
+                    </div>
+
+                     <!-- Row 7 -->
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel value="Sale Tax Number" />
+                            <TextInput 
+                                v-model="form.sales_tax_number" 
+                                type="text" 
+                                class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.sales_tax_number }"
+                            />
+                            <div v-if="form.errors.sales_tax_number" class="text-xs text-red-600 mt-1">{{ form.errors.sales_tax_number }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="Adv. Tax (%)" />
+                            <TextInput 
+                                v-model="form.adv_tax_percent" 
+                                type="number" 
+                                step="0.01" 
+                                class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.adv_tax_percent }"
+                            />
+                            <div v-if="form.errors.adv_tax_percent" class="text-xs text-red-600 mt-1">{{ form.errors.adv_tax_percent }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Row 8 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel value="Percentage" />
+                            <TextInput 
+                                v-model="form.percentage" 
+                                type="number" 
+                                step="0.01" 
+                                class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.percentage }"
+                            />
+                            <div v-if="form.errors.percentage" class="text-xs text-red-600 mt-1">{{ form.errors.percentage }}</div>
+                        </div>
                         <div>
                             <InputLabel value="Status" />
                             <select 
@@ -483,10 +630,6 @@ const getAttributes = (type) => props.attributes[type] || [];
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
-                        </div>
-                        <div>
-                            <InputLabel value="Adv. Tax (%)" />
-                            <TextInput v-model="form.adv_tax_percent" type="number" step="0.01" class="mt-1 block w-full" />
                         </div>
                     </div>
 

@@ -10,9 +10,21 @@ class CustomerAttributeController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $type = $request->query('type');
+        
+        $attributes = CustomerAttribute::query()
+            ->when($type, fn($q) => $q->where('type', $type))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return \Inertia\Inertia::render('CustomerAttributes/Index', [
+            'attributes' => $attributes,
+            'type' => $type,
+            'filters' => $request->only(['type'])
+        ]);
     }
 
     /**
@@ -59,7 +71,13 @@ class CustomerAttributeController extends Controller
      */
     public function update(Request $request, CustomerAttribute $customerAttribute)
     {
-        //
+        $validated = $request->validate([
+            'value' => 'required|string|max:255'
+        ]);
+
+        $customerAttribute->update($validated);
+
+        return redirect()->back()->with('success', 'Attribute updated successfully.');
     }
 
     /**
@@ -67,6 +85,8 @@ class CustomerAttributeController extends Controller
      */
     public function destroy(CustomerAttribute $customerAttribute)
     {
-        //
+        $customerAttribute->delete();
+
+        return redirect()->back()->with('success', 'Attribute deleted successfully.');
     }
 }
