@@ -13,6 +13,7 @@ class CustomerController extends Controller
 
     /**
      * Display a listing of the resource.
+     * Force sync.
      */
     public function index(Request $request): Response
     {
