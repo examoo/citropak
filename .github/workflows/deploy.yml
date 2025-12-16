@@ -30,6 +30,9 @@ jobs:
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
+      # Install Composer dependencies (needed for Ziggy JS routes during build)
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-dev
 
 
       # Cache Node.js modules
