@@ -5,6 +5,7 @@ use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\CustomerController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -32,6 +33,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('products', ProductController::class);
     Route::resource('product-types', ProductTypeController::class);
+    Route::resource('customers', CustomerController::class);
+    Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
 });
 
 require __DIR__.'/auth.php';

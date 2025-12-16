@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CustomerRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'customer_code' => 'nullable|string|max:50',
+            'van' => 'nullable|string|max:100',
+            'shop_name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'sub_address' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'category' => 'nullable|string|max:100',
+            'channel' => 'nullable|string|max:100',
+            'ntn_number' => 'nullable|string|max:50',
+            'distribution' => 'nullable|string|max:100',
+            'status' => 'required|in:active,inactive',
+            'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
+        ];
+    }
+}
