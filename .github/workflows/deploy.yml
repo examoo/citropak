@@ -30,22 +30,7 @@ jobs:
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-      # Cache Composer dependencies
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-
 
-      # Install Composer dependencies
-      - name: Install Dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader --no-dev
-
-      # Generate application key
-      - name: Generate key
-        run: php artisan key:generate --force
 
       # Cache Node.js modules
       - name: Cache Node.js modules
@@ -83,9 +68,7 @@ jobs:
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      # Create vendor zip
-      - name: Create vendor zip
-        run: zip -r vendor.zip vendor/
+
 
       # Upload zip to Server via FTP
       - name: Upload zip to Server via FTP

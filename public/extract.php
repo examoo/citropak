@@ -17,21 +17,22 @@ $zipFile = $basePath . 'vendor.zip';
 
 echo "<pre>";
 
-// Step 1: Extract vendor.zip if exists
-if (file_exists($zipFile)) {
-    $zip = new ZipArchive;
-    if ($zip->open($zipFile) === TRUE) {
-        echo "📦 Extracting vendor.zip...\n";
-        $zip->extractTo($basePath);
-        $zip->close();
-        unlink($zipFile);
-        echo "✅ Vendor extracted and zip deleted.\n\n";
-    } else {
-        die('Error: Could not open vendor.zip');
-    }
+// Step 1: Run Composer Install
+echo "📦 Running Composer Install...\n";
+chdir($basePath);
+// Put the site down if needed, or just install
+// Note: Ensure `composer` is in the path or use full path (e.g. /usr/bin/composer or /usr/local/bin/composer)
+// check if composer exists
+$composerCheck = shell_exec('which composer');
+if(empty($composerCheck)){
+   $composerCmd = 'php composer.phar'; // Fallback if composer binary not found
 } else {
-    echo "ℹ️ vendor.zip not found, skipping extraction.\n\n";
+   $composerCmd = 'composer';
 }
+
+$composerOutput = shell_exec("$composerCmd install --no-dev --optimize-autoloader 2>&1");
+echo $composerOutput . "\n";
+echo "✅ Composer dependencies installed.\n\n";
 
 // Step 2: Run migrations
 echo "🔄 Running migrations...\n";
