@@ -408,6 +408,53 @@ const quickAddAttribute = async (type, title) => {
 
 
 
+const isImportModalOpen = ref(false);
+const importFile = ref(null);
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+    importFile.value = null;
+};
+
+const closeImportModal = () => {
+    isImportModalOpen.value = false;
+    importFile.value = null;
+};
+
+const handleImportFileChange = (event) => {
+    importFile.value = event.target.files[0];
+};
+
+const submitImport = () => {
+    if (!importFile.value) {
+        Swal.fire('Error', 'Please select a file to import', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', importFile.value);
+
+    router.post(route('customers.import'), formData, {
+        onSuccess: () => {
+            closeImportModal();
+            Swal.fire({
+                title: 'Success',
+                text: 'Customers imported successfully',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        },
+        onError: () => {
+             closeImportModal(); // Close modal on error too? Or keep open? User preference usually keep open. But keeping simple.
+             Swal.fire({
+                title: 'Error',
+                text: 'Failed to import customers',
+                icon: 'error'
+            });
+        }
+    });
+};
 </script>
 
 <template>
@@ -436,7 +483,6 @@ const quickAddAttribute = async (type, title) => {
                         </svg>
                     </div>
 
-                    <!-- Status Filter -->
                     <select 
                         v-model="filterStatus"
                         class="py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 bg-white shadow-sm"
@@ -445,6 +491,16 @@ const quickAddAttribute = async (type, title) => {
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
+
+                    <button 
+                        @click="openImportModal"
+                        class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
+                    >
+                        <svg class="w-5 h-5 mr-2 -ml-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Import Excel
+                    </button>
 
                     <button 
                         @click="openModal()"
@@ -832,4 +888,41 @@ const quickAddAttribute = async (type, title) => {
             </div>
         </Modal>
     </DashboardLayout>
+    <!-- Import Modal -->
+    <Modal :show="isImportModalOpen" @close="closeImportModal" maxWidth="md">
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">Import Customers</h2>
+            
+            <div class="space-y-4">
+                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span class="text-sm text-gray-600">Download sample format</span>
+                     <a 
+                        :href="route('customers.template')" 
+                        class="text-sm text-indigo-600 hover:text-indigo-900 font-medium hover:underline"
+                    >
+                        Download Format
+                    </a>
+                </div>
+
+                <div>
+                    <InputLabel value="Select Excel File" class="mb-2" />
+                    <input 
+                        type="file" 
+                        accept=".xlsx,.csv"
+                        @change="handleImportFileChange"
+                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                    >
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <SecondaryButton @click="closeImportModal">
+                    Cancel
+                </SecondaryButton>
+                <PrimaryButton @click="submitImport" :disabled="!importFile">
+                    Import Customers
+                </PrimaryButton>
+            </div>
+        </div>
+    </Modal>
 </template>

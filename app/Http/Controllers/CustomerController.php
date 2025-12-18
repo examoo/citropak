@@ -59,4 +59,18 @@ class CustomerController extends Controller
 
         return redirect()->back()->with('success', 'Customer deleted successfully.');
     }
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv',
+        ]);
+
+        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\CustomersImport, $request->file('file'));
+
+        return redirect()->back()->with('success', 'Customers imported successfully.');
+    }
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CustomersTemplateExport, 'customers_template.xlsx');
+    }
 }

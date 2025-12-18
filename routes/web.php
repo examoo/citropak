@@ -33,6 +33,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('products', ProductController::class);
     Route::resource('product-types', ProductTypeController::class);
+    Route::get('customers/template', [CustomerController::class, 'downloadTemplate'])->name('customers.template');
+    Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::resource('customers', CustomerController::class);
     Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
     Route::resource('order-bookers', \App\Http\Controllers\OrderBookerController::class);
