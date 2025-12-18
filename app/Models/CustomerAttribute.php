@@ -9,5 +9,5 @@ class CustomerAttribute extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['type', 'value'];
+    protected $fillable = ['type', 'value', 'atl', 'adv_tax_percent'];
 }

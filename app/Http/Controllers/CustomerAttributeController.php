@@ -40,10 +40,24 @@ class CustomerAttributeController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'type' => 'required|string|in:van,category,channel,distribution,sub_address',
             'value' => 'required|string|max:255'
-        ]);
+        ];
+
+        // Add channel-specific validation rules
+        if ($request->type === 'channel') {
+            $rules['atl'] = 'required|string|in:active,inactive';
+            $rules['adv_tax_percent'] = 'required|numeric|min:0|max:100';
+        }
+
+        $validated = $request->validate($rules);
+
+        // Set default values for non-channel types
+        if ($request->type !== 'channel') {
+            $validated['atl'] = 'active';
+            $validated['adv_tax_percent'] = 0;
+        }
 
         \App\Models\CustomerAttribute::create($validated);
 
@@ -71,9 +85,17 @@ class CustomerAttributeController extends Controller
      */
     public function update(Request $request, CustomerAttribute $customerAttribute)
     {
-        $validated = $request->validate([
+        $rules = [
             'value' => 'required|string|max:255'
-        ]);
+        ];
+
+        // Add channel-specific validation rules
+        if ($customerAttribute->type === 'channel') {
+            $rules['atl'] = 'required|string|in:active,inactive';
+            $rules['adv_tax_percent'] = 'required|numeric|min:0|max:100';
+        }
+
+        $validated = $request->validate($rules);
 
         $customerAttribute->update($validated);
 

@@ -9,7 +9,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
 import { debounce } from 'lodash';
-import { watch, ref, computed } from 'vue';
+import { watch, ref, computed, nextTick } from 'vue';
 
 const props = defineProps({
     customers: {
@@ -77,16 +77,46 @@ const form = useForm({
     distribution: '',
     day: '',
     status: 'active',
+    atl: 'active',
     adv_tax_percent: '0.00',
     percentage: '0.00',
     cnic: '',
     sales_tax_number: ''
 });
 
+const selectedChannelId = ref('');
+
+// Helpers to safely get attributes or empty array
+const getAttributes = (type) => props.attributes[type] || [];
+
+const channelOptions = computed(() => getAttributes('channel'));
+
+// Update form fields when detailed channel selection changes (by ID)
+watch(selectedChannelId, (newId) => {
+    if (!newId) {
+        // If cleared manually (though dropdown usually forces selection), don't necessarily clear form unless creating?
+        // Let's keep form sync if needed. But usually selection drives form.
+        return;
+    }
+    
+    // Find the full channel object by unique ID
+    const channel = channelOptions.value.find(ch => ch.id === newId);
+    
+    if (channel) {
+        // Sync the form data
+        form.channel = channel.value; // The name
+        form.adv_tax_percent = parseFloat(channel.adv_tax_percent || 0).toFixed(2);
+        form.atl = channel.atl || 'active';
+    }
+});
+
 const openModal = (customer = null) => {
     isEditing.value = !!customer;
     editingCustomerId.value = customer?.id;
     
+    // Reset selection ID first
+    selectedChannelId.value = '';
+
     if (customer) {
         form.customer_code = customer.customer_code;
         form.van = customer.van;
@@ -100,15 +130,36 @@ const openModal = (customer = null) => {
         form.distribution = customer.distribution;
         form.day = customer.day;
         form.status = customer.status;
+        form.atl = customer.atl || 'active';
         form.adv_tax_percent = customer.adv_tax_percent;
         form.percentage = customer.percentage;
         form.cnic = customer.cnic;
         form.sales_tax_number = customer.sales_tax_number;
+        
+        // Smartly find the correct channel ID to select
+        // Match by Name AND ATL status to distinguish duplicates
+        if (customer.channel) {
+            const match = channelOptions.value.find(ch => 
+                ch.value === customer.channel && 
+                ch.atl === (customer.atl || 'active')
+            );
+            
+            // Fallback to name only if exact match fails
+            if (match) {
+                selectedChannelId.value = match.id;
+            } else {
+                const nameMatch = channelOptions.value.find(ch => ch.value === customer.channel);
+                if (nameMatch) selectedChannelId.value = nameMatch.id;
+            }
+        }
+
     } else {
         form.reset();
         form.status = 'active';
+        form.atl = 'active';
         form.adv_tax_percent = '0.00';
         form.percentage = '0.00';
+        selectedChannelId.value = '';
     }
     
     isModalOpen.value = true;
@@ -182,6 +233,98 @@ const deleteCustomer = (customer) => {
 const quickAddAttribute = async (type, title) => {
     // Check for open dialog to attach SweetAlert
     const openDialog = document.querySelector('dialog[open]');
+    
+    // Special handling for Channel - needs ATL and Advance Tax fields
+    if (type === 'channel') {
+        const { value: formValues } = await Swal.fire({
+            title: 'Add New Channel',
+            html: `
+                <div class="text-left space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Channel Name</label>
+                        <input id="swal-channel-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Enter channel name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ATL</label>
+                        <select id="swal-channel-atl" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Advance Tax (%)</label>
+                        <input id="swal-channel-adv-tax" type="number" step="0.01" min="0" max="100" value="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0.00">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Add Channel',
+            confirmButtonColor: '#059669',
+            target: openDialog || 'body',
+            customClass: {
+                container: 'z-[9999]'
+            },
+            focusConfirm: false,
+            preConfirm: () => {
+                const name = document.getElementById('swal-channel-name').value;
+                const atl = document.getElementById('swal-channel-atl').value;
+                const advTax = document.getElementById('swal-channel-adv-tax').value;
+                
+                if (!name) {
+                    Swal.showValidationMessage('Channel name is required');
+                    return false;
+                }
+                
+                return { name, atl, advTax };
+            }
+        });
+
+        if (formValues) {
+            router.post(route('customer-attributes.store'), {
+                type: 'channel',
+                value: formValues.name,
+                atl: formValues.atl,
+                adv_tax_percent: formValues.advTax || 0
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Channel added successfully',
+                        icon: 'success',
+                        target: openDialog || 'body',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    // Find the newly added channel ID (matching name and ATL) and select it
+                    const newChannel = props.attributes.channel.find(ch => 
+                        ch.value === formValues.name && 
+                        ch.atl === formValues.atl // Exact match
+                    );
+                    
+                    if (newChannel) {
+                        selectedChannelId.value = newChannel.id;
+                    } else {
+                        // Fallback
+                        form.channel = formValues.name;
+                        form.atl = formValues.atl;
+                        form.adv_tax_percent = formValues.advTax || 0;
+                    }
+                },
+                onError: () => {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to add channel',
+                        icon: 'error',
+                        target: openDialog || 'body'
+                    });
+                }
+            });
+        }
+        return;
+    }
     
     const { value: newValue } = await Swal.fire({
         title: `Add New ${title}`,
@@ -263,8 +406,7 @@ const quickAddAttribute = async (type, title) => {
     }
 };
 
-// Helpers to safely get attributes or empty array
-const getAttributes = (type) => props.attributes[type] || [];
+
 
 </script>
 
@@ -541,11 +683,13 @@ const getAttributes = (type) => props.attributes[type] || [];
                             <InputLabel value="Channel" />
                             <div class="flex gap-2">
                                 <select 
-                                    v-model="form.channel"
+                                    v-model="selectedChannelId"
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
                                     <option value="">Select Channel</option>
-                                    <option v-for="attr in getAttributes('channel')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in channelOptions" :key="attr.id" :value="attr.id">
+                                        {{ attr.value }} ({{ attr.atl === 'active' ? 'ATL' : 'Non-ATL' }})
+                                    </option>
                                 </select>
                                 <button type="button" @click="quickAddAttribute('channel', 'Channel')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Channel">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -641,7 +785,7 @@ const getAttributes = (type) => props.attributes[type] || [];
                     </div>
 
                     <!-- Row 8 -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Percentage" />
                             <TextInput 
@@ -652,6 +796,16 @@ const getAttributes = (type) => props.attributes[type] || [];
                                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.percentage }"
                             />
                             <div v-if="form.errors.percentage" class="text-xs text-red-600 mt-1">{{ form.errors.percentage }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="ATL" />
+                            <select 
+                                v-model="form.atl" 
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
                         </div>
                         <div>
                             <InputLabel value="Status" />

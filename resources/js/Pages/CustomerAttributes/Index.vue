@@ -22,8 +22,13 @@ const editingId = ref(null);
 
 const form = useForm({
     type: props.type,
-    value: ''
+    value: '',
+    atl: 'active',
+    adv_tax_percent: '0.00'
 });
+
+// Check if current type is channel
+const isChannelType = props.type === 'channel';
 
 // Capitalize helper
 const titleCase = (str) => {
@@ -41,8 +46,16 @@ const openModal = (item = null) => {
     
     if (item) {
         form.value = item.value;
+        if (isChannelType) {
+            form.atl = item.atl || 'active';
+            form.adv_tax_percent = item.adv_tax_percent || '0.00';
+        }
     } else {
         form.value = '';
+        if (isChannelType) {
+            form.atl = 'active';
+            form.adv_tax_percent = '0.00';
+        }
     }
     
     isModalOpen.value = true;
@@ -122,6 +135,8 @@ const deleteAttribute = (item) => {
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
                                 <th class="px-6 py-4">Name</th>
+                                <th v-if="isChannelType" class="px-6 py-4">ATL</th>
+                                <th v-if="isChannelType" class="px-6 py-4">Advance Tax %</th>
                                 <th class="px-6 py-4">Created At</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -130,6 +145,17 @@ const deleteAttribute = (item) => {
                             <tr v-for="item in attributes.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 font-medium text-gray-900">
                                     {{ item.value }}
+                                </td>
+                                <td v-if="isChannelType" class="px-6 py-4">
+                                    <span :class="[
+                                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                                        item.atl === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    ]">
+                                        {{ item.atl === 'active' ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td v-if="isChannelType" class="px-6 py-4 text-gray-600">
+                                    {{ parseFloat(item.adv_tax_percent || 0).toFixed(2) }}%
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ new Date(item.created_at).toLocaleDateString() }}
@@ -158,7 +184,7 @@ const deleteAttribute = (item) => {
                                 </td>
                             </tr>
                             <tr v-if="attributes.data.length === 0">
-                                <td colspan="3" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="isChannelType ? 5 : 3" class="px-6 py-12 text-center text-gray-500">
                                     No records found.
                                 </td>
                             </tr>
@@ -191,6 +217,36 @@ const deleteAttribute = (item) => {
                         />
                          <div v-if="form.errors.value" class="text-xs text-red-600 mt-1">{{ form.errors.value }}</div>
                     </div>
+
+                    <!-- Channel-specific fields -->
+                    <template v-if="isChannelType">
+                        <div>
+                            <InputLabel value="ATL" />
+                            <select 
+                                v-model="form.atl" 
+                                class="mt-1 block w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-md shadow-sm"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.atl }"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <div v-if="form.errors.atl" class="text-xs text-red-600 mt-1">{{ form.errors.atl }}</div>
+                        </div>
+
+                        <div>
+                            <InputLabel value="Advance Tax (%)" />
+                            <TextInput 
+                                v-model="form.adv_tax_percent" 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                class="mt-1 block w-full" 
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.adv_tax_percent }"
+                            />
+                            <div v-if="form.errors.adv_tax_percent" class="text-xs text-red-600 mt-1">{{ form.errors.adv_tax_percent }}</div>
+                        </div>
+                    </template>
 
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>

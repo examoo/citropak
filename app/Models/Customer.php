@@ -25,6 +25,7 @@ class Customer extends Model
         'day',
         'status',
         'adv_tax_percent',
+        'atl',
         'percentage'
     ];
     //
