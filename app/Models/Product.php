@@ -2,44 +2,58 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * PRODUCT MODEL (GLOBAL)
+ * 
+ * Shared across all distributions.
+ * NO distribution_id - managed only by Super Admin.
+ * 
+ * NOTE: Distribution-specific stock is managed in stock_ledgers table.
+ */
 class Product extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
+        'brand_id',
+        'category_id',
         'name',
-        'dms_code',
-        'brand',
-        'list_price_before_tax',
-        'fed_tax_percent',
-        'fed_sales_tax',
-        'net_list_price',
-        'distribution_margin',
-        'distribution_manager_percent',
-        'trade_price_before_tax',
-        'fed_2',
-        'sales_tax_3',
-        'net_trade_price',
-        'retailer_margin',
-        'retailer_margin_4',
-        'consumer_price_before_tax',
-        'fed_5',
-        'sales_tax_6',
-        'net_consumer_price',
-        'total_margin',
-        'unit_price',
-        'packing',
-        'packing_one',
-        'reorder_level',
-        'type',
         'sku',
-        'description',
-        'price',
-        'stock_quantity',
-        'category',
+        'unit',
+        'status',
     ];
-    //
+
+    /**
+     * Get the brand for this product.
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    /**
+     * Get the category for this product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get all variants for this product.
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
+     * Scope to active products only.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 }

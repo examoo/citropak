@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles;
+    use HasFactory, Notifiable, \Spatie\Permission\Traits\HasRoles, \App\Models\Traits\BaseTenantModel;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'distribution_id',
+        'role',
     ];
 
     /**

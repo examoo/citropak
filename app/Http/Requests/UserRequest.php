@@ -35,6 +35,7 @@ class UserRequest extends FormRequest
                 : ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
             'roles' => 'nullable|array',
             'roles.*' => 'string|exists:roles,name',
+            'distribution_id' => 'nullable|exists:distributions,id',
         ];
     }
 }

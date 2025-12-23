@@ -14,7 +14,7 @@ class UserService
      */
     public function getAll($filters = [])
     {
-        $query = User::with('roles:id,name');
+        $query = User::with(['roles:id,name', 'distribution:id,name']);
 
         // Search
         if (!empty($filters['search'])) {
@@ -51,7 +51,7 @@ class UserService
      */
     public function find(int $id): ?User
     {
-        return User::with('roles:id,name')->find($id);
+        return User::with(['roles:id,name', 'distribution:id,name'])->find($id);
     }
 
     /**
@@ -59,11 +59,17 @@ class UserService
      */
     public function create(array $data): User
     {
-        $user = User::create([
+        $userData = [
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-        ]);
+        ];
+
+        if (array_key_exists('distribution_id', $data)) {
+            $userData['distribution_id'] = $data['distribution_id'];
+        }
+
+        $user = User::create($userData);
 
         if (isset($data['roles'])) {
             $user->syncRoles($data['roles']);
@@ -86,6 +92,10 @@ class UserService
 
         if (!empty($data['password'])) {
             $updateData['password'] = Hash::make($data['password']);
+        }
+
+        if (array_key_exists('distribution_id', $data)) {
+            $updateData['distribution_id'] = $data['distribution_id'];
         }
 
         $user->update($updateData);

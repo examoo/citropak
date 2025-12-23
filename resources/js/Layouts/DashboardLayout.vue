@@ -69,6 +69,27 @@ const updatePassword = () => {
     });
 };
 
+// Distribution toggle state
+const isDistributionDropdownOpen = ref(false);
+
+// Use computed for reactive props from Inertia
+const distributions = computed(() => page.props.distributions || []);
+const currentDistribution = computed(() => page.props.currentDistribution); // null = All Distributions
+
+const toggleDistributionDropdown = () => {
+    isDistributionDropdownOpen.value = !isDistributionDropdownOpen.value;
+};
+
+const switchDistribution = (distribution) => {
+    const distributionId = distribution ? distribution.id : 'all';
+    router.post(route('distributions.switch', distributionId), {}, {
+        preserveState: false,
+        onSuccess: () => {
+            isDistributionDropdownOpen.value = false;
+        }
+    });
+};
+
 // Navigation items with permissions
 const navigation = [
     { 
@@ -112,6 +133,8 @@ const navigation = [
         permission: 'products.view',
         children: [
             { name: 'Products', href: 'products.index', permission: 'products.view', icon: 'cube' },
+            { name: 'Brands', href: 'brands.index', permission: 'products.view', icon: 'tag' },
+            { name: 'Categories', href: 'categories.index', permission: 'products.view', icon: 'folder' },
             { name: 'Types', href: 'product-types.index', permission: 'products.view', icon: 'tag' },
         ]
     },
@@ -121,9 +144,10 @@ const navigation = [
         permission: 'customers.view',
         children: [
             { name: 'Customers', href: 'customers.index', icon: 'users', permission: 'customers.view' },
+            { name: 'Routes', href: 'routes.index', icon: 'map', permission: 'customers.view' },
             { name: 'Category', href: 'customer-attributes.index', params: { type: 'category' }, icon: 'tag', permission: 'customer_attributes.view' },
             { name: 'Channel', href: 'customer-attributes.index', params: { type: 'channel' }, icon: 'globe', permission: 'customer_attributes.view' },
-            { name: 'Distribution', href: 'customer-attributes.index', params: { type: 'distribution' }, icon: 'truck', permission: 'customer_attributes.view' },
+            { name: 'Sub Distribution', href: 'customer-attributes.index', params: { type: 'sub_distribution' }, icon: 'truck', permission: 'customer_attributes.view' },
         ]
     },
     { 
@@ -133,6 +157,7 @@ const navigation = [
         children: [
             { name: 'Invoices', href: 'dashboard', permission: 'invoices.view' },
             { name: 'Create Invoice', href: 'dashboard', permission: 'invoices.create' },
+            { name: 'Schemes', href: 'schemes.index', icon: 'percent', permission: 'invoices.view' },
         ]
     },
     { 
@@ -143,6 +168,18 @@ const navigation = [
             { name: 'Sales Report', href: 'dashboard', permission: 'reports.view' },
             { name: 'Stock Report', href: 'dashboard', permission: 'reports.view' },
         ]
+    },
+    { 
+        name: 'Distributions', 
+        href: 'distributions.index', 
+        icon: 'globe', 
+        permission: 'users.view'
+    },
+    { 
+        name: 'Holidays', 
+        href: 'holidays.index', 
+        icon: 'calendar', 
+        permission: 'users.view'
     },
 ];
 
@@ -278,6 +315,14 @@ const handleClickOutside = (event) => {
                         <svg v-if="item.icon === 'dashboard'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
+                        <!-- Globe Icon (Distributions) -->
+                        <svg v-else-if="item.icon === 'globe'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                        </svg>
+                        <!-- Calendar Icon (Holidays) -->
+                        <svg v-else-if="item.icon === 'calendar'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
                         <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name }}</span>
                     </Link>
 
@@ -316,6 +361,11 @@ const handleClickOutside = (event) => {
                                 <!-- Box Icon (Product Management) -->
                                 <svg v-else-if="item.icon === 'box'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <!-- Settings Icon -->
+                                <svg v-else-if="item.icon === 'settings'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 <!-- Customer Icon -->
                                 <svg v-else-if="item.icon === 'customer'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,6 +419,22 @@ const handleClickOutside = (event) => {
                                 <svg v-else-if="child.icon === 'truck'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
+                                <!-- Map Icon (Routes) -->
+                                <svg v-else-if="child.icon === 'map'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                </svg>
+                                <!-- Folder Icon (Categories) -->
+                                <svg v-else-if="child.icon === 'folder'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                <!-- Percent Icon (Schemes) -->
+                                <svg v-else-if="child.icon === 'percent'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M17 17h.01M7 17L17 7M10 7a3 3 0 11-6 0 3 3 0 016 0zM20 17a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <!-- Calendar Icon (Holidays) -->
+                                <svg v-else-if="child.icon === 'calendar'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
                                 <!-- Default Dot for other children -->
                                 <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-slate-400"></div>
 
@@ -400,14 +466,79 @@ const handleClickOutside = (event) => {
             <!-- Top Header -->
             <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm print:hidden">
                 <div class="flex items-center justify-between h-16 px-6">
-                    <!-- Logo/Brands -->
+                    <!-- Logo/Brands + Distribution Toggle -->
                     <div class="flex items-center gap-6">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
                                 <span class="text-white font-bold text-sm">C</span>
                             </div>
                             <span class="font-bold text-gray-800">CitroPak</span>
-                            <span class="text-emerald-500 font-semibold text-sm">DMS</span>
+                        </div>
+                        
+                        <!-- Distribution Switcher -->
+                        <div class="relative" v-if="distributions.length > 0">
+                            <button 
+                                @click="toggleDistributionDropdown"
+                                :class="[
+                                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all',
+                                    currentDistribution && currentDistribution.id 
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                                        : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
+                                ]"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                <span>{{ currentDistribution && currentDistribution.code ? currentDistribution.code : 'ALL' }}</span>
+                                <svg class="w-3 h-3" :class="{ 'rotate-180': isDistributionDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            
+                            <!-- Dropdown -->
+                            <div 
+                                v-if="isDistributionDropdownOpen"
+                                class="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
+                            >
+                                <div class="px-3 py-2 border-b border-gray-100">
+                                    <p class="text-xs font-semibold text-gray-400 uppercase">Switch Distribution</p>
+                                </div>
+                                <!-- All Distributions Option -->
+                                <button
+                                    @click="switchDistribution(null)"
+                                    :class="[
+                                        'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                                        !currentDistribution || !currentDistribution.id
+                                            ? 'bg-purple-50 text-purple-700' 
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                    ]"
+                                >
+                                    <span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold">ALL</span>
+                                    <span>All Distributions</span>
+                                    <svg v-if="!currentDistribution || !currentDistribution.id" class="w-4 h-4 ml-auto text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <!-- Distribution Options -->
+                                <button
+                                    v-for="dist in distributions"
+                                    :key="dist.id"
+                                    @click="switchDistribution(dist)"
+                                    :class="[
+                                        'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                                        currentDistribution && currentDistribution.id === dist.id 
+                                            ? 'bg-emerald-50 text-emerald-700' 
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                    ]"
+                                >
+                                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">{{ dist.code }}</span>
+                                    <span>{{ dist.name }}</span>
+                                    <svg v-if="currentDistribution && currentDistribution.id === dist.id" class="w-4 h-4 ml-auto text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

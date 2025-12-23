@@ -9,11 +9,14 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Validation\Rules;
 
+use Spatie\Permission\Models\Role;
+
 class UserController extends Controller
 {
     public function __construct(
         private UserService $userService,
-        private RoleService $roleService
+        private RoleService $roleService,
+        private \App\Services\DistributionService $distributionService
     ) {}
 
     /**
@@ -25,14 +28,12 @@ class UserController extends Controller
 
         return Inertia::render('Users/Index', [
             'users' => $this->userService->getAll($filters),
-            'roles' => $this->roleService->getAll(),
+            'roles' => Role::all(),
+            'assignableDistributions' => $this->distributionService->getActive(),
             'filters' => $filters,
         ]);
     }
 
-    /**
-     * Store a newly created user.
-     */
     /**
      * Store a newly created user.
      */

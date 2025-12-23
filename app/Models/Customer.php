@@ -2,31 +2,49 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Traits\BaseTenantModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * CUSTOMER MODEL (DISTRIBUTION-SCOPED)
+ * 
+ * Uses BaseTenantModel trait for automatic distribution filtering.
+ * Each distribution has its own isolated customer base.
+ */
 class Customer extends Model
 {
-    use HasFactory;
+    use BaseTenantModel;
 
     protected $fillable = [
-        'customer_code',
-        'van',
-        'shop_name',
-        'address',
-        'sub_address',
-        'phone',
-        'category',
-        'channel',
-        'ntn_number',
-        'cnic',
-        'sales_tax_number',
-        'distribution',
-        'day',
+        'distribution_id',
+        'name',
+        'area',
+        'contact',
         'status',
-        'adv_tax_percent',
-        'atl',
-        'percentage'
     ];
-    //
+
+    /**
+     * Get brand percentages for this customer.
+     */
+    public function brandPercentages(): HasMany
+    {
+        return $this->hasMany(CustomerBrandPercentage::class);
+    }
+
+    /**
+     * Get invoices for this customer.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Scope to active customers only.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 }

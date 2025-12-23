@@ -2,15 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Traits\BaseTenantModel;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * VAN MODEL (DISTRIBUTION-SCOPED)
+ * 
+ * Uses BaseTenantModel trait for automatic distribution filtering.
+ */
 class Van extends Model
 {
-    use HasFactory;
+    use BaseTenantModel;
 
     protected $fillable = [
-        'name',
+        'distribution_id',
+        'code',
         'status',
     ];
+
+    /**
+     * Scope to active vans only.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 }

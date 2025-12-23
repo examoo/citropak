@@ -12,6 +12,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Pagination from '@/Components/Pagination.vue';
 import Swal from 'sweetalert2';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 
 const props = defineProps({
     users: {
@@ -21,6 +22,11 @@ const props = defineProps({
     roles: {
         type: Array,
         required: true
+    },
+    assignableDistributions: {
+        type: Array,
+        required: false,
+        default: () => []
     },
     filters: {
         type: Object,
@@ -73,6 +79,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     roles: [],
+    distribution_id: '',
 });
 
 const openModal = (user = null) => {
@@ -83,6 +90,7 @@ const openModal = (user = null) => {
         form.name = user.name;
         form.email = user.email;
         form.roles = user.roles.map(role => role.name);
+        form.distribution_id = user.distribution_id || '';
         // Password fields are usually reset or left empty for edits unless changing
         form.password = '';
         form.password_confirmation = '';
@@ -318,6 +326,20 @@ const toggleRole = (roleName) => {
                             required
                         />
                         <div v-if="form.errors.email" class="text-sm text-red-600 mt-1">{{ form.errors.email }}</div>
+                    </div>
+
+                    <!-- Distribution Select -->
+                    <div>
+                        <SearchableSelect 
+                            v-model="form.distribution_id"
+                            label="Distribution (Optional)"
+                            :options="assignableDistributions"
+                            option-value="id"
+                            option-label="name"
+                            placeholder="Select a distribution"
+                            :error="form.errors.distribution_id"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Leave empty for a global user (if allowed).</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
