@@ -405,15 +405,18 @@ const quickAddAttribute = async (type, title) => {
 
 const isImportModalOpen = ref(false);
 const importFile = ref(null);
+const importDistributionId = ref('');
 
 const openImportModal = () => {
     isImportModalOpen.value = true;
     importFile.value = null;
+    importDistributionId.value = '';
 };
 
 const closeImportModal = () => {
     isImportModalOpen.value = false;
     importFile.value = null;
+    importDistributionId.value = '';
 };
 
 const handleImportFileChange = (event) => {
@@ -428,6 +431,9 @@ const submitImport = () => {
 
     const formData = new FormData();
     formData.append('file', importFile.value);
+    if (importDistributionId.value) {
+        formData.append('distribution_id', importDistributionId.value);
+    }
 
     router.post(route('customers.import'), formData, {
         onSuccess: () => {
@@ -547,7 +553,7 @@ const submitImport = () => {
                             <tr v-for="customer in customers.data" :key="customer.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4">
                                     <span v-if="customer.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ customer.distribution }}
+                                        {{ customer.distribution.name }}
                                     </span>
                                     <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                         Global
@@ -929,6 +935,19 @@ const submitImport = () => {
                 </div>
 
                 <div>
+                    <!-- Distribution Selection for Import (Global View) -->
+                     <div v-if="!currentDistribution?.id" class="mb-4">
+                        <SearchableSelect 
+                            v-model="importDistributionId"
+                            label="Target Distribution (Optional)"
+                            :options="getAttributes('distribution')"
+                            option-value="id"
+                            option-label="value"
+                            placeholder="Select target distribution"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Select a distribution to import all customers into. If empty, uses 'Distribution' column from Excel.</p>
+                    </div>
+
                     <InputLabel value="Select Excel File" class="mb-2" />
                     <input 
                         type="file" 

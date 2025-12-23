@@ -68,7 +68,15 @@ class CustomerController extends Controller
             'file' => 'required|mimes:xlsx,csv',
         ]);
 
-        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\CustomersImport, $request->file('file'));
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+        
+        // If user is global, check if they selected a distribution in the form
+        if (!$distributionId && $request->has('distribution_id')) {
+            $distributionId = $request->distribution_id;
+        }
+
+        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\CustomersImport($distributionId), $request->file('file'));
 
         return redirect()->back()->with('success', 'Customers imported successfully.');
     }
