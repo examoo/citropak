@@ -12,7 +12,8 @@ class CustomerService
      */
     public function getAll($filters = [])
     {
-        $query = Customer::query();
+        $query = Customer::query()
+            ->with(['distribution:id,name,code']);
 
         // Search
         if (!empty($filters['search'])) {
@@ -48,20 +49,75 @@ class CustomerService
 
     public function getAttributes($distributionId = null)
     {
-        $attributes = \App\Models\CustomerAttribute::all()->groupBy('type');
+        $attributes = collect();
         
         // Fetch Vans scoped by distribution (or all if global)
         $vanQuery = \App\Models\Van::where('status', 'active');
-        
         if ($distributionId) {
             $vanQuery->where('distribution_id', $distributionId);
         }
-        
         $vans = $vanQuery->latest()->get()->map(function($van) {
             return ['id' => $van->id, 'value' => $van->code, 'type' => 'van', 'distribution_id' => $van->distribution_id];
         });
-
         $attributes->put('van', $vans);
+
+        // Fetch Channels scoped by distribution (global + specific)
+        $channelQuery = \App\Models\Channel::where('status', 'active');
+        if ($distributionId) {
+            $channelQuery->where(function($q) use ($distributionId) {
+                $q->whereNull('distribution_id')
+                  ->orWhere('distribution_id', $distributionId);
+            });
+        }
+        $channels = $channelQuery->latest()->get()->map(function($channel) {
+            return [
+                'id' => $channel->id, 
+                'value' => $channel->name, 
+                'type' => 'channel', 
+                'atl' => $channel->atl, 
+                'adv_tax_percent' => $channel->adv_tax_percent,
+                'distribution_id' => $channel->distribution_id
+            ];
+        });
+        $attributes->put('channel', $channels);
+
+        // Fetch Sub Addresses scoped by distribution (global + specific)
+        $subAddressQuery = \App\Models\SubAddress::where('status', 'active');
+        if ($distributionId) {
+            $subAddressQuery->where(function($q) use ($distributionId) {
+                $q->whereNull('distribution_id')
+                  ->orWhere('distribution_id', $distributionId);
+            });
+        }
+        $subAddresses = $subAddressQuery->latest()->get()->map(function($sub) {
+            return ['id' => $sub->id, 'value' => $sub->name, 'type' => 'sub_address', 'distribution_id' => $sub->distribution_id];
+        });
+        $attributes->put('sub_address', $subAddresses);
+
+        // Fetch Sub Distributions scoped by distribution (global + specific)
+        $subDistributionQuery = \App\Models\SubDistribution::where('status', 'active');
+        if ($distributionId) {
+            $subDistributionQuery->where(function($q) use ($distributionId) {
+                $q->whereNull('distribution_id')
+                  ->orWhere('distribution_id', $distributionId);
+            });
+        }
+        $subDistributions = $subDistributionQuery->latest()->get()->map(function($sub) {
+            return ['id' => $sub->id, 'value' => $sub->name, 'type' => 'sub_distribution', 'distribution_id' => $sub->distribution_id];
+        });
+        $attributes->put('sub_distribution', $subDistributions);
+
+        // Fetch Categories (global, no distribution scoping)
+        $categories = \App\Models\Category::all()->map(function($cat) {
+            return ['id' => $cat->id, 'value' => $cat->name, 'type' => 'category'];
+        });
+        $attributes->put('category', $categories);
+
+        // Fetch Distributions (for customer distribution dropdown, if needed)
+        $distributions = \App\Models\Distribution::where('status', 'active')->get()->map(function($dist) {
+            return ['id' => $dist->id, 'value' => $dist->name, 'type' => 'distribution'];
+        });
+        $attributes->put('distribution', $distributions);
 
         return $attributes;
     }

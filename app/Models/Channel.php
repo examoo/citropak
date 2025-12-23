@@ -4,25 +4,33 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * CATEGORY MODEL (DISTRIBUTION-SCOPED)
+ * CHANNEL MODEL (DISTRIBUTION-SCOPED)
  * 
- * Categories can be:
+ * Channels can be:
  * - Global (distribution_id = NULL): Available to ALL distributions
  * - Distribution-specific: Available only to that distribution
+ * 
+ * Includes ATL (Active Taxpayer List) and Advance Tax percentage.
  */
-class Category extends Model
+class Channel extends Model
 {
     protected $fillable = [
         'distribution_id',
         'name',
         'status',
+        'atl',
+        'adv_tax_percent',
+    ];
+
+    protected $casts = [
+        'atl' => 'boolean',
+        'adv_tax_percent' => 'decimal:2',
     ];
 
     /**
-     * Get the distribution this category belongs to (if any).
+     * Get the distribution this channel belongs to (if any).
      */
     public function distribution(): BelongsTo
     {
@@ -30,15 +38,7 @@ class Category extends Model
     }
 
     /**
-     * Get all products in this category.
-     */
-    public function products(): HasMany
-    {
-        return $this->hasMany(Product::class);
-    }
-
-    /**
-     * Scope to get categories for a specific distribution (includes global).
+     * Scope to get channels for a specific distribution (includes global channels).
      */
     public function scopeForDistribution($query, $distributionId)
     {
@@ -49,7 +49,7 @@ class Category extends Model
     }
 
     /**
-     * Scope to get only active categories.
+     * Scope to get only active channels.
      */
     public function scopeActive($query)
     {

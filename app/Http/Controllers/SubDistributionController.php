@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+use App\Models\SubDistribution;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class CategoryController extends Controller
+class SubDistributionController extends Controller
 {
     public function index(Request $request)
     {
@@ -15,10 +15,10 @@ class CategoryController extends Controller
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
         
-        $query = Category::query()
+        $query = SubDistribution::query()
             ->with(['distribution:id,name,code']);
         
-        // If specific distribution, show global + that distribution's categories
+        // If specific distribution, show global + that distribution's sub distributions
         if ($distributionId) {
             $query->where(function($q) use ($distributionId) {
                 $q->whereNull('distribution_id')
@@ -30,10 +30,10 @@ class CategoryController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
         
-        $categories = $query->latest()->paginate(10)->withQueryString();
+        $subDistributions = $query->latest()->paginate(10)->withQueryString();
 
-        return Inertia::render('Categories/Index', [
-            'categories' => $categories,
+        return Inertia::render('SubDistributions/Index', [
+            'subDistributions' => $subDistributions,
             'filters' => $request->only(['search']),
             'distributions' => \App\Models\Distribution::where('status', 'active')->get(['id', 'name', 'code']),
         ]);
@@ -47,10 +47,11 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('sub_distributions')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
                 }),
             ],
+            'is_fbr' => 'required|boolean',
             'status' => 'required|in:active,inactive',
             'distribution_id' => ($userDist && $userDist !== 'all') ? 'nullable' : 'nullable|exists:distributions,id',
         ]);
@@ -62,34 +63,35 @@ class CategoryController extends Controller
             $validated['distribution_id'] = $request->input('distribution_id') ?: null;
         }
 
-        Category::create($validated);
+        SubDistribution::create($validated);
 
-        return redirect()->back()->with('success', 'Category created successfully.');
+        return redirect()->back()->with('success', 'Sub Distribution created successfully.');
     }
 
-    public function update(Request $request, Category $category)
+    public function update(Request $request, SubDistribution $subDistribution)
     {
-        $targetDist = $category->distribution_id;
+        $targetDist = $subDistribution->distribution_id;
 
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('sub_distributions')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
-                })->ignore($category->id),
+                })->ignore($subDistribution->id),
             ],
+            'is_fbr' => 'required|boolean',
             'status' => 'required|in:active,inactive',
         ]);
 
-        $category->update($validated);
+        $subDistribution->update($validated);
 
-        return redirect()->back()->with('success', 'Category updated successfully.');
+        return redirect()->back()->with('success', 'Sub Distribution updated successfully.');
     }
 
-    public function destroy(Category $category)
+    public function destroy(SubDistribution $subDistribution)
     {
-        $category->delete();
+        $subDistribution->delete();
 
-        return redirect()->back()->with('success', 'Category deleted successfully.');
+        return redirect()->back()->with('success', 'Sub Distribution deleted successfully.');
     }
 }

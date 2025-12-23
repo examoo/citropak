@@ -145,9 +145,10 @@ const navigation = [
         children: [
             { name: 'Customers', href: 'customers.index', icon: 'users', permission: 'customers.view' },
             { name: 'Routes', href: 'routes.index', icon: 'map', permission: 'customers.view' },
-            { name: 'Category', href: 'customer-attributes.index', params: { type: 'category' }, icon: 'tag', permission: 'customer_attributes.view' },
-            { name: 'Channel', href: 'customer-attributes.index', params: { type: 'channel' }, icon: 'globe', permission: 'customer_attributes.view' },
-            { name: 'Sub Distribution', href: 'customer-attributes.index', params: { type: 'sub_distribution' }, icon: 'truck', permission: 'customer_attributes.view' },
+            { name: 'Channels', href: 'channels.index', icon: 'globe', permission: 'customers.view' },
+            { name: 'Categories', href: 'categories.index', icon: 'tag', permission: 'customers.view' },
+            { name: 'Sub Addresses', href: 'sub-addresses.index', icon: 'location', permission: 'customers.view' },
+            { name: 'Sub Distributions', href: 'sub-distributions.index', icon: 'truck', permission: 'customers.view' },
         ]
     },
     { 

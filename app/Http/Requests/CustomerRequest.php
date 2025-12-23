@@ -33,7 +33,12 @@ class CustomerRequest extends FormRequest
             'ntn_number' => 'nullable|string|max:50',
             'cnic' => 'nullable|string|max:50',
             'sales_tax_number' => 'nullable|string|max:50',
-            'distribution' => 'nullable|string|max:100',
+            'distribution_id' => ['nullable', 'exists:distributions,id', function ($attribute, $value, $fail) {
+                if (is_null($value) && is_null(auth()->user()->distribution_id) && is_null(session('current_distribution_id'))) {
+                     $fail('The distribution field is required.');
+                }
+            }],
+            'sub_distribution' => 'nullable|string|max:100',
             'day' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
             'atl' => 'nullable|in:active,inactive',

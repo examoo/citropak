@@ -4,25 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * CATEGORY MODEL (DISTRIBUTION-SCOPED)
+ * SUB DISTRIBUTION MODEL (DISTRIBUTION-SCOPED)
  * 
- * Categories can be:
+ * Sub distributions can be:
  * - Global (distribution_id = NULL): Available to ALL distributions
  * - Distribution-specific: Available only to that distribution
  */
-class Category extends Model
+class SubDistribution extends Model
 {
     protected $fillable = [
         'distribution_id',
         'name',
+        'is_fbr',
         'status',
     ];
 
+    protected $casts = [
+        'is_fbr' => 'boolean',
+    ];
+
     /**
-     * Get the distribution this category belongs to (if any).
+     * Get the distribution this sub distribution belongs to (if any).
      */
     public function distribution(): BelongsTo
     {
@@ -30,15 +34,7 @@ class Category extends Model
     }
 
     /**
-     * Get all products in this category.
-     */
-    public function products(): HasMany
-    {
-        return $this->hasMany(Product::class);
-    }
-
-    /**
-     * Scope to get categories for a specific distribution (includes global).
+     * Scope to get sub distributions for a specific distribution (includes global).
      */
     public function scopeForDistribution($query, $distributionId)
     {
@@ -49,7 +45,7 @@ class Category extends Model
     }
 
     /**
-     * Scope to get only active categories.
+     * Scope to get only active sub distributions.
      */
     public function scopeActive($query)
     {

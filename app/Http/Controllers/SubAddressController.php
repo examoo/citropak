@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+use App\Models\SubAddress;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class CategoryController extends Controller
+class SubAddressController extends Controller
 {
     public function index(Request $request)
     {
@@ -15,10 +15,10 @@ class CategoryController extends Controller
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
         
-        $query = Category::query()
+        $query = SubAddress::query()
             ->with(['distribution:id,name,code']);
         
-        // If specific distribution, show global + that distribution's categories
+        // If specific distribution, show global + that distribution's sub addresses
         if ($distributionId) {
             $query->where(function($q) use ($distributionId) {
                 $q->whereNull('distribution_id')
@@ -30,10 +30,10 @@ class CategoryController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
         
-        $categories = $query->latest()->paginate(10)->withQueryString();
+        $subAddresses = $query->latest()->paginate(10)->withQueryString();
 
-        return Inertia::render('Categories/Index', [
-            'categories' => $categories,
+        return Inertia::render('SubAddresses/Index', [
+            'subAddresses' => $subAddresses,
             'filters' => $request->only(['search']),
             'distributions' => \App\Models\Distribution::where('status', 'active')->get(['id', 'name', 'code']),
         ]);
@@ -47,7 +47,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('sub_addresses')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
                 }),
             ],
@@ -62,34 +62,34 @@ class CategoryController extends Controller
             $validated['distribution_id'] = $request->input('distribution_id') ?: null;
         }
 
-        Category::create($validated);
+        SubAddress::create($validated);
 
-        return redirect()->back()->with('success', 'Category created successfully.');
+        return redirect()->back()->with('success', 'Sub Address created successfully.');
     }
 
-    public function update(Request $request, Category $category)
+    public function update(Request $request, SubAddress $subAddress)
     {
-        $targetDist = $category->distribution_id;
+        $targetDist = $subAddress->distribution_id;
 
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('sub_addresses')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
-                })->ignore($category->id),
+                })->ignore($subAddress->id),
             ],
             'status' => 'required|in:active,inactive',
         ]);
 
-        $category->update($validated);
+        $subAddress->update($validated);
 
-        return redirect()->back()->with('success', 'Category updated successfully.');
+        return redirect()->back()->with('success', 'Sub Address updated successfully.');
     }
 
-    public function destroy(Category $category)
+    public function destroy(SubAddress $subAddress)
     {
-        $category->delete();
+        $subAddress->delete();
 
-        return redirect()->back()->with('success', 'Category deleted successfully.');
+        return redirect()->back()->with('success', 'Sub Address deleted successfully.');
     }
 }

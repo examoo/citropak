@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+use App\Models\Channel;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class CategoryController extends Controller
+class ChannelController extends Controller
 {
     public function index(Request $request)
     {
@@ -15,10 +15,10 @@ class CategoryController extends Controller
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
         
-        $query = Category::query()
+        $query = Channel::query()
             ->with(['distribution:id,name,code']);
         
-        // If specific distribution, show global + that distribution's categories
+        // If specific distribution, show global + that distribution's channels
         if ($distributionId) {
             $query->where(function($q) use ($distributionId) {
                 $q->whereNull('distribution_id')
@@ -30,10 +30,10 @@ class CategoryController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
         
-        $categories = $query->latest()->paginate(10)->withQueryString();
+        $channels = $query->latest()->paginate(10)->withQueryString();
 
-        return Inertia::render('Categories/Index', [
-            'categories' => $categories,
+        return Inertia::render('Channels/Index', [
+            'channels' => $channels,
             'filters' => $request->only(['search']),
             'distributions' => \App\Models\Distribution::where('status', 'active')->get(['id', 'name', 'code']),
         ]);
@@ -47,11 +47,13 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('channels')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
                 }),
             ],
             'status' => 'required|in:active,inactive',
+            'atl' => 'boolean',
+            'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
             'distribution_id' => ($userDist && $userDist !== 'all') ? 'nullable' : 'nullable|exists:distributions,id',
         ]);
 
@@ -62,34 +64,36 @@ class CategoryController extends Controller
             $validated['distribution_id'] = $request->input('distribution_id') ?: null;
         }
 
-        Category::create($validated);
+        Channel::create($validated);
 
-        return redirect()->back()->with('success', 'Category created successfully.');
+        return redirect()->back()->with('success', 'Channel created successfully.');
     }
 
-    public function update(Request $request, Category $category)
+    public function update(Request $request, Channel $channel)
     {
-        $targetDist = $category->distribution_id;
+        $targetDist = $channel->distribution_id;
 
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('categories')->where(function ($query) use ($targetDist) {
+                \Illuminate\Validation\Rule::unique('channels')->where(function ($query) use ($targetDist) {
                     return $query->where('distribution_id', $targetDist);
-                })->ignore($category->id),
+                })->ignore($channel->id),
             ],
             'status' => 'required|in:active,inactive',
+            'atl' => 'boolean',
+            'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $category->update($validated);
+        $channel->update($validated);
 
-        return redirect()->back()->with('success', 'Category updated successfully.');
+        return redirect()->back()->with('success', 'Channel updated successfully.');
     }
 
-    public function destroy(Category $category)
+    public function destroy(Channel $channel)
     {
-        $category->delete();
+        $channel->delete();
 
-        return redirect()->back()->with('success', 'Category deleted successfully.');
+        return redirect()->back()->with('success', 'Channel deleted successfully.');
     }
 }

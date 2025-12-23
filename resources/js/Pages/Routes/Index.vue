@@ -1,6 +1,6 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -8,17 +8,31 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
-const props = defineProps({ routes: Object, filters: Object });
+const props = defineProps({ 
+    routes: Object, 
+    filters: Object,
+    distributions: {
+        type: Array,
+        default: () => []
+    }
+});
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const search = ref(props.filters?.search || '');
 
-const form = useForm({ name: '' });
+const form = useForm({ 
+    name: '', 
+    status: 'active',
+    distribution_id: null 
+});
 
 watch(search, debounce((value) => {
     router.get(route('routes.index'), { search: value }, { preserveState: true, preserveScroll: true, replace: true });
@@ -27,7 +41,15 @@ watch(search, debounce((value) => {
 const openModal = (item = null) => {
     isEditing.value = !!item;
     editingId.value = item?.id;
-    form.name = item?.name || '';
+    if (item) {
+        form.name = item.name;
+        form.status = item.status || 'active';
+        form.distribution_id = item.distribution_id;
+    } else {
+        form.reset();
+        form.status = 'active';
+        form.distribution_id = currentDistribution.value?.id || null;
+    }
     isModalOpen.value = true;
 };
 
@@ -67,10 +89,34 @@ const deleteItem = (item) => {
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <table class="w-full text-left text-sm text-gray-600">
-                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500"><tr><th class="px-6 py-4">Name</th><th class="px-6 py-4">Created At</th><th class="px-6 py-4 text-right">Actions</th></tr></thead>
+                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
+                        <tr>
+                            <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
+                            <th class="px-6 py-4">Name</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4">Created At</th>
+                            <th class="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="item in routes.data" :key="item.id" class="hover:bg-gray-50/50">
+                            <td v-if="!currentDistribution?.id" class="px-6 py-4">
+                                <span v-if="item.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ item.distribution.code }}
+                                </span>
+                                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Global
+                                </span>
+                            </td>
                             <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
+                            <td class="px-6 py-4">
+                                <span :class="[
+                                    'px-2 py-1 rounded-full text-xs font-medium',
+                                    item.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
+                                ]">
+                                    {{ (item.status || 'active').toUpperCase() }}
+                                </span>
+                            </td>
                             <td class="px-6 py-4 text-gray-500">{{ new Date(item.created_at).toLocaleDateString() }}</td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
@@ -79,7 +125,7 @@ const deleteItem = (item) => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="routes.data.length === 0"><td colspan="3" class="px-6 py-12 text-center text-gray-500">No routes found.</td></tr>
+                        <tr v-if="routes.data.length === 0"><td :colspan="!currentDistribution?.id ? 5 : 4" class="px-6 py-12 text-center text-gray-500">No routes found.</td></tr>
                     </tbody>
                 </table>
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50"><Pagination :links="routes.links" /></div>
@@ -89,7 +135,33 @@ const deleteItem = (item) => {
             <div class="p-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'Add' }} Route</h2>
                 <form @submit.prevent="submit" class="space-y-4">
+                    <!-- Distribution Select (Only if Global View and Creating) -->
+                    <div v-if="!currentDistribution?.id && !isEditing">
+                        <InputLabel value="Distribution (Optional)" />
+                        <select 
+                            v-model="form.distribution_id"
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        >
+                            <option :value="null">Global (All Distributions)</option>
+                            <option v-for="dist in distributions" :key="dist.id" :value="dist.id">
+                                {{ dist.name }} ({{ dist.code }})
+                            </option>
+                        </select>
+                    </div>
+
                     <div><InputLabel value="Route Name" /><TextInput v-model="form.name" type="text" class="mt-1 block w-full" :class="{ 'border-red-500': form.errors.name }" /><div v-if="form.errors.name" class="text-xs text-red-600 mt-1">{{ form.errors.name }}</div></div>
+                    
+                    <div>
+                        <InputLabel value="Status" />
+                        <select 
+                            v-model="form.status" 
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t"><SecondaryButton @click="closeModal">Cancel</SecondaryButton><PrimaryButton :disabled="form.processing" class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">{{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Create') }}</PrimaryButton></div>
                 </form>
             </div>

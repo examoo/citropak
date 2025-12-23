@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Traits\BaseTenantModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -17,12 +18,35 @@ class Customer extends Model
     use BaseTenantModel;
 
     protected $fillable = [
+        'customer_code',
+        'shop_name',
+        'van',
+        'channel',
+        'category',
         'distribution_id',
-        'name',
-        'area',
-        'contact',
+        'sub_distribution',
+        'day',
+        'address',
+        'sub_address',
+        'phone',
+        'ntn_number',
+        'sales_tax_number',
+        'cnic',
+        'percentage',
         'status',
+        'atl',
+        'adv_tax_percent',
+        'area', // Keeping older fields just in case if they exist
+        'contact', // Keeping older fields just in case if they exist
     ];
+
+    /**
+     * Get the distribution this customer belongs to.
+     */
+    public function distribution(): BelongsTo
+    {
+        return $this->belongsTo(Distribution::class);
+    }
 
     /**
      * Get brand percentages for this customer.

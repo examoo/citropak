@@ -8,7 +8,8 @@ class RouteService
 {
     public function getAll($filters = [])
     {
-        $query = Route::query();
+        $query = Route::query()
+            ->with(['distribution:id,name,code']);
 
         if (!empty($filters['search'])) {
             $query->where('name', 'like', "%{$filters['search']}%");

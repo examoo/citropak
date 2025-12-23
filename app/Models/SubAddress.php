@@ -4,16 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * CATEGORY MODEL (DISTRIBUTION-SCOPED)
+ * SUB ADDRESS MODEL (DISTRIBUTION-SCOPED)
  * 
- * Categories can be:
+ * Sub addresses can be:
  * - Global (distribution_id = NULL): Available to ALL distributions
  * - Distribution-specific: Available only to that distribution
  */
-class Category extends Model
+class SubAddress extends Model
 {
     protected $fillable = [
         'distribution_id',
@@ -22,7 +21,7 @@ class Category extends Model
     ];
 
     /**
-     * Get the distribution this category belongs to (if any).
+     * Get the distribution this sub address belongs to (if any).
      */
     public function distribution(): BelongsTo
     {
@@ -30,15 +29,7 @@ class Category extends Model
     }
 
     /**
-     * Get all products in this category.
-     */
-    public function products(): HasMany
-    {
-        return $this->hasMany(Product::class);
-    }
-
-    /**
-     * Scope to get categories for a specific distribution (includes global).
+     * Scope to get sub addresses for a specific distribution (includes global).
      */
     public function scopeForDistribution($query, $distributionId)
     {
@@ -49,7 +40,7 @@ class Category extends Model
     }
 
     /**
-     * Scope to get only active categories.
+     * Scope to get only active sub addresses.
      */
     public function scopeActive($query)
     {

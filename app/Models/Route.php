@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Traits\BaseTenantModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
@@ -18,7 +19,16 @@ class Route extends Model
     protected $fillable = [
         'distribution_id',
         'name',
+        'status',
     ];
+
+    /**
+     * Get the distribution this route belongs to.
+     */
+    public function distribution(): BelongsTo
+    {
+        return $this->belongsTo(Distribution::class);
+    }
 
     /**
      * Get customers on this route.

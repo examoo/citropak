@@ -3,12 +3,12 @@ import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import CategoryFormModal from '@/Components/CategoryFormModal.vue';
+import ChannelFormModal from '@/Components/ChannelFormModal.vue';
 import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
-    categories: Object,
+    channels: Object,
     filters: Object,
     distributions: {
         type: Array,
@@ -20,12 +20,12 @@ const page = usePage();
 const currentDistribution = computed(() => page.props.currentDistribution);
 
 const isModalOpen = ref(false);
-const editingItem = ref(null);
+const editingChannel = ref(null);
 const search = ref(props.filters.search || '');
 
 // Search Watcher
 watch(search, debounce((value) => {
-    router.get(route('categories.index'), { search: value }, {
+    router.get(route('channels.index'), { search: value }, {
         preserveState: true,
         preserveScroll: true,
         replace: true
@@ -33,19 +33,19 @@ watch(search, debounce((value) => {
 }, 300));
 
 const openModal = (item = null) => {
-    editingItem.value = item;
+    editingChannel.value = item;
     isModalOpen.value = true;
 };
 
 const closeModal = () => {
     isModalOpen.value = false;
-    editingItem.value = null;
+    editingChannel.value = null;
 };
 
-const deleteItem = (item) => {
+const deleteChannel = (item) => {
     Swal.fire({
         title: 'Are you sure?',
-        text: `Delete category "${item.name}"?`,
+        text: `Delete channel "${item.name}"?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -53,10 +53,10 @@ const deleteItem = (item) => {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(route('categories.destroy', item.id), {
+            router.delete(route('channels.destroy', item.id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    Swal.fire('Deleted!', 'Category has been deleted.', 'success');
+                    Swal.fire('Deleted!', 'Channel has been deleted.', 'success');
                 }
             });
         }
@@ -65,15 +65,15 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <Head title="Manage Categories" />
+    <Head title="Manage Channels" />
 
     <DashboardLayout>
         <div class="space-y-6">
             <!-- Header -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Manage Categories</h1>
-                    <p class="text-gray-500 mt-1">Add, edit, or remove customer categories.</p>
+                    <h1 class="text-2xl font-bold text-gray-900">Manage Channels</h1>
+                    <p class="text-gray-500 mt-1">Add, edit, or remove sales channels.</p>
                 </div>
                 
                 <div class="flex items-center gap-3">
@@ -83,7 +83,7 @@ const deleteItem = (item) => {
                             v-model="search"
                             type="text" 
                             placeholder="Search..." 
-                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-violet-500 focus:ring-violet-500 w-64 shadow-sm"
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 w-64 shadow-sm"
                         >
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -92,12 +92,12 @@ const deleteItem = (item) => {
 
                     <button 
                         @click="openModal()"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 hover:-translate-y-0.5"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-200 hover:-translate-y-0.5"
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        Add Category
+                        Add Channel
                     </button>
                 </div>
             </div>
@@ -110,12 +110,14 @@ const deleteItem = (item) => {
                             <tr>
                                 <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th class="px-6 py-4">Name</th>
+                                <th class="px-6 py-4">ATL</th>
+                                <th class="px-6 py-4">Adv. Tax %</th>
                                 <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="item in categories.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                            <tr v-for="item in channels.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4">
                                     <span v-if="item.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                         {{ item.distribution.code }}
@@ -125,6 +127,15 @@ const deleteItem = (item) => {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
+                                <td class="px-6 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        item.atl ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                    ]">
+                                        {{ item.atl ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">{{ item.adv_tax_percent }}%</td>
                                 <td class="px-6 py-4">
                                     <span :class="[
                                         'px-2 py-1 rounded-full text-xs font-medium',
@@ -143,7 +154,7 @@ const deleteItem = (item) => {
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         </button>
                                         <button 
-                                            @click="deleteItem(item)"
+                                            @click="deleteChannel(item)"
                                             class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Delete"
                                         >
@@ -152,23 +163,23 @@ const deleteItem = (item) => {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="categories.data.length === 0">
-                                <td :colspan="!currentDistribution?.id ? 4 : 3" class="px-6 py-12 text-center text-gray-500">No Categories found.</td>
+                            <tr v-if="channels.data.length === 0">
+                                <td :colspan="!currentDistribution?.id ? 6 : 5" class="px-6 py-12 text-center text-gray-500">No Channels found.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50">
-                    <Pagination :links="categories.links" />
+                    <Pagination :links="channels.links" />
                 </div>
             </div>
         </div>
 
-        <!-- Category Form Modal -->
-        <CategoryFormModal 
+        <!-- Shared Channel Form Modal -->
+        <ChannelFormModal 
             :show="isModalOpen"
-            :category="editingItem"
+            :channel="editingChannel"
             :distributions="distributions"
             @close="closeModal"
             @saved="closeModal"

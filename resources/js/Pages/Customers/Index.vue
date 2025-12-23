@@ -9,6 +9,11 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
 import VanFormModal from '@/Components/VanFormModal.vue';
+import ChannelFormModal from '@/Components/ChannelFormModal.vue';
+import SubAddressFormModal from '@/Components/SubAddressFormModal.vue';
+import SubDistributionFormModal from '@/Components/SubDistributionFormModal.vue';
+import CategoryFormModal from '@/Components/CategoryFormModal.vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { debounce } from 'lodash';
 import { watch, ref, computed, nextTick } from 'vue';
 
@@ -34,6 +39,10 @@ const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingCustomerId = ref(null);
 const isVanModalOpen = ref(false);
+const isChannelModalOpen = ref(false);
+const isSubAddressModalOpen = ref(false);
+const isSubDistributionModalOpen = ref(false);
+const isCategoryModalOpen = ref(false);
 
 // Filter State
 const search = ref(props.filters.search || '');
@@ -79,7 +88,8 @@ const form = useForm({
     category: '',
     channel: '',
     ntn_number: '',
-    distribution: '',
+    distribution_id: '',
+    sub_distribution: '',
     day: '',
     status: 'active',
     atl: 'active',
@@ -165,6 +175,11 @@ const openModal = (customer = null) => {
         form.adv_tax_percent = '0.00';
         form.percentage = '0.00';
         selectedChannelId.value = '';
+        
+        // Auto-select distribution if scoped (DMS mode)
+        if (currentDistribution.value?.id) {
+            form.distribution_id = currentDistribution.value.id;
+        }
     }
     
     isModalOpen.value = true;
@@ -500,6 +515,7 @@ const submitImport = () => {
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
+                                <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th @click="handleSort('customer_code')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Code {{ getSortIcon('customer_code') }}
                                 </th>
@@ -513,7 +529,7 @@ const submitImport = () => {
                                     Channel {{ getSortIcon('channel') }}
                                 </th>
                                 <th class="px-6 py-4">Category</th>
-                                <th class="px-6 py-4">Distribution</th>
+                                <th class="px-6 py-4">Sub Distribution</th>
                                 <th class="px-6 py-4">Day</th>
                                 <th class="px-6 py-4">NTN/STRN</th>
                                 <th class="px-6 py-4">CNIC</th>
@@ -529,6 +545,14 @@ const submitImport = () => {
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="customer in customers.data" :key="customer.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td v-if="!currentDistribution?.id" class="px-6 py-4">
+                                    <span v-if="customer.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ customer.distribution }}
+                                    </span>
+                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        Global
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">
                                     {{ customer.customer_code || '-' }}
                                 </td>
@@ -544,8 +568,11 @@ const submitImport = () => {
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.category || '-' }}
                                 </td>
-                                <td class="px-6 py-4 text-gray-500">
-                                    {{ customer.distribution || '-' }}
+                                <td class="px-6 py-4">
+                                    <span v-if="customer.sub_distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                                        {{ customer.sub_distribution }}
+                                    </span>
+                                    <span v-else class="text-gray-400">-</span>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.day || '-' }}
@@ -627,6 +654,21 @@ const submitImport = () => {
                 </h2>
 
                 <form @submit.prevent="submit" class="space-y-4">
+                    <!-- Distribution Select (Only if Global View) -->
+                    <div v-if="!currentDistribution?.id && !isEditing">
+                        <SearchableSelect 
+                            v-model="form.distribution_id"
+                            label="Distribution"
+                            :options="getAttributes('distribution')"
+                            option-value="id"
+                            option-label="value"
+                            placeholder="Select a distribution"
+                            :error="form.errors.distribution_id"
+                            required
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Select the distribution this customer belongs to.</p>
+                    </div>
+
                     <!-- Row 1 -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -687,7 +729,7 @@ const submitImport = () => {
                                     <option value="">Select Sub Address</option>
                                     <option v-for="attr in getAttributes('sub_address')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="quickAddAttribute('sub_address', 'Sub Address')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Address">
+                                <button type="button" @click="isSubAddressModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Address">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
@@ -710,7 +752,7 @@ const submitImport = () => {
                                     <option value="">Select Category</option>
                                     <option v-for="attr in getAttributes('category')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="quickAddAttribute('category', 'Category')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Category">
+                                <button type="button" @click="isCategoryModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Category">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
@@ -724,29 +766,31 @@ const submitImport = () => {
                                 >
                                     <option value="">Select Channel</option>
                                     <option v-for="attr in channelOptions" :key="attr.id" :value="attr.id">
-                                        {{ attr.value }} ({{ attr.atl === 'active' ? 'ATL' : 'Non-ATL' }})
+                                        {{ attr.value }} ({{ attr.atl ? 'ATL' : 'Non-ATL' }})
                                     </option>
                                 </select>
-                                <button type="button" @click="quickAddAttribute('channel', 'Channel')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Channel">
+                                <button type="button" @click="isChannelModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Channel">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Row 5 -->
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                            <InputLabel value="Distribution" />
+
+
+                    <!-- Row 5b - Sub Distribution and Day (always visible) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel value="Sub Distribution" />
                             <div class="flex gap-2">
                                 <select 
-                                    v-model="form.distribution"
+                                    v-model="form.sub_distribution"
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
-                                    <option value="">Select Distribution</option>
-                                    <option v-for="attr in getAttributes('distribution')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option value="">Select Sub Distribution</option>
+                                    <option v-for="attr in getAttributes('sub_distribution')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="quickAddAttribute('distribution', 'Distribution')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Distribution">
+                                <button type="button" @click="isSubDistributionModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Distribution">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
@@ -911,6 +955,38 @@ const submitImport = () => {
         :show="isVanModalOpen"
         @close="isVanModalOpen = false"
         @saved="(vanCode) => { form.van = vanCode; }"
+        :distributions="[]"
+    />
+
+    <!-- Channel Form Modal (Shared Component) -->
+    <ChannelFormModal 
+        :show="isChannelModalOpen"
+        @close="isChannelModalOpen = false"
+        @saved="(channelName) => { form.channel = channelName; }"
+        :distributions="[]"
+    />
+
+    <!-- Sub Address Form Modal (Shared Component) -->
+    <SubAddressFormModal 
+        :show="isSubAddressModalOpen"
+        @close="isSubAddressModalOpen = false"
+        @saved="(subAddressName) => { form.sub_address = subAddressName; }"
+        :distributions="[]"
+    />
+
+    <!-- Sub Distribution Form Modal (Shared Component) -->
+    <SubDistributionFormModal 
+        :show="isSubDistributionModalOpen"
+        @close="isSubDistributionModalOpen = false"
+        @saved="(subDistName) => { form.sub_distribution = subDistName; }"
+        :distributions="[]"
+    />
+
+    <!-- Category Form Modal (Shared Component) -->
+    <CategoryFormModal 
+        :show="isCategoryModalOpen"
+        @close="isCategoryModalOpen = false"
+        @saved="(categoryName) => { form.category = categoryName; }"
         :distributions="[]"
     />
 </template>

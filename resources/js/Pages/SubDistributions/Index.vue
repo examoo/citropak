@@ -3,12 +3,12 @@ import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import CategoryFormModal from '@/Components/CategoryFormModal.vue';
+import SubDistributionFormModal from '@/Components/SubDistributionFormModal.vue';
 import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
-    categories: Object,
+    subDistributions: Object,
     filters: Object,
     distributions: {
         type: Array,
@@ -25,7 +25,7 @@ const search = ref(props.filters.search || '');
 
 // Search Watcher
 watch(search, debounce((value) => {
-    router.get(route('categories.index'), { search: value }, {
+    router.get(route('sub-distributions.index'), { search: value }, {
         preserveState: true,
         preserveScroll: true,
         replace: true
@@ -45,7 +45,7 @@ const closeModal = () => {
 const deleteItem = (item) => {
     Swal.fire({
         title: 'Are you sure?',
-        text: `Delete category "${item.name}"?`,
+        text: `Delete sub distribution "${item.name}"?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -53,10 +53,10 @@ const deleteItem = (item) => {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(route('categories.destroy', item.id), {
+            router.delete(route('sub-distributions.destroy', item.id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    Swal.fire('Deleted!', 'Category has been deleted.', 'success');
+                    Swal.fire('Deleted!', 'Sub Distribution has been deleted.', 'success');
                 }
             });
         }
@@ -65,15 +65,15 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <Head title="Manage Categories" />
+    <Head title="Manage Sub Distributions" />
 
     <DashboardLayout>
         <div class="space-y-6">
             <!-- Header -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Manage Categories</h1>
-                    <p class="text-gray-500 mt-1">Add, edit, or remove customer categories.</p>
+                    <h1 class="text-2xl font-bold text-gray-900">Manage Sub Distributions</h1>
+                    <p class="text-gray-500 mt-1">Add, edit, or remove sub distributions.</p>
                 </div>
                 
                 <div class="flex items-center gap-3">
@@ -83,7 +83,7 @@ const deleteItem = (item) => {
                             v-model="search"
                             type="text" 
                             placeholder="Search..." 
-                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-violet-500 focus:ring-violet-500 w-64 shadow-sm"
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-cyan-500 focus:ring-cyan-500 w-64 shadow-sm"
                         >
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -92,12 +92,12 @@ const deleteItem = (item) => {
 
                     <button 
                         @click="openModal()"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 hover:-translate-y-0.5"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all duration-200 hover:-translate-y-0.5"
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        Add Category
+                        Add Sub Distribution
                     </button>
                 </div>
             </div>
@@ -107,15 +107,16 @@ const deleteItem = (item) => {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
-                            <tr>
+                        <tr>
                                 <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th class="px-6 py-4">Name</th>
+                                <th class="px-6 py-4">FBR Type</th>
                                 <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="item in categories.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                            <tr v-for="item in subDistributions.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4">
                                     <span v-if="item.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                         {{ item.distribution.code }}
@@ -125,6 +126,14 @@ const deleteItem = (item) => {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
+                                <td class="px-6 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        item.is_fbr ? 'bg-cyan-100 text-cyan-700' : 'bg-gray-100 text-gray-700'
+                                    ]">
+                                        {{ item.is_fbr ? 'FBR' : 'Non-FBR' }}
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4">
                                     <span :class="[
                                         'px-2 py-1 rounded-full text-xs font-medium',
@@ -152,23 +161,23 @@ const deleteItem = (item) => {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="categories.data.length === 0">
-                                <td :colspan="!currentDistribution?.id ? 4 : 3" class="px-6 py-12 text-center text-gray-500">No Categories found.</td>
+                            <tr v-if="subDistributions.data.length === 0">
+                                <td :colspan="!currentDistribution?.id ? 5 : 4" class="px-6 py-12 text-center text-gray-500">No Sub Distributions found.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50">
-                    <Pagination :links="categories.links" />
+                    <Pagination :links="subDistributions.links" />
                 </div>
             </div>
         </div>
 
-        <!-- Category Form Modal -->
-        <CategoryFormModal 
+        <!-- Shared Sub Distribution Form Modal -->
+        <SubDistributionFormModal 
             :show="isModalOpen"
-            :category="editingItem"
+            :subDistribution="editingItem"
             :distributions="distributions"
             @close="closeModal"
             @saved="closeModal"

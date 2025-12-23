@@ -49,6 +49,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('routes', \App\Http\Controllers\RouteController::class);
     Route::resource('schemes', \App\Http\Controllers\SchemeController::class);
     Route::resource('holidays', \App\Http\Controllers\HolidayController::class);
+    Route::resource('channels', \App\Http\Controllers\ChannelController::class);
+    Route::resource('sub-addresses', \App\Http\Controllers\SubAddressController::class);
+    Route::resource('sub-distributions', \App\Http\Controllers\SubDistributionController::class);
 });
 
 require __DIR__.'/auth.php';
