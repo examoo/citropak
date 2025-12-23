@@ -1,6 +1,6 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -8,6 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
+import VanFormModal from '@/Components/VanFormModal.vue';
 import { debounce } from 'lodash';
 import { watch, ref, computed, nextTick } from 'vue';
 
@@ -26,9 +27,13 @@ const props = defineProps({
     }
 });
 
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
+
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingCustomerId = ref(null);
+const isVanModalOpen = ref(false);
 
 // Filter State
 const search = ref(props.filters.search || '');
@@ -344,34 +349,9 @@ const quickAddAttribute = async (type, title) => {
     });
 
     if (newValue) {
-        // Special handling for VAN module
+        // Special handling for VAN module - now uses modal instead
         if (type === 'van') {
-            router.post(route('vans.store'), {
-                name: newValue,
-                status: 'active'
-            }, {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                     Swal.fire({
-                        title: 'Success', 
-                        text: 'VAN added successfully', 
-                        icon: 'success',
-                        target: openDialog || 'body',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    form.van = newValue;
-                },
-                onError: () => {
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Failed to add VAN',
-                        icon: 'error',
-                        target: openDialog || 'body'
-                    });
-                }
-            });
+            // This branch is no longer used - Van uses VanFormModal instead
             return;
         }
 
@@ -670,7 +650,7 @@ const submitImport = () => {
                                     <option value="">Select VAN</option>
                                     <option v-for="attr in getAttributes('van')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="quickAddAttribute('van', 'VAN')" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
+                                <button type="button" @click="isVanModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
@@ -925,4 +905,12 @@ const submitImport = () => {
             </div>
         </div>
     </Modal>
+
+    <!-- Van Form Modal (Shared Component) -->
+    <VanFormModal 
+        :show="isVanModalOpen"
+        @close="isVanModalOpen = false"
+        @saved="(vanCode) => { form.van = vanCode; }"
+        :distributions="[]"
+    />
 </template>

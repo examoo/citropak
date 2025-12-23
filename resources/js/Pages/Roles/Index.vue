@@ -1,8 +1,11 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 import { usePermissions } from '@/Composables/usePermissions.js';
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 import Swal from 'sweetalert2';
 
@@ -81,6 +84,19 @@ const deleteRole = (role) => {
                         </span>
                     </div>
 
+                    <!-- Distribution Badge (Visible only when viewing All Distributions) -->
+                    <div 
+                        v-if="!currentDistribution?.id && !['superadmin', 'admin', 'customer'].includes(role.name)"
+                        class="absolute top-4 right-4"
+                    >
+                        <span 
+                            class="px-2.5 py-1 rounded-full text-xs font-medium"
+                            :class="role.distribution ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-600'"
+                        >
+                            {{ role.distribution ? role.distribution.code : 'Global' }}
+                        </span>
+                    </div>
+
                     <!-- Role Info -->
                     <div class="flex items-start gap-4">
                         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
@@ -114,7 +130,7 @@ const deleteRole = (role) => {
                     <!-- Actions -->
                     <div class="mt-5 pt-4 border-t border-gray-100 flex gap-2">
                         <Link 
-                            v-if="can('roles.edit')"
+                            v-if="can('roles.edit') && !['superadmin', 'admin', 'customer'].includes(role.name)"
                             :href="route('roles.edit', role.id)"
                             class="flex-1 py-2 px-3 text-center text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
                         >

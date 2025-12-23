@@ -1,30 +1,27 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
-import Modal from '@/Components/Modal.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import { ref, watch } from 'vue';
+import VanFormModal from '@/Components/VanFormModal.vue';
+import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
     vans: Object,
-    filters: Object
+    filters: Object,
+    distributions: {
+        type: Array,
+        default: () => []
+    }
 });
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 const isModalOpen = ref(false);
-const isEditing = ref(false);
-const editingId = ref(null);
+const editingVan = ref(null);
 const search = ref(props.filters.search || '');
-
-const form = useForm({
-    name: '',
-    status: 'active'
-});
 
 // Search Watcher
 watch(search, debounce((value) => {
@@ -36,56 +33,19 @@ watch(search, debounce((value) => {
 }, 300));
 
 const openModal = (item = null) => {
-    isEditing.value = !!item;
-    editingId.value = item?.id;
-    
-    if (item) {
-        form.name = item.name;
-        form.status = item.status;
-    } else {
-        form.reset();
-        form.status = 'active';
-    }
-    
+    editingVan.value = item;
     isModalOpen.value = true;
 };
 
 const closeModal = () => {
     isModalOpen.value = false;
-    form.reset();
-    form.clearErrors();
-};
-
-const validateForm = () => {
-    form.clearErrors();
-    let isValid = true;
-
-    if (!form.name) {
-        form.setError('name', 'The name field is required.');
-        isValid = false;
-    }
-
-    return isValid;
-};
-
-const submit = () => {
-    if (!validateForm()) return;
-
-    if (isEditing.value) {
-        form.put(route('vans.update', editingId.value), {
-            onSuccess: () => closeModal(),
-        });
-    } else {
-        form.post(route('vans.store'), {
-            onSuccess: () => closeModal(),
-        });
-    }
+    editingVan.value = null;
 };
 
 const deleteVan = (item) => {
     Swal.fire({
         title: 'Are you sure?',
-        text: `Delete van "${item.name}"?`,
+        text: `Delete van "${item.code}"?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -148,7 +108,8 @@ const deleteVan = (item) => {
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
-                                <th class="px-6 py-4">Name</th>
+                                <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
+                                <th class="px-6 py-4">Code</th>
                                 <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4">Created At</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
@@ -156,7 +117,12 @@ const deleteVan = (item) => {
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in vans.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
+                                <td v-if="!currentDistribution?.id" class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ item.distribution ? item.distribution.code : 'Global' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 font-medium text-gray-900">{{ item.code }}</td>
                                 <td class="px-6 py-4">
                                     <span :class="[
                                         'px-2 py-1 rounded-full text-xs font-medium',
@@ -186,7 +152,7 @@ const deleteVan = (item) => {
                                 </td>
                             </tr>
                             <tr v-if="vans.data.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500">No Vans found.</td>
+                                <td :colspan="!currentDistribution?.id ? 5 : 4" class="px-6 py-12 text-center text-gray-500">No Vans found.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -198,47 +164,13 @@ const deleteVan = (item) => {
             </div>
         </div>
 
-        <!-- Modal -->
-        <Modal :show="isModalOpen" @close="closeModal" maxWidth="md">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">
-                    {{ isEditing ? 'Edit' : 'Add New' }} Van
-                </h2>
-
-                <form @submit.prevent="submit" class="space-y-4">
-                    <div>
-                        <InputLabel value="Van Name" />
-                        <TextInput 
-                            v-model="form.name" 
-                            type="text" 
-                            class="mt-1 block w-full" 
-                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.name }"
-                        />
-                         <div v-if="form.errors.name" class="text-xs text-red-600 mt-1">{{ form.errors.name }}</div>
-                    </div>
-
-                    <div>
-                        <InputLabel value="Status" />
-                        <select 
-                            v-model="form.status" 
-                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
-                        <PrimaryButton 
-                            :disabled="form.processing"
-                            class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0"
-                        >
-                            {{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Create') }}
-                        </PrimaryButton>
-                    </div>
-                </form>
-            </div>
-        </Modal>
+        <!-- Shared Van Form Modal -->
+        <VanFormModal 
+            :show="isModalOpen"
+            :van="editingVan"
+            :distributions="distributions"
+            @close="closeModal"
+            @saved="closeModal"
+        />
     </DashboardLayout>
 </template>

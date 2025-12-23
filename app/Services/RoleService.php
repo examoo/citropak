@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Collection;
 
@@ -16,12 +16,28 @@ class RoleService
     /**
      * Get all roles with permissions count
      */
-    public function getAll(): Collection
+    public function getAll($distributionId = null): Collection
     {
-        return Role::withCount('permissions')
-            ->with('permissions:id,name')
-            ->orderBy('name')
-            ->get();
+        $query = Role::withCount('permissions')
+            ->with(['permissions:id,name', 'distribution:id,name,code']);
+
+        if ($distributionId) {
+            // Show global roles AND roles for this distribution
+            $query->where(function($q) use ($distributionId) {
+                $q->where('distribution_id', $distributionId)
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('distribution_id')
+                          ->whereIn('name', array_diff($this->systemRoles, ['superadmin']));
+                  });
+            });
+        }
+        // If no distribution (Global Admin View), show ALL roles? 
+        // Or maybe just show Global roles? 
+        // Usually "All Distributions" means you can see everything. 
+        // But the requirement says "if null distribution then it for all".
+        // Let's assume Global Admin sees ALL.
+
+        return $query->orderBy('name')->get();
     }
 
     /**
@@ -64,10 +80,16 @@ class RoleService
      */
     public function create(array $data): Role
     {
-        $role = Role::create([
+        $roleData = [
             'name' => $data['name'],
             'guard_name' => 'web',
-        ]);
+        ];
+
+        if (array_key_exists('distribution_id', $data)) {
+            $roleData['distribution_id'] = $data['distribution_id'];
+        }
+
+        $role = Role::create($roleData);
 
         if (!empty($data['permissions'])) {
             $role->syncPermissions($data['permissions']);

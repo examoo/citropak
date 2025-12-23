@@ -18,10 +18,13 @@ class CustomerController extends Controller
     public function index(Request $request): Response
     {
         $filters = $request->only(['search', 'status', 'sort_field', 'sort_direction']);
+        
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
 
         return Inertia::render('Customers/Index', [
             'customers' => $this->service->getAll($filters),
-            'attributes' => $this->service->getAttributes(),
+            'attributes' => $this->service->getAttributes($distributionId),
             'filters' => $filters,
         ]);
     }

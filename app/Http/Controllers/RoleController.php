@@ -14,10 +14,13 @@ class RoleController extends Controller
     /**
      * Display a listing of roles.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+
         return Inertia::render('Roles/Index', [
-            'roles' => $this->service->getAll(),
+            'roles' => $this->service->getAll($distributionId),
         ]);
     }
 
@@ -29,18 +32,32 @@ class RoleController extends Controller
         return Inertia::render('Roles/Form', [
             'role' => null,
             'permissionsGrouped' => $this->service->getPermissionsGrouped(),
+            'distributions' => \App\Models\Distribution::where('status', 'active')->get(['id', 'name', 'code']),
         ]);
     }
 
     /**
      * Store a newly created role.
      */
-    /**
-     * Store a newly created role.
-     */
     public function store(\App\Http\Requests\RoleRequest $request)
     {
-        $this->service->create($request->validated());
+        $data = $request->validated();
+        
+        $userDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($userDistributionId === 'all') $userDistributionId = null;
+        
+        // If user is scoped to a distribution, force it.
+        // If user is global (null), allow them to choose (from request).
+        // If request has no distribution_id (Global chosen), it works.
+        
+        if ($userDistributionId) {
+            $data['distribution_id'] = $userDistributionId;
+        } else {
+            // Use the input from form (can be null for Global, or a specific ID)
+            $data['distribution_id'] = $request->input('distribution_id'); 
+        }
+
+        $this->service->create($data);
 
         return redirect()
             ->route('roles.index')
@@ -64,8 +81,10 @@ class RoleController extends Controller
                 'name' => $role->name,
                 'permissions' => $role->permissions->pluck('name'),
                 'isSystemRole' => $this->service->isSystemRole($role->name),
+                'distribution_id' => $role->distribution_id, // Pass existing distribution_id
             ],
             'permissionsGrouped' => $this->service->getPermissionsGrouped(),
+            'distributions' => \App\Models\Distribution::where('status', 'active')->get(['id', 'name', 'code']),
         ]);
     }
 

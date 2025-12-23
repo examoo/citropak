@@ -46,13 +46,19 @@ class CustomerService
         return $query->paginate(10)->withQueryString();
     }
 
-    public function getAttributes()
+    public function getAttributes($distributionId = null)
     {
         $attributes = \App\Models\CustomerAttribute::all()->groupBy('type');
         
-        // Fetch Vans and map to structure expected by frontend (value property)
-        $vans = \App\Models\Van::where('status', 'active')->latest()->get()->map(function($van) {
-            return ['id' => $van->id, 'value' => $van->name, 'type' => 'van'];
+        // Fetch Vans scoped by distribution (or all if global)
+        $vanQuery = \App\Models\Van::where('status', 'active');
+        
+        if ($distributionId) {
+            $vanQuery->where('distribution_id', $distributionId);
+        }
+        
+        $vans = $vanQuery->latest()->get()->map(function($van) {
+            return ['id' => $van->id, 'value' => $van->code, 'type' => 'van', 'distribution_id' => $van->distribution_id];
         });
 
         $attributes->put('van', $vans);

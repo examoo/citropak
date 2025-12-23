@@ -23,6 +23,7 @@ class RolePermissionSeeder extends Seeder
         'customer_attributes',
         'order_bookers',
         'vans',
+        'distributions',
     ];
 
     /**

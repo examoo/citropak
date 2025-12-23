@@ -26,9 +26,12 @@ class UserController extends Controller
     {
         $filters = $request->only(['search', 'role', 'sort_field', 'sort_direction']);
 
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+
         return Inertia::render('Users/Index', [
             'users' => $this->userService->getAll($filters),
-            'roles' => Role::all(),
+            'roles' => $this->roleService->getAll($distributionId),
             'assignableDistributions' => $this->distributionService->getActive(),
             'filters' => $filters,
         ]);
@@ -39,7 +42,17 @@ class UserController extends Controller
      */
     public function store(\App\Http\Requests\UserRequest $request)
     {
-        $this->userService->create($request->validated());
+        $data = $request->validated();
+        
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+
+        // Force distribution if scoped
+        if ($distributionId) {
+            $data['distribution_id'] = $distributionId;
+        }
+
+        $this->userService->create($data);
 
         return redirect()
             ->route('users.index')
@@ -51,7 +64,25 @@ class UserController extends Controller
      */
     public function update(\App\Http\Requests\UserRequest $request, int $id)
     {
-        $this->userService->update($id, $request->validated());
+        $data = $request->validated();
+        
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+
+        // If scoped, ensure they can't change distribution (or it stays set to current)
+        // Actually, preventing change to another distribution is good.
+        // But if they are editing an existing user, we might want to keep that user's distribution?
+        // User said "same for user you create". Update might be different.
+        // If I am Scoped Admin, I should only see my users.
+        // If I edit my user, I shouldn't be able to move them to another distribution.
+        // So forcing current distribution is safe for Scoped Admin.
+        // For Global Admin ($distributionId is null), they can change it via input (if field exists).
+        
+        if ($distributionId) {
+            $data['distribution_id'] = $distributionId;
+        }
+
+        $this->userService->update($id, $data);
 
         return redirect()
             ->route('users.index')

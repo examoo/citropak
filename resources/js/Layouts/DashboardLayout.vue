@@ -173,7 +173,9 @@ const navigation = [
         name: 'Distributions', 
         href: 'distributions.index', 
         icon: 'globe', 
-        permission: 'users.view'
+        permission: 'users.view',
+        // Only show if no distribution is selected (Global view)
+        show: (props) => !props.currentDistribution?.id,
     },
     { 
         name: 'Holidays', 
@@ -188,6 +190,11 @@ const filteredNavigation = computed(() => {
     return navigation.filter(item => {
         // Check if user has permission for this item
         if (!hasPermission(item.permission)) {
+            return false;
+        }
+
+        // Check custom show logic
+        if (item.show && !item.show(page.props)) {
             return false;
         }
         
@@ -478,19 +485,20 @@ const handleClickOutside = (event) => {
                         <!-- Distribution Switcher -->
                         <div class="relative" v-if="distributions.length > 0">
                             <button 
-                                @click="toggleDistributionDropdown"
+                                @click="!page.props.auth.user.distribution_id ? toggleDistributionDropdown() : null"
                                 :class="[
-                                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all',
+                                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium shadow-md transition-all',
                                     currentDistribution && currentDistribution.id 
                                         ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                                        : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
+                                        : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white',
+                                    !page.props.auth.user.distribution_id ? 'hover:shadow-lg cursor-pointer' : 'cursor-default opacity-90'
                                 ]"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
                                 <span>{{ currentDistribution && currentDistribution.code ? currentDistribution.code : 'ALL' }}</span>
-                                <svg class="w-3 h-3" :class="{ 'rotate-180': isDistributionDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg v-if="!page.props.auth.user.distribution_id" class="w-3 h-3" :class="{ 'rotate-180': isDistributionDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>

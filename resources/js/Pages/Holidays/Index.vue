@@ -1,6 +1,6 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -8,15 +8,29 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
-const props = defineProps({ holidays: Object, filters: Object });
+const props = defineProps({ 
+    holidays: Object, 
+    filters: Object,
+    distributions: {
+        type: Array,
+        default: () => []
+    }
+});
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 
-const form = useForm({ date: '', description: '' });
+const form = useForm({ 
+    date: '', 
+    description: '',
+    distribution_id: null
+});
 
 const openModal = (item = null) => {
     isEditing.value = !!item;
@@ -24,8 +38,10 @@ const openModal = (item = null) => {
     if (item) {
         form.date = item.date;
         form.description = item.description || '';
+        form.distribution_id = item.distribution_id;
     } else {
         form.reset();
+        form.distribution_id = currentDistribution.value?.id || null;
     }
     isModalOpen.value = true;
 };
@@ -60,9 +76,24 @@ const deleteItem = (item) => {
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <table class="w-full text-left text-sm text-gray-600">
-                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500"><tr><th class="px-6 py-4">Date</th><th class="px-6 py-4">Description</th><th class="px-6 py-4 text-right">Actions</th></tr></thead>
+                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
+                        <tr>
+                            <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
+                            <th class="px-6 py-4">Date</th>
+                            <th class="px-6 py-4">Description</th>
+                            <th class="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="item in holidays.data" :key="item.id" class="hover:bg-gray-50/50">
+                            <td v-if="!currentDistribution?.id" class="px-6 py-4">
+                                <span v-if="item.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ item.distribution.code }}
+                                </span>
+                                <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Global
+                                </span>
+                            </td>
                             <td class="px-6 py-4 font-medium text-gray-900">{{ new Date(item.date).toLocaleDateString() }}</td>
                             <td class="px-6 py-4 text-gray-500">{{ item.description || '-' }}</td>
                             <td class="px-6 py-4 text-right">
@@ -72,7 +103,7 @@ const deleteItem = (item) => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="holidays.data.length === 0"><td colspan="3" class="px-6 py-12 text-center text-gray-500">No holidays found.</td></tr>
+                        <tr v-if="holidays.data.length === 0"><td :colspan="!currentDistribution?.id ? 4 : 3" class="px-6 py-12 text-center text-gray-500">No holidays found.</td></tr>
                     </tbody>
                 </table>
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50"><Pagination :links="holidays.links" /></div>
@@ -82,6 +113,21 @@ const deleteItem = (item) => {
             <div class="p-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'Add' }} Holiday</h2>
                 <form @submit.prevent="submit" class="space-y-4">
+                    <!-- Distribution Select (Only if Global View and Creating) -->
+                    <div v-if="!currentDistribution?.id && !isEditing">
+                        <InputLabel value="Distribution (Leave empty for Global)" />
+                        <select 
+                            v-model="form.distribution_id"
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        >
+                            <option :value="null">Global (All Distributions)</option>
+                            <option v-for="dist in distributions" :key="dist.id" :value="dist.id">
+                                {{ dist.name }} ({{ dist.code }})
+                            </option>
+                        </select>
+                        <div v-if="form.errors.distribution_id" class="text-xs text-red-600 mt-1">{{ form.errors.distribution_id }}</div>
+                    </div>
+
                     <div><InputLabel value="Date" /><TextInput v-model="form.date" type="date" class="mt-1 block w-full" :class="{ 'border-red-500': form.errors.date }" /><div v-if="form.errors.date" class="text-xs text-red-600 mt-1">{{ form.errors.date }}</div></div>
                     <div><InputLabel value="Description (Optional)" /><TextInput v-model="form.description" type="text" class="mt-1 block w-full" placeholder="e.g. Eid ul Fitr" /></div>
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t"><SecondaryButton @click="closeModal">Cancel</SecondaryButton><PrimaryButton :disabled="form.processing" class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">{{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Create') }}</PrimaryButton></div>

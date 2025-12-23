@@ -28,10 +28,28 @@ class RoleRequest extends FormRequest
             $id = is_object($role) ? $role->id : $role;
         }
 
+        $distributionId = null;
+        $userDist = $this->user()->distribution_id ?? session('current_distribution_id');
+        
+        if ($userDist && $userDist !== 'all') {
+            $distributionId = $userDist;
+        } else {
+            $distributionId = $this->input('distribution_id');
+        }
+
         return [
-            'name' => 'required|string|max:255|unique:roles,name,' . $id,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('roles')->where(function ($query) use ($distributionId) {
+                    return $query->where('distribution_id', $distributionId)
+                                 ->orWhereNull('distribution_id');
+                })->ignore($id),
+            ],
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|exists:permissions,name',
+            'distribution_id' => 'nullable|exists:distributions,id',
         ];
     }
 }

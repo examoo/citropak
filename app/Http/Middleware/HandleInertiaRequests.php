@@ -52,7 +52,21 @@ class HandleInertiaRequests extends Middleware
             'distributions' => fn () => Distribution::where('status', 'active')
                 ->orderBy('name')
                 ->get(['id', 'name', 'code']),
-            'currentDistribution' => function () {
+            'currentDistribution' => function () use ($user) {
+                // If user has a specific distribution assigned, force it
+                if ($user && $user->distribution_id) {
+                    $distribution = $user->distribution; // Assumes relationship exists and is loaded or lazy loaded
+                    if (!$distribution && $user->relationLoaded('distribution') === false) {
+                         $distribution = Distribution::find($user->distribution_id);
+                    }
+                    
+                    return $distribution ? [
+                        'id' => $distribution->id,
+                        'name' => $distribution->name,
+                        'code' => $distribution->code,
+                    ] : null;
+                }
+
                 $currentId = session('current_distribution_id');
                 
                 // 'all' = user explicitly selected All Distributions

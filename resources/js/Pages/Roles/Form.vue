@@ -1,7 +1,10 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 const props = defineProps({
     role: {
@@ -11,6 +14,10 @@ const props = defineProps({
     permissionsGrouped: {
         type: Object,
         required: true
+    },
+    distributions: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -19,6 +26,7 @@ const isEditing = computed(() => !!props.role);
 const form = useForm({
     name: props.role?.name || '',
     permissions: props.role?.permissions || [],
+    distribution_id: props.role?.distribution_id || (page.props.currentDistribution?.id || null),
 });
 
 const submit = () => {
@@ -113,23 +121,46 @@ const formatModuleName = (name) => {
                 </div>
             </div>
 
+
+
             <!-- Form -->
             <form @submit.prevent="submit" class="space-y-6">
-                <!-- Role Name -->
+                <!-- Role Name & Distribution -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Role Information</h3>
                     
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
-                        <input 
-                            v-model="form.name"
-                            type="text"
-                            :disabled="role?.isSystemRole"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            placeholder="Enter role name"
-                        />
-                        <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
-                        <p v-if="role?.isSystemRole" class="mt-1 text-sm text-amber-600">System role names cannot be changed.</p>
+                    <div class="space-y-4">
+                        <!-- Distribution Select (Only if Global View) -->
+                        <div v-if="!currentDistribution?.id">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Target Distribution</label>
+                            <select 
+                                v-model="form.distribution_id"
+                                :disabled="isEditing" 
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            >
+                                <option :value="null">Global (All Distributions)</option>
+                                <option v-for="dist in distributions" :key="dist.id" :value="dist.id">
+                                    {{ dist.name }} ({{ dist.code }})
+                                </option>
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">
+                                Select "Global" to make this role available everywhere, or select a specific distribution.
+                            </p>
+                        </div>
+
+                        <!-- Role Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
+                            <input 
+                                v-model="form.name"
+                                type="text"
+                                :disabled="role?.isSystemRole"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                placeholder="Enter role name"
+                            />
+                            <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
+                            <p v-if="role?.isSystemRole" class="mt-1 text-sm text-amber-600">System role names cannot be changed.</p>
+                        </div>
                     </div>
                 </div>
 

@@ -1,6 +1,6 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { usePermissions } from '@/Composables/usePermissions.js';
 import { ref, computed, watch } from 'vue';
 import { debounce } from 'lodash';
@@ -35,6 +35,16 @@ const props = defineProps({
 });
 
 const { can, isSuperAdmin } = usePermissions();
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
+
+const filteredRoles = computed(() => {
+    if (currentDistribution.value && currentDistribution.value.id) {
+        return props.roles.filter(role => role.name !== 'superadmin');
+    }
+    return props.roles;
+});
+
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingUserId = ref(null);
@@ -96,6 +106,10 @@ const openModal = (user = null) => {
         form.password_confirmation = '';
     } else {
         form.reset();
+        // Auto-select distribution if globally selected
+        if (currentDistribution.value && currentDistribution.value.id) {
+            form.distribution_id = currentDistribution.value.id;
+        }
     }
     
     isModalOpen.value = true;
@@ -185,7 +199,7 @@ const toggleRole = (roleName) => {
                         class="py-2.5 rounded-xl border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white shadow-sm"
                     >
                         <option value="">All Roles</option>
-                        <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
+                        <option v-for="role in filteredRoles" :key="role.id" :value="role.name">{{ role.name }}</option>
                     </select>
 
                     <button 
@@ -210,6 +224,7 @@ const toggleRole = (roleName) => {
                                 <th @click="handleSort('name')" class="px-6 py-4 cursor-pointer hover:text-indigo-600 transition-colors">
                                     User {{ getSortIcon('name') }}
                                 </th>
+                                <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th class="px-6 py-4">Roles</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -226,6 +241,12 @@ const toggleRole = (roleName) => {
                                             <div class="text-gray-500 text-xs">{{ user.email }}</div>
                                         </div>
                                     </div>
+                                </td>
+                                <td v-if="!currentDistribution?.id" class="px-6 py-4">
+                                    <span v-if="user.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ user.distribution.name }}
+                                    </span>
+                                    <span v-else class="text-gray-400 italic text-xs">Global</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex flex-wrap gap-2">
@@ -272,7 +293,7 @@ const toggleRole = (roleName) => {
                                 </td>
                             </tr>
                             <tr v-if="users.data.length === 0">
-                                <td colspan="3" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="!currentDistribution?.id ? 4 : 3" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center gap-3">
                                         <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                                             <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,6 +324,21 @@ const toggleRole = (roleName) => {
                 </h2>
 
                 <form @submit.prevent="submit" class="space-y-4">
+                    <!-- Distribution Select -->
+                    <!-- Distribution Select details -->
+                    <div v-if="!currentDistribution?.id">
+                        <SearchableSelect 
+                            v-model="form.distribution_id"
+                            label="Distribution (Optional)"
+                            :options="assignableDistributions"
+                            option-value="id"
+                            option-label="name"
+                            placeholder="Select a distribution"
+                            :error="form.errors.distribution_id"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Leave empty for a global user (if allowed).</p>
+                    </div>
+
                     <!-- User Details -->
                     <div>
                         <InputLabel value="Full Name" />
@@ -328,19 +364,7 @@ const toggleRole = (roleName) => {
                         <div v-if="form.errors.email" class="text-sm text-red-600 mt-1">{{ form.errors.email }}</div>
                     </div>
 
-                    <!-- Distribution Select -->
-                    <div>
-                        <SearchableSelect 
-                            v-model="form.distribution_id"
-                            label="Distribution (Optional)"
-                            :options="assignableDistributions"
-                            option-value="id"
-                            option-label="name"
-                            placeholder="Select a distribution"
-                            :error="form.errors.distribution_id"
-                        />
-                        <p class="text-xs text-gray-500 mt-1">Leave empty for a global user (if allowed).</p>
-                    </div>
+
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -372,7 +396,7 @@ const toggleRole = (roleName) => {
                         <h3 class="text-sm font-medium text-gray-900 mb-3">Assign Roles</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <label 
-                                v-for="role in roles" 
+                                v-for="role in filteredRoles" 
                                 :key="role.id"
                                 class="flex items-center p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer group"
                                 :class="{'border-indigo-500 bg-indigo-50/50': form.roles.includes(role.name)}"
