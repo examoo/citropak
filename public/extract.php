@@ -58,7 +58,7 @@ echo "\n";
 // Step 3: Run migrations fresh and seed
 echo "🔄 Running migrate:fresh --seed...\n";
 chdir($basePath);
-$migrateOutput = shell_exec('php artisan migrate:fresh --seed --force 2>&1');
+$migrateOutput = shell_exec('php artisan migrate --force 2>&1');
 echo $migrateOutput . "\n";
 
 // Step 4: Clear caches

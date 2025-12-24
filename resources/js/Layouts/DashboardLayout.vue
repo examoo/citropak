@@ -134,7 +134,7 @@ const navigation = [
         children: [
             { name: 'Products', href: 'products.index', permission: 'products.view', icon: 'cube' },
             { name: 'Brands', href: 'brands.index', permission: 'products.view', icon: 'tag' },
-            { name: 'Categories', href: 'categories.index', permission: 'products.view', icon: 'folder' },
+            { name: 'Categories', href: 'product-categories.index', permission: 'products.view', icon: 'folder' },
             { name: 'Types', href: 'product-types.index', permission: 'products.view', icon: 'tag' },
         ]
     },
