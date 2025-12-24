@@ -116,6 +116,7 @@ const navigation = [
             { name: 'Orders', href: 'dashboard', permission: 'orders.view' },
             { name: 'New Order', href: 'dashboard', permission: 'orders.create' },
             { name: 'Order Bookers', href: 'order-bookers.index', icon: 'users', permission: 'order_bookers.view' },
+            { name: 'Set Targets', href: 'order-booker-targets.index', icon: 'target', permission: 'order_bookers.view' },
             { name: 'Customer Sheets', href: 'customer-sheets.index', permission: 'order_bookers.view' },
         ]
     },
@@ -459,6 +460,10 @@ const handleClickOutside = (event) => {
                                 <!-- Calendar Icon (Holidays) -->
                                 <svg v-else-if="child.icon === 'calendar'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <!-- Target Icon (Set Targets) -->
+                                <svg v-else-if="child.icon === 'target'" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                                 <!-- Default Dot for other children -->
                                 <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-slate-400"></div>
