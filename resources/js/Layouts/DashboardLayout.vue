@@ -171,8 +171,9 @@ const navigation = [
         icon: 'invoice',
         permission: 'invoices.view',
         children: [
-            { name: 'Invoices', href: 'dashboard', permission: 'invoices.view' },
-            { name: 'Create Invoice', href: 'dashboard', permission: 'invoices.create' },
+            { name: 'Good Issue Notes', href: 'good-issue-notes.index', icon: 'truck', permission: 'invoices.view' },
+            { name: 'Invoices', href: 'invoices.index', icon: 'invoice', permission: 'invoices.view' },
+            { name: 'Create Invoice', href: 'invoices.create', icon: 'plus', permission: 'invoices.create' },
             { name: 'Schemes', href: 'schemes.index', icon: 'percent', permission: 'invoices.view' },
         ]
     },

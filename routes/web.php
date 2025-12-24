@@ -61,6 +61,21 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('vans', \App\Http\Controllers\VanController::class);
     Route::get('customer-sheets', [\App\Http\Controllers\CustomerSheetController::class, 'index'])->name('customer-sheets.index');
     
+    // Good Issue Notes
+    // Invoices
+    Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
+    Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
+    Route::get('api/customer-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getCustomerByCode'])->name('api.customer-by-code');
+    Route::get('api/product-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getProductByCode'])->name('api.product-by-code');
+    Route::get('api/schemes-for-product/{product}', [\App\Http\Controllers\InvoiceController::class, 'getSchemesForProduct'])->name('api.schemes-for-product');
+    Route::get('api/next-order-date', [\App\Http\Controllers\InvoiceController::class, 'getNextOrderDateApi'])->name('api.next-order-date');
+    
+    // Good Issue Notes
+    Route::post('good-issue-notes/{good_issue_note}/issue', [\App\Http\Controllers\GoodIssueNoteController::class, 'issue'])->name('good-issue-notes.issue');
+    Route::post('good-issue-notes/{good_issue_note}/cancel', [\App\Http\Controllers\GoodIssueNoteController::class, 'cancel'])->name('good-issue-notes.cancel');
+    Route::resource('good-issue-notes', \App\Http\Controllers\GoodIssueNoteController::class);
+    
     // Distribution-Based Modules
     Route::post('distributions/{distribution}/switch', [\App\Http\Controllers\DistributionController::class, 'switch'])->name('distributions.switch');
     Route::resource('distributions', \App\Http\Controllers\DistributionController::class);
