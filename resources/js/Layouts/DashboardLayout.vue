@@ -117,6 +117,7 @@ const navigation = [
             { name: 'New Order', href: 'dashboard', permission: 'orders.create' },
             { name: 'Order Bookers', href: 'order-bookers.index', icon: 'users', permission: 'order_bookers.view' },
             { name: 'Set Targets', href: 'order-booker-targets.index', icon: 'target', permission: 'order_bookers.view' },
+            { name: 'Target Sheets', href: 'target-sheets.index', icon: 'clipboard', permission: 'order_bookers.view' },
             { name: 'Customer Sheets', href: 'customer-sheets.index', permission: 'order_bookers.view' },
         ]
     },

@@ -57,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
     Route::resource('order-bookers', \App\Http\Controllers\OrderBookerController::class);
     Route::resource('order-booker-targets', \App\Http\Controllers\OrderBookerTargetController::class);
+    Route::get('target-sheets', [\App\Http\Controllers\TargetSheetController::class, 'index'])->name('target-sheets.index');
     Route::resource('vans', \App\Http\Controllers\VanController::class);
     Route::get('customer-sheets', [\App\Http\Controllers\CustomerSheetController::class, 'index'])->name('customer-sheets.index');
     
