@@ -32,7 +32,18 @@ if(empty($composerCheck)){
 
 $composerOutput = shell_exec("$composerCmd install --no-dev --optimize-autoloader 2>&1");
 echo $composerOutput . "\n";
+echo $composerOutput . "\n";
 echo "✅ Composer dependencies installed.\n\n";
+
+// Clear bootstrap cache manually
+echo "🧹 Clearing bootstrap cache...\n";
+$files = glob($basePath . 'bootstrap/cache/*.php');
+foreach ($files as $file) {
+    if (is_file($file)) {
+        unlink($file);
+    }
+}
+echo "Bootstrap cache cleared.\n";
 
 // Step 2: Generate App Key if missing
 echo "🔑 Generating application key...\n";
