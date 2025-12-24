@@ -106,8 +106,7 @@ const form = useForm({
     net_consumer_price: 0,
     total_margin: 0,
     unit_price: 0,
-    packing: '',
-    packing_one: '',
+
     reorder_level: '',
     stock_quantity: 0,
 });
@@ -269,8 +268,7 @@ const openModal = (product = null) => {
         form.total_margin = product.total_margin;
         form.unit_price = product.unit_price;
         form.packing_id = product.packing_id;
-        form.packing = product.packing;
-        form.packing_one = product.packing_one;
+
         form.reorder_level = product.reorder_level;
         form.stock_quantity = product.stock_quantity;
     } else {
@@ -716,10 +714,7 @@ const deleteProduct = (product) => {
                                 </button>
                             </div>
                         </div>
-                        <div>
-                            <InputLabel value="Packing (Legacy)" />
-                            <TextInput v-model="form.packing" type="text" class="mt-1 block w-full" placeholder="Legacy string" />
-                        </div>
+
                         <div>
                             <InputLabel value="Reorder Level" />
                             <TextInput v-model="form.reorder_level" type="number" class="mt-1 block w-full" />
