@@ -28,6 +28,10 @@ class ProductRequest extends FormRequest
 
         return [
             'name' => 'required|string|max:255',
+            'category_id' => 'required|exists:product_categories,id',
+            'type_id' => 'required|exists:product_types,id',
+            'brand_id' => 'required|exists:brands,id',
+            'packing_id' => 'nullable|exists:packings,id',
             'dms_code' => 'nullable|string|max:255',
             'brand' => 'nullable|string|max:255',
             'list_price_before_tax' => 'required|numeric|min:0',

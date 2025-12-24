@@ -15,20 +15,22 @@ class CustomerSheetController extends Controller
      */
     public function index(Request $request)
     {
-        $selectedVanName = $request->query('van_name');
+        $selectedVanCode = $request->query('van_name'); // Still using van_name param for backward compat
         
-        $vans = Van::where('status', 'active')->latest()->get();
+        $vans = Van::where('status', 'active')->with('distribution')->latest()->get();
         
         $booker = null;
         $customers = [];
 
-        if ($selectedVanName) {
-            // Find the booker assigned to this VAN
-            $booker = OrderBooker::where('van', $selectedVanName)->where('status', 'active')->first();
+        if ($selectedVanCode) {
+            // Find the booker assigned to this VAN by van_id (Van's id)
+            $van = Van::where('code', $selectedVanCode)->first();
+            if ($van) {
+                $booker = OrderBooker::where('van_id', $van->id)->first();
+            }
             
-            // Find customers assigned to this VAN, grouped by sub_address (Area)
-            // We fetch them sorted by sub_address so the grouping in frontend/backend is cleaner
-            $customers = Customer::where('van', $selectedVanName)
+            // Find customers assigned to this VAN code, grouped by sub_address (Area)
+            $customers = Customer::where('van', $selectedVanCode)
                 ->where('status', 'active')
                 ->orderBy('sub_address')
                 ->orderBy('shop_name')
@@ -38,7 +40,7 @@ class CustomerSheetController extends Controller
 
         return Inertia::render('CustomerSheets/Index', [
             'vans' => $vans,
-            'filters' => ['van_name' => $selectedVanName],
+            'filters' => ['van_name' => $selectedVanCode],
             'booker' => $booker,
             'customers' => $customers
         ]);

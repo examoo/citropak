@@ -1,19 +1,18 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { usePermissions } from '@/Composables/usePermissions.js';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
-import Swal from 'sweetalert2';
-
+import FormModal from '@/Pages/Packings/FormModal.vue';
 import Pagination from '@/Components/Pagination.vue';
+import Swal from 'sweetalert2';
 import { debounce } from 'lodash';
-import { watch } from 'vue';
 
 const props = defineProps({
     products: {
@@ -25,6 +24,10 @@ const props = defineProps({
         default: () => []
     },
     categories: {
+        type: Array,
+        default: () => []
+    },
+    packings: {
         type: Array,
         default: () => []
     },
@@ -84,6 +87,7 @@ const form = useForm({
     brand_id: '',
     category_id: '',
     type_id: '',
+    packing_id: '',
     list_price_before_tax: 0,
     fed_tax_percent: 0,
     fed_sales_tax: 0,
@@ -164,6 +168,7 @@ watch(
 const isBrandModalOpen = ref(false);
 const isCategoryModalOpen = ref(false);
 const isTypeModalOpen = ref(false);
+const isPackingModalOpen = ref(false);
 
 const brandForm = useForm({ name: '', status: 'active' });
 const categoryForm = useForm({ name: '', status: 'active' });
@@ -223,6 +228,18 @@ const submitType = () => {
     });
 };
 
+const handlePackingSaved = () => {
+    // Rely on router reload updating props, then check flash or latest
+    // Since we use FormModal with onSuccess->emit('saved'), the props should be updated (if we preserveState=false or if partial reload happened)
+    // Actually, FormModal does router.post. That reloads the page.
+    const page = usePage();
+    const newId = page.props.flash?.created_packing_id;
+    if (newId) {
+        form.packing_id = newId;
+        Swal.fire({ title: 'Success', text: 'Packing created!', icon: 'success', timer: 1500, showConfirmButton: false });
+    }
+};
+
 const openModal = (product = null) => {
     isEditing.value = !!product;
     editingProductId.value = product?.id;
@@ -251,6 +268,7 @@ const openModal = (product = null) => {
         form.net_consumer_price = product.net_consumer_price;
         form.total_margin = product.total_margin;
         form.unit_price = product.unit_price;
+        form.packing_id = product.packing_id;
         form.packing = product.packing;
         form.packing_one = product.packing_one;
         form.reorder_level = product.reorder_level;
@@ -370,11 +388,23 @@ const deleteProduct = (product) => {
                                 <th @click="handleSort('brand')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Brand {{ getSortIcon('brand') }}
                                 </th>
+                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
+                                    Category
+                                </th>
+                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
+                                    Type
+                                </th>
+                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
+                                    Packing
+                                </th>
                                 <th @click="handleSort('stock_quantity')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Stock {{ getSortIcon('stock_quantity') }}
                                 </th>
                                 <th @click="handleSort('net_consumer_price')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Price {{ getSortIcon('net_consumer_price') }}
+                                </th>
+                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
+                                    Status
                                 </th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -388,7 +418,16 @@ const deleteProduct = (product) => {
                                     {{ product.name }}
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
-                                    <span class="px-2 py-1 bg-gray-100 rounded text-xs">{{ product.brand || 'N/A' }}</span>
+                                    <span class="px-2 py-1 bg-gray-100 rounded text-xs">{{ product.brand?.name || product.brand || 'N/A' }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">{{ product.category?.name || 'N/A' }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">{{ product.product_type?.name || 'N/A' }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    <span class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">{{ product.packing?.name || 'N/A' }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     <span :class="[
@@ -401,6 +440,14 @@ const deleteProduct = (product) => {
                                 </td>
                                 <td class="px-6 py-4 text-gray-900 font-semibold">
                                     {{ product.net_consumer_price }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                    ]">
+                                        {{ product.status }}
+                                    </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -648,11 +695,30 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Packing" />
-                            <TextInput v-model="form.packing" type="text" class="mt-1 block w-full" />
+                            <div class="flex gap-2 mt-1">
+                                <div class="flex-1">
+                                    <SearchableSelect 
+                                        v-model="form.packing_id"
+                                        :options="packings"
+                                        option-value="id"
+                                        option-label="name"
+                                        placeholder="Select Packing"
+                                        :error="form.errors.packing_id"
+                                    />
+                                </div>
+                                <button 
+                                    type="button"
+                                    @click="isPackingModalOpen = true"
+                                    class="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                                    title="Add New Packing"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                </button>
+                            </div>
                         </div>
                         <div>
-                            <InputLabel value="Packing One" />
-                            <TextInput v-model="form.packing_one" type="text" class="mt-1 block w-full" />
+                            <InputLabel value="Packing (Legacy)" />
+                            <TextInput v-model="form.packing" type="text" class="mt-1 block w-full" placeholder="Legacy string" />
                         </div>
                         <div>
                             <InputLabel value="Reorder Level" />
@@ -723,6 +789,8 @@ const deleteProduct = (product) => {
             </div>
         </Modal>
 
+
+
         <!-- Quick-Add Type Modal -->
         <Modal :show="isTypeModalOpen" @close="isTypeModalOpen = false" maxWidth="md">
             <div class="p-6">
@@ -740,5 +808,12 @@ const deleteProduct = (product) => {
                 </form>
             </div>
         </Modal>
+
+        <!-- Packing Modal -->
+        <FormModal 
+            :show="isPackingModalOpen" 
+            @close="isPackingModalOpen = false" 
+            @saved="handlePackingSaved"
+        />
     </DashboardLayout>
 </template>

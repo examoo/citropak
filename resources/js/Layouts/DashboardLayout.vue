@@ -142,6 +142,7 @@ const navigation = [
             { name: 'Brands', href: 'brands.index', permission: 'products.view', icon: 'tag' },
             { name: 'Categories', href: 'product-categories.index', permission: 'products.view', icon: 'folder' },
             { name: 'Types', href: 'product-types.index', permission: 'products.view', icon: 'tag' },
+            { name: 'Packings', href: 'packings.index', permission: 'products.view', icon: 'cube' },
         ]
     },
     { 

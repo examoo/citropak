@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('products', ProductController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);
+    Route::resource('packings', \App\Http\Controllers\PackingController::class);
     Route::resource('discount-schemes', \App\Http\Controllers\DiscountSchemeController::class);
     Route::resource('stocks', \App\Http\Controllers\StockController::class);
     Route::post('stocks/{stock}/adjust', [\App\Http\Controllers\StockController::class, 'adjust'])->name('stocks.adjust');

@@ -23,6 +23,7 @@ class ProductController extends Controller
             'brands' => \App\Models\Brand::where('status', 'active')->get(['id', 'name']),
             'categories' => \App\Models\ProductCategory::where('status', 'active')->get(['id', 'name']),
             'types' => \App\Models\ProductType::all(['id', 'name']),
+            'packings' => \App\Models\Packing::where('status', 'active')->get(['id', 'name']),
             'filters' => $filters,
         ]);
     }

@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 
@@ -34,7 +35,7 @@ const form = useForm({
     status: 'active',
     atl: true,
     adv_tax_percent: '0.00',
-    distribution_id: null
+    distribution_id: ''
 });
 
 // Reset form when modal opens/closes or channel changes
@@ -45,13 +46,13 @@ watch(() => props.show, (newValue) => {
             form.status = props.channel.status;
             form.atl = props.channel.atl;
             form.adv_tax_percent = props.channel.adv_tax_percent || '0.00';
-            form.distribution_id = props.channel.distribution_id;
+            form.distribution_id = props.channel.distribution_id || '';
         } else {
             form.reset();
             form.status = 'active';
             form.atl = true;
             form.adv_tax_percent = '0.00';
-            form.distribution_id = currentDistribution.value?.id || null;
+            form.distribution_id = currentDistribution.value?.id || '';
         }
     }
 });
@@ -105,17 +106,15 @@ const submit = () => {
             <form @submit.prevent="submit" class="space-y-4">
                 <!-- Distribution Select (Only if Global View and Creating) -->
                 <div v-if="!currentDistribution?.id && !isEditing">
-                    <InputLabel value="Distribution (Optional)" />
-                    <select 
+                    <SearchableSelect 
                         v-model="form.distribution_id"
-                        class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                    >
-                        <option :value="null">Global (All Distributions)</option>
-                        <option v-for="dist in distributions" :key="dist.id" :value="dist.id">
-                            {{ dist.name }} ({{ dist.code }})
-                        </option>
-                    </select>
-                    <div v-if="form.errors.distribution_id" class="text-xs text-red-600 mt-1">{{ form.errors.distribution_id }}</div>
+                        label="Distribution (Optional)"
+                        :options="distributions"
+                        option-value="id"
+                        option-label="name"
+                        placeholder="Global (All Distributions)"
+                        :error="form.errors.distribution_id"
+                    />
                 </div>
 
                 <div>

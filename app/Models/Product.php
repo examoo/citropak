@@ -22,6 +22,7 @@ class Product extends Model
         'brand_id',
         'category_id',
         'type_id',
+        'packing_id',
         'list_price_before_tax',
         'fed_tax_percent',
         'fed_sales_tax',
@@ -40,8 +41,6 @@ class Product extends Model
         'net_consumer_price',
         'total_margin',
         'unit_price',
-        'packing',
-        'packing_one',
         'reorder_level',
         'stock_quantity',
         'sku',
@@ -52,6 +51,8 @@ class Product extends Model
         'brand',
         'category',
         'type',
+        'packing',
+        'packing_one',
     ];
 
     /**
@@ -68,6 +69,14 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    /**
+     * Get the packing for this product.
+     */
+    public function packing(): BelongsTo
+    {
+        return $this->belongsTo(Packing::class);
     }
 
     /**

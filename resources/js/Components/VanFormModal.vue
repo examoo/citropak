@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { useForm, usePage, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 
@@ -32,7 +33,7 @@ const isEditing = computed(() => !!props.van);
 const form = useForm({
     code: '',
     status: 'active',
-    distribution_id: null
+    distribution_id: ''
 });
 
 // Reset form when modal opens/closes or van changes
@@ -41,11 +42,11 @@ watch(() => props.show, (newValue) => {
         if (props.van) {
             form.code = props.van.code;
             form.status = props.van.status;
-            form.distribution_id = props.van.distribution_id;
+            form.distribution_id = props.van.distribution_id || '';
         } else {
             form.reset();
             form.status = 'active';
-            form.distribution_id = currentDistribution.value?.id || null;
+            form.distribution_id = currentDistribution.value?.id || '';
         }
     }
 });
@@ -65,6 +66,12 @@ const validateForm = () => {
         isValid = false;
     }
 
+    // Require distribution if in global view
+    if (!currentDistribution.value?.id && !form.distribution_id) {
+        form.setError('distribution_id', 'Please select a distribution.');
+        isValid = false;
+    }
+
     return isValid;
 };
 
@@ -73,6 +80,8 @@ const submit = () => {
 
     if (isEditing.value) {
         form.put(route('vans.update', props.van.id), {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 emit('saved', form.code);
                 closeModal();
@@ -80,6 +89,8 @@ const submit = () => {
         });
     } else {
         form.post(route('vans.store'), {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
                 emit('saved', form.code);
                 closeModal();
@@ -99,18 +110,16 @@ const submit = () => {
             <form @submit.prevent="submit" class="space-y-4">
                 <!-- Distribution Select (Only if Global View and Creating) -->
                 <div v-if="!currentDistribution?.id && !isEditing">
-                    <InputLabel value="Distribution" />
-                    <select 
+                    <SearchableSelect 
                         v-model="form.distribution_id"
-                        class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        label="Distribution"
+                        :options="distributions"
+                        option-value="id"
+                        option-label="name"
+                        placeholder="Select a distribution"
+                        :error="form.errors.distribution_id"
                         required
-                    >
-                        <option :value="null" disabled>Select Distribution</option>
-                        <option v-for="dist in distributions" :key="dist.id" :value="dist.id">
-                            {{ dist.name }} ({{ dist.code }})
-                        </option>
-                    </select>
-                    <div v-if="form.errors.distribution_id" class="text-xs text-red-600 mt-1">{{ form.errors.distribution_id }}</div>
+                    />
                 </div>
 
                 <div>

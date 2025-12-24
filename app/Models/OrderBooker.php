@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Traits\BaseTenantModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -17,9 +18,18 @@ class OrderBooker extends Model
 
     protected $fillable = [
         'distribution_id',
+        'van_id',
         'code',
         'name',
     ];
+
+    /**
+     * Get the van for this order booker.
+     */
+    public function van(): BelongsTo
+    {
+        return $this->belongsTo(Van::class);
+    }
 
     /**
      * Get invoices for this order booker.

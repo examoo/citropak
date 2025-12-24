@@ -1,13 +1,27 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 
 const props = defineProps({
     vans: Array,
     filters: Object,
     booker: Object,
     customers: Object // Grouped by sub_address
+});
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
+
+// Format vans to show distribution name only if All Distributions is selected
+const vanOptions = computed(() => {
+    return props.vans.map(van => ({
+        ...van,
+        displayLabel: !currentDistribution.value?.id && van.distribution 
+            ? `${van.code} (${van.distribution.name})` 
+            : van.code
+    }));
 });
 
 const selectedVan = ref(props.filters.van_name || '');
@@ -18,6 +32,11 @@ watch(selectedVan, (value) => {
         preserveScroll: true,
         replace: true
     });
+});
+
+// Find the selected van object
+const selectedVanObject = computed(() => {
+    return props.vans.find(v => v.code === selectedVan.value);
 });
 
 const printSheet = () => {
@@ -60,16 +79,16 @@ const printSheet = () => {
 
             <!-- Filter Controls -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select VAN</label>
-                <select 
-                    v-model="selectedVan" 
-                    class="block w-full md:w-1/3 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                >
-                    <option value="">Select a VAN to view sheet</option>
-                    <option v-for="van in vans" :key="van.id" :value="van.name">
-                        {{ van.name }}
-                    </option>
-                </select>
+                <div class="w-full md:w-1/3">
+                    <SearchableSelect 
+                        v-model="selectedVan"
+                        label="Select VAN"
+                        :options="vanOptions"
+                        option-value="code"
+                        option-label="displayLabel"
+                        placeholder="Select a VAN to view sheet"
+                    />
+                </div>
             </div>
         </div>
 
@@ -78,7 +97,9 @@ const printSheet = () => {
             
             <!-- Report Header -->
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 uppercase">CPS DISTRIBUTION</h1>
+                <h1 class="text-3xl font-bold text-gray-900 uppercase">
+                    {{ selectedVanObject?.distribution?.name || 'CPS DISTRIBUTION' }}
+                </h1>
                 <h2 class="text-xl font-semibold text-gray-700 mt-2">OrderBooker Shops</h2>
                 <div class="mt-4 text-lg">
                     <span class="font-bold">Orderbooker Name:</span> {{ booker?.name || 'Not Assigned' }}

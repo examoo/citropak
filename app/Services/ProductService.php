@@ -12,7 +12,7 @@ class ProductService
      */
     public function getAll($filters = [])
     {
-        $query = Product::query();
+        $query = Product::query()->with(['brand', 'category', 'productType', 'packing']);
 
         // Search
         if (!empty($filters['search'])) {

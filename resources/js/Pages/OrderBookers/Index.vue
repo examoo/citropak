@@ -1,6 +1,6 @@
 <script setup>
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -8,25 +8,54 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
-import { ref, watch } from 'vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
+import VanFormModal from '@/Components/VanFormModal.vue';
+import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
 const props = defineProps({
     bookers: Object,
+    distributions: Array,
     vans: Array,
     filters: Object
 });
+
+const page = usePage();
+const currentDistribution = computed(() => page.props.currentDistribution);
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const search = ref(props.filters.search || '');
+const isVanModalOpen = ref(false);
+const pendingVanCode = ref(null);
+
+// Watch for vans list changes to auto-select newly added van
+watch(() => props.vans, (newVans) => {
+    if (pendingVanCode.value && newVans) {
+        const newVan = newVans.find(v => v.code === pendingVanCode.value);
+        if (newVan) {
+            form.van_id = newVan.id;
+            pendingVanCode.value = null;
+        }
+    }
+}, { deep: true });
 
 const form = useForm({
     name: '',
-    ob_code: '',
-    van: '',
-    status: 'active'
+    code: '',
+    van_id: '',
+    distribution_id: '',
+});
+
+// Format vans to show distribution name only if All Distributions is selected
+const vanOptions = computed(() => {
+    return props.vans.map(van => ({
+        ...van,
+        displayLabel: !currentDistribution.value?.id && van.distribution 
+            ? `${van.code} (${van.distribution.name})` 
+            : van.code
+    }));
 });
 
 // Search Watcher
@@ -44,74 +73,21 @@ const openModal = (item = null) => {
     
     if (item) {
         form.name = item.name;
-        form.ob_code = item.ob_code;
-        form.van = item.van;
-        form.status = item.status;
+        form.code = item.code;
+        form.van_id = item.van_id || '';
+        form.distribution_id = item.distribution_id;
     } else {
         form.reset();
-        form.status = 'active';
+        // Auto-select distribution if a specific distribution is selected
+        if (currentDistribution.value && currentDistribution.value.id) {
+            form.distribution_id = currentDistribution.value.id;
+        } else {
+            form.distribution_id = '';
+        }
+        form.van_id = '';
     }
     
     isModalOpen.value = true;
-};
-
-// Quick Add VAN Logic
-const quickAddVan = async () => {
-    const openDialog = document.querySelector('dialog[open]');
-    
-    const { value: newValue } = await Swal.fire({
-        title: 'Add New VAN',
-        input: 'text',
-        inputLabel: 'VAN Name',
-        inputPlaceholder: 'Enter VAN Name',
-        showCancelButton: true,
-        target: openDialog || 'body',
-        customClass: {
-            container: 'z-[9999]' 
-        },
-        inputValidator: (value) => {
-            if (!value) {
-                return 'You need to write something!'
-            }
-        }
-    });
-
-    if (newValue) {
-        router.post(route('vans.store'), {
-            name: newValue,
-            status: 'active'
-        }, {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                 Swal.fire({
-                    title: 'Success', 
-                    text: 'VAN added successfully', 
-                    icon: 'success',
-                    target: openDialog || 'body',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                form.van = newValue; // Auto select by name
-                // To update the list we might need a partial reload or just trust that Inertia reload handles it.
-                // Since we preserveState, the prop 'vans' might not update automatically unless we specifically ask for it
-                // OR since we are just adding to validity, for the dropdown to show it, the 'vans' prop needs to refresh.
-                // The router.post will trigger a visit. If we used preserveState: true, Inertia keeps existing props.
-                // However, the response from store usually redirects back.
-                // Let's rely on standard Inertia behavior. If it doesn't update, I'll remove preserveState or manually push to vans array.
-                // Actually, preserveState: true keeps the form state (like name, ob_code entered so far), which is good.
-                // usage of 'only' in reload might be needed or just let it reload all props.
-            },
-            onError: () => {
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Failed to add VAN',
-                    icon: 'error',
-                    target: openDialog || 'body'
-                });
-            }
-        });
-    }
 };
 
 const closeModal = () => {
@@ -128,12 +104,13 @@ const validateForm = () => {
         form.setError('name', 'The name field is required.');
         isValid = false;
     }
-    if (!form.ob_code) {
-        form.setError('ob_code', 'The OB Code field is required.');
+    if (!form.code) {
+        form.setError('code', 'The Code field is required.');
         isValid = false;
     }
-    if (!form.van) {
-        form.setError('van', 'The VAN field is required.');
+    // Only validate distribution if the user is in "All Distributions" view
+    if (!currentDistribution.value?.id && !form.distribution_id) {
+        form.setError('distribution_id', 'The Distribution field is required.');
         isValid = false;
     }
 
@@ -152,6 +129,11 @@ const submit = () => {
             onSuccess: () => closeModal(),
         });
     }
+};
+
+const handleVanSaved = (vanCode) => {
+    // Store pending van code to auto-select after page refresh
+    pendingVanCode.value = vanCode;
 };
 
 const deleteBooker = (item) => {
@@ -223,22 +205,17 @@ const deleteBooker = (item) => {
                                 <th class="px-6 py-4">OB Name</th>
                                 <th class="px-6 py-4">OB Code</th>
                                 <th class="px-6 py-4">VAN</th>
-                                <th class="px-6 py-4">Status</th>
+                                <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in bookers.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
-                                <td class="px-6 py-4 text-gray-500">{{ item.ob_code }}</td>
-                                <td class="px-6 py-4 text-gray-500">{{ item.van }}</td>
-                                <td class="px-6 py-4">
-                                    <span :class="[
-                                        'px-2 py-1 rounded-full text-xs font-medium',
-                                        item.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
-                                    ]">
-                                        {{ item.status.toUpperCase() }}
-                                    </span>
+                                <td class="px-6 py-4 text-gray-500">{{ item.code }}</td>
+                                <td class="px-6 py-4 text-gray-500">{{ item.van?.code || '-' }}</td>
+                                <td v-if="!currentDistribution?.id" class="px-6 py-4 text-gray-500">
+                                    {{ item.distribution?.name || 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -260,7 +237,7 @@ const deleteBooker = (item) => {
                                 </td>
                             </tr>
                             <tr v-if="bookers.data.length === 0">
-                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">No Order Bookers found.</td>
+                                <td :colspan="!currentDistribution?.id ? 5 : 4" class="px-6 py-12 text-center text-gray-500">No Order Bookers found.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -280,6 +257,20 @@ const deleteBooker = (item) => {
                 </h2>
 
                 <form @submit.prevent="submit" class="space-y-4">
+                    <!-- Distribution Select (Only when "All Distributions" is selected) -->
+                    <div v-if="!currentDistribution?.id">
+                        <SearchableSelect 
+                            v-model="form.distribution_id"
+                            label="Distribution"
+                            :options="distributions"
+                            option-value="id"
+                            option-label="name"
+                            placeholder="Select a distribution"
+                            :error="form.errors.distribution_id"
+                            required
+                        />
+                    </div>
+
                     <div>
                         <InputLabel value="OB Name" />
                         <TextInput 
@@ -294,43 +285,32 @@ const deleteBooker = (item) => {
                     <div>
                         <InputLabel value="OB Code" />
                         <TextInput 
-                            v-model="form.ob_code" 
+                            v-model="form.code" 
                             type="text" 
                             class="mt-1 block w-full" 
-                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.ob_code }"
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.code }"
                         />
-                         <div v-if="form.errors.ob_code" class="text-xs text-red-600 mt-1">{{ form.errors.ob_code }}</div>
+                         <div v-if="form.errors.code" class="text-xs text-red-600 mt-1">{{ form.errors.code }}</div>
                     </div>
 
+                    <!-- VAN Select -->
                     <div>
                         <InputLabel value="VAN" />
-                        <div class="flex gap-2">
-                            <select 
-                                v-model="form.van" 
-                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.van }"
-                            >
-                                <option value="">Select VAN</option>
-                                <option v-for="van in vans" :key="van.id" :value="van.name">
-                                    {{ van.name }}
-                                </option>
-                            </select>
-                            <button type="button" @click="quickAddVan" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1">
+                                <SearchableSelect 
+                                    v-model="form.van_id"
+                                    :options="vanOptions"
+                                    option-value="id"
+                                    option-label="displayLabel"
+                                    placeholder="Select VAN"
+                                    :error="form.errors.van_id"
+                                />
+                            </div>
+                            <button type="button" @click="isVanModalOpen = true" class="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                             </button>
                         </div>
-                         <div v-if="form.errors.van" class="text-xs text-red-600 mt-1">{{ form.errors.van }}</div>
-                    </div>
-
-                    <div>
-                        <InputLabel value="Status" />
-                        <select 
-                            v-model="form.status" 
-                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
                     </div>
 
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
@@ -345,5 +325,13 @@ const deleteBooker = (item) => {
                 </form>
             </div>
         </Modal>
+
+        <!-- VAN Form Modal -->
+        <VanFormModal 
+            :show="isVanModalOpen"
+            :distributions="distributions"
+            @close="isVanModalOpen = false"
+            @saved="handleVanSaved"
+        />
     </DashboardLayout>
 </template>
