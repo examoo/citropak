@@ -84,29 +84,81 @@ const form = useForm({
     brand_id: '',
     category_id: '',
     type_id: '',
-    list_price_before_tax: '',
-    fed_tax_percent: '',
-    fed_sales_tax: '',
-    net_list_price: '',
-    distribution_margin: '',
-    distribution_manager_percent: '',
-    trade_price_before_tax: '',
-    fed_2: '',
-    sales_tax_3: '',
-    net_trade_price: '',
-    retailer_margin: '',
-    retailer_margin_4: '',
-    consumer_price_before_tax: '',
-    fed_5: '',
-    sales_tax_6: '',
-    net_consumer_price: '',
-    total_margin: '',
-    unit_price: '',
+    list_price_before_tax: 0,
+    fed_tax_percent: 0,
+    fed_sales_tax: 0,
+    net_list_price: 0,
+    distribution_margin: 0,
+    distribution_manager_percent: 0,
+    trade_price_before_tax: 0,
+    fed_2: 0,
+    sales_tax_3: 0,
+    net_trade_price: 0,
+    retailer_margin: 0,
+    retailer_margin_4: 0,
+    consumer_price_before_tax: 0,
+    fed_5: 0,
+    sales_tax_6: 0,
+    net_consumer_price: 0,
+    total_margin: 0,
+    unit_price: 0,
     packing: '',
     packing_one: '',
     reorder_level: '',
     stock_quantity: 0,
 });
+
+// Helper to parse number safely
+const num = (val) => parseFloat(val) || 0;
+
+// Auto-calculate prices when fields change
+const calculatePrices = () => {
+    // Step 1: Calculate FED Sales Tax and Net List Price
+    const listPrice = num(form.list_price_before_tax);
+    const fedPercent = num(form.fed_tax_percent);
+    form.fed_sales_tax = (listPrice * fedPercent / 100).toFixed(2);
+    form.net_list_price = (listPrice + num(form.fed_sales_tax)).toFixed(2);
+
+    // Step 2: Calculate Trade Price Before Tax (List Price - Distribution Margin)
+    const distMargin = num(form.distribution_margin);
+    form.trade_price_before_tax = (num(form.net_list_price) - distMargin).toFixed(2);
+
+    // Step 3: Calculate Net Trade Price
+    form.net_trade_price = (num(form.trade_price_before_tax) + num(form.fed_2) + num(form.sales_tax_3)).toFixed(2);
+
+    // Step 4: Calculate Consumer Price Before Tax (Trade + Retailer Margin)
+    const retailerMargin = num(form.retailer_margin);
+    form.consumer_price_before_tax = (num(form.net_trade_price) + retailerMargin).toFixed(2);
+
+    // Step 5: Calculate Net Consumer Price
+    form.net_consumer_price = (num(form.consumer_price_before_tax) + num(form.fed_5) + num(form.sales_tax_6)).toFixed(2);
+
+    // Step 6: Calculate Total Margin
+    form.total_margin = (num(form.net_consumer_price) - listPrice).toFixed(2);
+
+    // Step 7: Unit Price = Net Consumer Price
+    form.unit_price = form.net_consumer_price;
+};
+
+// Watch for changes on input fields and recalculate
+watch(
+    () => [
+        form.list_price_before_tax,
+        form.fed_tax_percent,
+        form.distribution_margin,
+        form.distribution_manager_percent,
+        form.fed_2,
+        form.sales_tax_3,
+        form.retailer_margin,
+        form.retailer_margin_4,
+        form.fed_5,
+        form.sales_tax_6,
+    ],
+    () => {
+        calculatePrices();
+    },
+    { deep: true }
+);
 
 // Quick-add modal states
 const isBrandModalOpen = ref(false);

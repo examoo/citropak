@@ -139,6 +139,12 @@ const navigation = [
         ]
     },
     { 
+        name: 'Discount Schemes', 
+        icon: 'discount', 
+        href: 'discount-schemes.index',
+        permission: 'products.view',
+    },
+    { 
         name: 'Customer Management', 
         icon: 'customer', 
         permission: 'customers.view',
