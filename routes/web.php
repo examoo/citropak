@@ -35,6 +35,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);
     Route::resource('discount-schemes', \App\Http\Controllers\DiscountSchemeController::class);
+    Route::resource('stocks', \App\Http\Controllers\StockController::class);
+    Route::post('stocks/{stock}/adjust', [\App\Http\Controllers\StockController::class, 'adjust'])->name('stocks.adjust');
+    Route::resource('stock-ins', \App\Http\Controllers\StockInController::class);
+    Route::post('stock-ins/{stockIn}/post', [\App\Http\Controllers\StockInController::class, 'post'])->name('stock-ins.post');
     Route::get('customers/template', [CustomerController::class, 'downloadTemplate'])->name('customers.template');
     Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::resource('customers', CustomerController::class);

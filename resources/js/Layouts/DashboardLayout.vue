@@ -124,6 +124,8 @@ const navigation = [
         icon: 'stock',
         permission: 'stock.view',
         children: [
+            { name: 'Stocks', href: 'stocks.index', permission: 'stock.view', icon: 'cube' },
+            { name: 'Stock In', href: 'stock-ins.index', permission: 'stock.view', icon: 'plus' },
             { name: 'Inventory', href: 'dashboard', permission: 'stock.view' },
         ]
     },
