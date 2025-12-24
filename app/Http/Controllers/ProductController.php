@@ -20,7 +20,9 @@ class ProductController extends Controller
 
         return Inertia::render('Products/Index', [
             'products' => $this->service->getAll($filters),
-            'types' => \App\Models\ProductType::all(),
+            'brands' => \App\Models\Brand::where('status', 'active')->get(['id', 'name']),
+            'categories' => \App\Models\ProductCategory::where('status', 'active')->get(['id', 'name']),
+            'types' => \App\Models\ProductType::all(['id', 'name']),
             'filters' => $filters,
         ]);
     }

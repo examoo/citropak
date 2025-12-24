@@ -27,7 +27,7 @@ class BrandController extends Controller
 
         $this->service->create($validated);
 
-        return redirect()->route('brands.index')
+        return redirect()->back()
             ->with('success', 'Brand created successfully.');
     }
 

@@ -17,12 +17,41 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     protected $fillable = [
+        'dms_code',
+        'name',
         'brand_id',
         'category_id',
-        'name',
+        'type_id',
+        'list_price_before_tax',
+        'fed_tax_percent',
+        'fed_sales_tax',
+        'net_list_price',
+        'distribution_margin',
+        'distribution_manager_percent',
+        'trade_price_before_tax',
+        'fed_2',
+        'sales_tax_3',
+        'net_trade_price',
+        'retailer_margin',
+        'retailer_margin_4',
+        'consumer_price_before_tax',
+        'fed_5',
+        'sales_tax_6',
+        'net_consumer_price',
+        'total_margin',
+        'unit_price',
+        'packing',
+        'packing_one',
+        'reorder_level',
+        'stock_quantity',
         'sku',
-        'unit',
+        'description',
+        'price',
         'status',
+        // Legacy string columns (kept for backward compatibility)
+        'brand',
+        'category',
+        'type',
     ];
 
     /**
@@ -38,7 +67,15 @@ class Product extends Model
      */
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    /**
+     * Get the type for this product.
+     */
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class, 'type_id');
     }
 
     /**

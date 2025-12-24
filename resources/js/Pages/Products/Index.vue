@@ -8,6 +8,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import Swal from 'sweetalert2';
 
 import Pagination from '@/Components/Pagination.vue';
@@ -16,12 +17,19 @@ import { watch } from 'vue';
 
 const props = defineProps({
     products: {
-        type: Object, // Changed from Array to Object (Paginated)
+        type: Object,
         required: true
+    },
+    brands: {
+        type: Array,
+        default: () => []
+    },
+    categories: {
+        type: Array,
+        default: () => []
     },
     types: {
         type: Array,
-        required: false,
         default: () => []
     },
     filters: {
@@ -70,63 +78,12 @@ const getSortIcon = (field) => {
 };
 
 
-// ... existing code ...
-
-const quickCreateType = async () => {
-    // Attempt to find the open dialog to attach SweetAlert to it (for top-layer correctness)
-    const openDialog = document.querySelector('dialog[open]');
-    
-    const { value: typeName } = await Swal.fire({
-        title: 'Add New Product Type',
-        input: 'text',
-        inputLabel: 'Type Name',
-        inputPlaceholder: 'e.g. Raw Material',
-        showCancelButton: true,
-        target: openDialog || 'body', // Attach to dialog if open to ensure it's interactive
-        customClass: {
-            container: 'z-[9999]' // Force high z-index just in case
-        },
-        inputValidator: (value) => {
-            if (!value) {
-                return 'You need to write something!'
-            }
-        }
-    });
-
-    if (typeName) {
-        router.post(route('product-types.store'), {
-            name: typeName
-        }, {
-            preserveScroll: true,
-            preserveState: true, // Keep the modal open and form data intact
-            onSuccess: () => {
-                Swal.fire({
-                    title: 'Success', 
-                    text: 'Type created successfully', 
-                    icon: 'success',
-                    target: openDialog || 'body',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                // Auto-select the newly created type
-                form.type = typeName;
-            },
-            onError: (errors) => {
-                Swal.fire({
-                    title: 'Error',
-                    text: Object.values(errors)[0] || 'Failed to create type',
-                    icon: 'error',
-                    target: openDialog || 'body'
-                });
-            }
-        });
-    }
-};
-
 const form = useForm({
     dms_code: '',
     name: '',
-    brand: '',
+    brand_id: '',
+    category_id: '',
+    type_id: '',
     list_price_before_tax: '',
     fed_tax_percent: '',
     fed_sales_tax: '',
@@ -148,9 +105,71 @@ const form = useForm({
     packing: '',
     packing_one: '',
     reorder_level: '',
-    type: '',
     stock_quantity: 0,
 });
+
+// Quick-add modal states
+const isBrandModalOpen = ref(false);
+const isCategoryModalOpen = ref(false);
+const isTypeModalOpen = ref(false);
+
+const brandForm = useForm({ name: '', status: 'active' });
+const categoryForm = useForm({ name: '', status: 'active' });
+const typeForm = useForm({ name: '' });
+
+const submitBrand = () => {
+    const newName = brandForm.name;
+    brandForm.post(route('brands.store'), {
+        preserveScroll: true,
+        preserveState: true, // Keep Products modal open
+        onSuccess: (page) => {
+            isBrandModalOpen.value = false;
+            brandForm.reset();
+            // Find the newly created brand and auto-select it
+            const newBrand = page.props.brands?.find(b => b.name === newName);
+            if (newBrand) {
+                form.brand_id = newBrand.id;
+            }
+            Swal.fire({ title: 'Success', text: 'Brand created!', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+};
+
+const submitCategory = () => {
+    const newName = categoryForm.name;
+    categoryForm.post(route('product-categories.store'), {
+        preserveScroll: true,
+        preserveState: true, // Keep Products modal open
+        onSuccess: (page) => {
+            isCategoryModalOpen.value = false;
+            categoryForm.reset();
+            // Find the newly created category and auto-select it
+            const newCategory = page.props.categories?.find(c => c.name === newName);
+            if (newCategory) {
+                form.category_id = newCategory.id;
+            }
+            Swal.fire({ title: 'Success', text: 'Category created!', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+};
+
+const submitType = () => {
+    const newName = typeForm.name;
+    typeForm.post(route('product-types.store'), {
+        preserveScroll: true,
+        preserveState: true, // Keep Products modal open
+        onSuccess: (page) => {
+            isTypeModalOpen.value = false;
+            typeForm.reset();
+            // Find the newly created type and auto-select it
+            const newType = page.props.types?.find(t => t.name === newName);
+            if (newType) {
+                form.type_id = newType.id;
+            }
+            Swal.fire({ title: 'Success', text: 'Type created!', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+    });
+};
 
 const openModal = (product = null) => {
     isEditing.value = !!product;
@@ -159,7 +178,9 @@ const openModal = (product = null) => {
     if (product) {
         form.dms_code = product.dms_code;
         form.name = product.name;
-        form.brand = product.brand;
+        form.brand_id = product.brand_id;
+        form.category_id = product.category_id;
+        form.type_id = product.type_id;
         form.list_price_before_tax = product.list_price_before_tax;
         form.fed_tax_percent = product.fed_tax_percent;
         form.fed_sales_tax = product.fed_sales_tax;
@@ -181,7 +202,6 @@ const openModal = (product = null) => {
         form.packing = product.packing;
         form.packing_one = product.packing_one;
         form.reorder_level = product.reorder_level;
-        form.type = product.type;
         form.stock_quantity = product.stock_quantity;
     } else {
         form.reset();
@@ -385,10 +405,10 @@ const deleteProduct = (product) => {
                 </h2>
 
                 <form @submit.prevent="submit" class="space-y-4 h-[70vh] overflow-y-auto pr-2">
-                    <!-- Row 1 -->
+                    <!-- Row 1: Basic Info -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="CodeDMS_CODE" />
+                            <InputLabel value="DMS Code" />
                             <TextInput v-model="form.dms_code" type="text" class="mt-1 block w-full" />
                             <div v-if="form.errors.dms_code" class="text-xs text-red-600 mt-1">{{ form.errors.dms_code }}</div>
                         </div>
@@ -399,11 +419,84 @@ const deleteProduct = (product) => {
                         </div>
                         <div>
                             <InputLabel value="Brand" />
-                            <TextInput v-model="form.brand" type="text" class="mt-1 block w-full" />
+                            <div class="flex gap-2 mt-1">
+                                <div class="flex-1">
+                                    <SearchableSelect 
+                                        v-model="form.brand_id"
+                                        :options="brands"
+                                        option-value="id"
+                                        option-label="name"
+                                        placeholder="Select Brand"
+                                        :error="form.errors.brand_id"
+                                    />
+                                </div>
+                                <button 
+                                    type="button"
+                                    @click="isBrandModalOpen = true"
+                                    class="p-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition-colors"
+                                    title="Add New Brand"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Row 2 -->
+                    <!-- Row 2: Category & Type -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <InputLabel value="Category" />
+                            <div class="flex gap-2 mt-1">
+                                <div class="flex-1">
+                                    <SearchableSelect 
+                                        v-model="form.category_id"
+                                        :options="categories"
+                                        option-value="id"
+                                        option-label="name"
+                                        placeholder="Select Category"
+                                        :error="form.errors.category_id"
+                                    />
+                                </div>
+                                <button 
+                                    type="button"
+                                    @click="isCategoryModalOpen = true"
+                                    class="p-2.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-colors"
+                                    title="Add New Category"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel value="Type" />
+                            <div class="flex gap-2 mt-1">
+                                <div class="flex-1">
+                                    <SearchableSelect 
+                                        v-model="form.type_id"
+                                        :options="types"
+                                        option-value="id"
+                                        option-label="name"
+                                        placeholder="Select Type"
+                                        :error="form.errors.type_id"
+                                    />
+                                </div>
+                                <button 
+                                    type="button"
+                                    @click="isTypeModalOpen = true"
+                                    class="p-2.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
+                                    title="Add New Type"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel value="Current Stock" />
+                            <TextInput v-model="form.stock_quantity" type="number" class="mt-1 block w-full" />
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Pricing -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="List Price (Before Tax)" />
@@ -515,39 +608,6 @@ const deleteProduct = (product) => {
                         </div>
                     </div>
 
-                    <!-- Row 9 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <InputLabel value="Type" />
-                            <div class="flex gap-2">
-                                <select 
-                                    v-model="form.type" 
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
-                                    <option value="">Select Type</option>
-                                    <option v-for="type in types" :key="type.id" :value="type.name">
-                                        {{ type.name }}
-                                    </option>
-                                </select>
-                                <button 
-                                    type="button"
-                                    @click="quickCreateType"
-                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
-                                    title="Add New Type"
-                                >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <InputLabel value="Current Stock" />
-                            <TextInput v-model="form.stock_quantity" type="number" class="mt-1 block w-full" />
-                        </div>
-                        <!-- Empty 3rd column filler if needed, or remove grid rule to let it flow -->
-                    </div>
-
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
                         <PrimaryButton 
@@ -556,6 +616,74 @@ const deleteProduct = (product) => {
                         >
                             {{ form.processing ? 'Saving...' : (isEditing ? 'Update Product' : 'Create Product') }}
                         </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <!-- Quick-Add Brand Modal -->
+        <Modal :show="isBrandModalOpen" @close="isBrandModalOpen = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Add New Brand</h2>
+                <form @submit.prevent="submitBrand" class="space-y-4">
+                    <div>
+                        <InputLabel value="Brand Name" />
+                        <TextInput v-model="brandForm.name" type="text" class="mt-1 block w-full" :class="{ 'border-red-500': brandForm.errors.name }" />
+                        <div v-if="brandForm.errors.name" class="text-xs text-red-600 mt-1">{{ brandForm.errors.name }}</div>
+                    </div>
+                    <div>
+                        <InputLabel value="Status" />
+                        <select v-model="brandForm.status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                        <SecondaryButton @click="isBrandModalOpen = false">Cancel</SecondaryButton>
+                        <PrimaryButton :disabled="brandForm.processing" class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">{{ brandForm.processing ? 'Saving...' : 'Create Brand' }}</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <!-- Quick-Add Category Modal -->
+        <Modal :show="isCategoryModalOpen" @close="isCategoryModalOpen = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Add New Product Category</h2>
+                <form @submit.prevent="submitCategory" class="space-y-4">
+                    <div>
+                        <InputLabel value="Category Name" />
+                        <TextInput v-model="categoryForm.name" type="text" class="mt-1 block w-full" :class="{ 'border-red-500': categoryForm.errors.name }" />
+                        <div v-if="categoryForm.errors.name" class="text-xs text-red-600 mt-1">{{ categoryForm.errors.name }}</div>
+                    </div>
+                    <div>
+                        <InputLabel value="Status" />
+                        <select v-model="categoryForm.status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                        <SecondaryButton @click="isCategoryModalOpen = false">Cancel</SecondaryButton>
+                        <PrimaryButton :disabled="categoryForm.processing" class="bg-gradient-to-r from-orange-600 to-amber-600 border-0">{{ categoryForm.processing ? 'Saving...' : 'Create Category' }}</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <!-- Quick-Add Type Modal -->
+        <Modal :show="isTypeModalOpen" @close="isTypeModalOpen = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Add New Product Type</h2>
+                <form @submit.prevent="submitType" class="space-y-4">
+                    <div>
+                        <InputLabel value="Type Name" />
+                        <TextInput v-model="typeForm.name" type="text" class="mt-1 block w-full" :class="{ 'border-red-500': typeForm.errors.name }" />
+                        <div v-if="typeForm.errors.name" class="text-xs text-red-600 mt-1">{{ typeForm.errors.name }}</div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                        <SecondaryButton @click="isTypeModalOpen = false">Cancel</SecondaryButton>
+                        <PrimaryButton :disabled="typeForm.processing" class="bg-gradient-to-r from-purple-600 to-indigo-600 border-0">{{ typeForm.processing ? 'Saving...' : 'Create Type' }}</PrimaryButton>
                     </div>
                 </form>
             </div>
