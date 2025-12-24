@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('type'); // van, category, channel, distribution, sub_address
             $table->string('value');
+            $table->string('atl')->default('active');
+            $table->decimal('adv_tax_percent', 5, 2)->default(0.00);
             $table->timestamps();
         });
     }

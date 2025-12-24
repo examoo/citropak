@@ -11,10 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('customer_attributes', function (Blueprint $table) {
-            $table->string('atl')->default('active')->after('value'); // active, inactive
-            $table->decimal('adv_tax_percent', 5, 2)->default(0.00)->after('atl');
-        });
+        if (Schema::hasTable('customer_attributes')) {
+            Schema::table('customer_attributes', function (Blueprint $table) {
+                if (!Schema::hasColumn('customer_attributes', 'atl')) {
+                    $table->string('atl')->default('active')->after('value'); // active, inactive
+                }
+                if (!Schema::hasColumn('customer_attributes', 'adv_tax_percent')) {
+                    $table->decimal('adv_tax_percent', 5, 2)->default(0.00)->after('atl');
+                }
+            });
+        }
     }
 
     /**
