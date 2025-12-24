@@ -22,9 +22,13 @@ return new class extends Migration
             $table->string('category')->nullable();
             $table->string('channel')->nullable();
             $table->string('ntn_number')->nullable();
+            $table->string('cnic')->nullable();
+            $table->string('sales_tax_number')->nullable();
             $table->string('distribution')->nullable();
+            $table->string('day')->nullable();
             $table->string('status')->default('active');
             $table->decimal('adv_tax_percent', 5, 2)->default(0.00);
+            $table->decimal('percentage', 5, 2)->default(0.00);
             $table->timestamps();
         });
     }
