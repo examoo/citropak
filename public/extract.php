@@ -39,16 +39,16 @@ echo "🔑 Generating application key...\n";
 echo shell_exec('php artisan key:generate --force 2>&1');
 echo "\n";
 
-// Step 3: Run migrations
-echo "🔄 Running migrations...\n";
-chdir($basePath);
-$migrateOutput = shell_exec('php artisan migrate --force 2>&1');
-echo $migrateOutput . "\n";
+// Step 2: Publish Assets
+echo "� Publishing assets...\n";
+echo shell_exec('php artisan vendor:publish --tag=laravel-assets --force 2>&1');
+echo "\n";
 
-// Step 3: Run seeders
-echo "🌱 Running database seeders...\n";
-$seedOutput = shell_exec('php artisan db:seed --force 2>&1');
-echo $seedOutput . "\n";
+// Step 3: Run migrations fresh and seed
+echo "🔄 Running migrate:fresh --seed...\n";
+chdir($basePath);
+$migrateOutput = shell_exec('php artisan migrate:fresh --seed --force 2>&1');
+echo $migrateOutput . "\n";
 
 // Step 4: Clear caches
 echo "🧹 Clearing caches...\n";
