@@ -39,6 +39,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('stocks/{stock}/adjust', [\App\Http\Controllers\StockController::class, 'adjust'])->name('stocks.adjust');
     Route::resource('stock-ins', \App\Http\Controllers\StockInController::class);
     Route::post('stock-ins/{stockIn}/post', [\App\Http\Controllers\StockInController::class, 'post'])->name('stock-ins.post');
+    Route::post('opening-stocks/convert-from-stocks', [\App\Http\Controllers\OpeningStockController::class, 'convertFromStocks'])->name('opening-stocks.convert');
+    Route::resource('opening-stocks', \App\Http\Controllers\OpeningStockController::class);
+    Route::post('opening-stocks/{openingStock}/post', [\App\Http\Controllers\OpeningStockController::class, 'post'])->name('opening-stocks.post');
+    Route::post('closing-stocks/convert-from-stocks', [\App\Http\Controllers\ClosingStockController::class, 'convertFromStocks'])->name('closing-stocks.convert');
+    Route::resource('closing-stocks', \App\Http\Controllers\ClosingStockController::class);
+    Route::post('closing-stocks/{closingStock}/post', [\App\Http\Controllers\ClosingStockController::class, 'post'])->name('closing-stocks.post');
+    Route::post('closing-stocks/{closingStock}/revert', [\App\Http\Controllers\ClosingStockController::class, 'revert'])->name('closing-stocks.revert');
+    Route::resource('stock-reports', \App\Http\Controllers\StockReportController::class)->only(['index']);
+    Route::resource('low-stock-reports', \App\Http\Controllers\LowStockReportController::class)->only(['index']);
+    Route::resource('stock-outs', \App\Http\Controllers\StockOutController::class);
+    Route::post('stock-outs/{stockOut}/post', [\App\Http\Controllers\StockOutController::class, 'post'])->name('stock-outs.post');
     Route::get('customers/template', [CustomerController::class, 'downloadTemplate'])->name('customers.template');
     Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::resource('customers', CustomerController::class);

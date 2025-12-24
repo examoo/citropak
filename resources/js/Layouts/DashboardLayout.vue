@@ -124,9 +124,13 @@ const navigation = [
         icon: 'stock',
         permission: 'stock.view',
         children: [
-            { name: 'Stocks', href: 'stocks.index', permission: 'stock.view', icon: 'cube' },
+            { name: 'Opening Stocks', href: 'opening-stocks.index', permission: 'stock.view', icon: 'archive' },
+            { name: 'Closing Stocks', href: 'closing-stocks.index', permission: 'stock.view', icon: 'archive' },
             { name: 'Stock In', href: 'stock-ins.index', permission: 'stock.view', icon: 'plus' },
-            { name: 'Inventory', href: 'dashboard', permission: 'stock.view' },
+            { name: 'Stock Out', href: 'stock-outs.index', permission: 'stock.view', icon: 'minus' },
+            { name: 'Stocks', href: 'stocks.index', permission: 'stock.view', icon: 'cube' },
+            { name: 'Stock Report', href: 'stock-reports.index', permission: 'stock.view', icon: 'clipboard' },
+            { name: 'Low Stock Report', href: 'low-stock-reports.index', permission: 'stock.view', icon: 'clipboard' },
         ]
     },
     { 
@@ -175,7 +179,7 @@ const navigation = [
         permission: 'reports.view',
         children: [
             { name: 'Sales Report', href: 'dashboard', permission: 'reports.view' },
-            { name: 'Stock Report', href: 'dashboard', permission: 'reports.view' },
+            { name: 'Stock Report', href: 'stock-reports.index', permission: 'reports.view' },
         ]
     },
     { 
@@ -338,6 +342,10 @@ const handleClickOutside = (event) => {
                         <!-- Calendar Icon (Holidays) -->
                         <svg v-else-if="item.icon === 'calendar'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <!-- Discount Icon -->
+                        <svg v-else-if="item.icon === 'discount'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M17 17h.01M7 17L17 7M10 7a3 3 0 11-6 0 3 3 0 016 0zM20 17a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name }}</span>
                     </Link>

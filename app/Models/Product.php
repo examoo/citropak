@@ -93,4 +93,12 @@ class Product extends Model
     {
         return $query->where('status', 'active');
     }
+
+    /**
+     * Get all stocks for this product.
+     */
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(Stock::class);
+    }
 }
