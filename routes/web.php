@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::resource('roles', RoleController::class);
     Route::resource('users', UserController::class);
+    Route::get('products/template', [ProductController::class, 'downloadTemplate'])->name('products.template');
+    Route::post('products/import', [ProductController::class, 'import'])->name('products.import');
     Route::resource('products', ProductController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);

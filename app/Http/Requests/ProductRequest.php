@@ -27,39 +27,22 @@ class ProductRequest extends FormRequest
         }
 
         return [
-            'name' => 'required|string|max:255',
-            'category_id' => 'required|exists:product_categories,id',
-            'type_id' => 'required|exists:product_types,id',
-            'brand_id' => 'required|exists:brands,id',
-            'packing_id' => 'nullable|exists:packings,id',
-            'dms_code' => 'nullable|string|max:255',
-            'brand' => 'nullable|string|max:255',
-            'list_price_before_tax' => 'required|numeric|min:0',
-            'fed_tax_percent' => 'required|numeric|min:0',
-            'fed_sales_tax' => 'required|numeric|min:0',
-            'net_list_price' => 'required|numeric|min:0',
-            'distribution_margin' => 'nullable|numeric|min:0',
-            'distribution_manager_percent' => 'nullable|numeric|min:0',
-            'trade_price_before_tax' => 'required|numeric|min:0',
-            'fed_2' => 'nullable|numeric|min:0',
-            'sales_tax_3' => 'nullable|numeric|min:0',
-            'net_trade_price' => 'required|numeric|min:0',
-            'retailer_margin' => 'nullable|numeric|min:0',
-            'retailer_margin_4' => 'nullable|numeric|min:0',
-            'consumer_price_before_tax' => 'required|numeric|min:0',
-            'fed_5' => 'nullable|numeric|min:0',
-            'sales_tax_6' => 'nullable|numeric|min:0',
-            'net_consumer_price' => 'required|numeric|min:0',
-            'total_margin' => 'nullable|numeric|min:0',
-            'unit_price' => 'required|numeric|min:0',
-            'packing' => 'nullable|string|max:255',
-            'packing_one' => 'nullable|string|max:255',
-            'reorder_level' => 'nullable|integer|min:0',
-            'type' => 'nullable|string|max:255',
-            'stock_quantity' => 'nullable|integer|min:0',
-            'sku' => 'nullable|string|max:50|unique:products,sku,' . $id,
-            'description' => 'nullable|string',
-            'category' => 'nullable|string|max:100',
+            'dms_code' => 'nullable|string|max:255',               // Code
+            'name' => 'required|string|max:255',                   // Product Name
+            'brand_id' => 'required|exists:brands,id',             // Brand
+            'type_id' => 'required|exists:product_types,id',       // Types
+            'packing_id' => 'nullable|exists:packings,id',         // Packing
+            'sku' => 'nullable|string|max:50|unique:products,sku,' . $id, // SKU
+            'list_price_before_tax' => 'required|numeric|min:0',   // Exclusive Value
+            'retail_margin' => 'nullable|numeric|min:0',           // Retail Margin %
+            'tp_rate' => 'nullable|numeric|min:0',                 // T.P Rate
+            'distribution_margin' => 'nullable|numeric|min:0',     // Distribution Margin %
+            'invoice_price' => 'nullable|numeric|min:0',           // Invoice Price
+            'fed_sales_tax' => 'nullable|numeric|min:0',           // Sale Tax %
+            'fed_percent' => 'nullable|numeric|min:0',             // Fed %
+            'unit_price' => 'required|numeric|min:0',              // Unit Price (Final)
+            'reorder_level' => 'nullable|integer|min:0',           // Reorder Level
+            'pieces_per_packing' => 'nullable|integer|min:1',      // Per Packing Piece
         ];
     }
 }

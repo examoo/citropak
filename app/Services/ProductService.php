@@ -12,7 +12,7 @@ class ProductService
      */
     public function getAll($filters = [])
     {
-        $query = Product::query()->with(['brand', 'category', 'productType', 'packing']);
+        $query = Product::query()->with(['brand', 'productType', 'packing']);
 
         // Search
         if (!empty($filters['search'])) {
@@ -20,13 +20,15 @@ class ProductService
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('dms_code', 'like', "%{$search}%")
-                  ->orWhere('brand', 'like', "%{$search}%");
+                  ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
         // Filter by Type
         if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            $query->whereHas('productType', function($q) use ($filters) {
+                $q->where('name', $filters['type']);
+            });
         }
 
         // Sort
@@ -34,7 +36,7 @@ class ProductService
         $sortDirection = $filters['sort_direction'] ?? 'desc';
         
         // Whitelist sort fields to prevent SQL injection or errors
-        $allowedSorts = ['name', 'dms_code', 'brand', 'net_consumer_price', 'stock_quantity', 'created_at'];
+        $allowedSorts = ['name', 'dms_code', 'list_price_before_tax', 'unit_price', 'created_at', 'tp_rate'];
         if (in_array($sortField, $allowedSorts)) {
             $query->orderBy($sortField, $sortDirection);
         } else {

@@ -21,9 +21,8 @@ class ProductController extends Controller
         return Inertia::render('Products/Index', [
             'products' => $this->service->getAll($filters),
             'brands' => \App\Models\Brand::where('status', 'active')->get(['id', 'name']),
-            'categories' => \App\Models\ProductCategory::where('status', 'active')->get(['id', 'name']),
             'types' => \App\Models\ProductType::all(['id', 'name']),
-            'packings' => \App\Models\Packing::where('status', 'active')->get(['id', 'name']),
+            'packings' => \App\Models\Packing::where('status', 'active')->get(['id', 'name', 'conversion']),
             'filters' => $filters,
         ]);
     }
@@ -36,12 +35,7 @@ class ProductController extends Controller
      */
     public function store(\App\Http\Requests\ProductRequest $request)
     {
-        $validated = $request->validated();
-        
-        // Ensure defaults
-        $validated['price'] = $validated['unit_price'] ?? 0;
-
-        $this->service->create($validated);
+        $this->service->create($request->validated());
 
         return redirect()->back()->with('success', 'Product created successfully.');
     }
@@ -51,12 +45,7 @@ class ProductController extends Controller
      */
     public function update(\App\Http\Requests\ProductRequest $request, int $id)
     {
-        $validated = $request->validated();
-        
-        // Ensure defaults
-        $validated['price'] = $validated['unit_price'] ?? 0;
-
-        $this->service->update($id, $validated);
+        $this->service->update($id, $request->validated());
 
         return redirect()->back()->with('success', 'Product updated successfully.');
     }
@@ -69,5 +58,21 @@ class ProductController extends Controller
         $this->service->delete($id);
 
         return redirect()->back()->with('success', 'Product deleted successfully.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv',
+        ]);
+
+        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\ProductsImport, $request->file('file'));
+
+        return redirect()->back()->with('success', 'Products imported successfully.');
+    }
+
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ProductsTemplateExport, 'products_template.xlsx');
     }
 }

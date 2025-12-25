@@ -23,10 +23,6 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
-    categories: {
-        type: Array,
-        default: () => []
-    },
     packings: {
         type: Array,
         default: () => []
@@ -76,112 +72,189 @@ const handleSort = (field) => {
 };
 
 const getSortIcon = (field) => {
-    if (sortField.value !== field) return '↕'; // Default neutral sort icon
+    if (sortField.value !== field) return '↕';
     return sortDirection.value === 'asc' ? '↑' : '↓';
 };
-
 
 const form = useForm({
     dms_code: '',
     name: '',
     brand_id: '',
-    category_id: '',
     type_id: '',
     packing_id: '',
-    list_price_before_tax: 0,
-    fed_tax_percent: 0,
-    fed_sales_tax: 0,
-    net_list_price: 0,
-    distribution_margin: 0,
-    distribution_manager_percent: 0,
-    trade_price_before_tax: 0,
-    fed_2: 0,
-    sales_tax_3: 0,
-    net_trade_price: 0,
-    retailer_margin: 0,
-    retailer_margin_4: 0,
-    consumer_price_before_tax: 0,
-    fed_5: 0,
-    sales_tax_6: 0,
-    net_consumer_price: 0,
-    total_margin: 0,
-    unit_price: 0,
-
-    reorder_level: '',
-    stock_quantity: 0,
+    sku: '',
+    list_price_before_tax: 0,  // Exclusive Value (Base Price)
+    retail_margin: 0,          // Retail Margin %
+    tp_rate: 0,                // T.P Rate (calculated)
+    distribution_margin: 0,    // Distribution Margin %
+    invoice_price: 0,          // Invoice Price (calculated)
+    fed_sales_tax: 0,          // Sale Tax %
+    fed_percent: 0,            // FED %
+    unit_price: 0,             // Unit Price (Final)
+    reorder_level: 0,
+    pieces_per_packing: 1,
 });
 
-// Helper to parse number safely
+// Auto-fill pieces_per_packing when packing is selected (uses conversion from packing)
+watch(() => form.packing_id, (newPackingId) => {
+    if (newPackingId) {
+        const selectedPacking = props.packings.find(p => p.id === newPackingId);
+        if (selectedPacking && selectedPacking.conversion) {
+            form.pieces_per_packing = selectedPacking.conversion;
+        }
+    }
+});
+
+// Helper to parse number safely with high precision
 const num = (val) => parseFloat(val) || 0;
 
-// Auto-calculate prices when fields change
-const calculatePrices = () => {
-    // Step 1: Calculate FED Sales Tax and Net List Price
-    const listPrice = num(form.list_price_before_tax);
-    const fedPercent = num(form.fed_tax_percent);
-    form.fed_sales_tax = (listPrice * fedPercent / 100).toFixed(2);
-    form.net_list_price = (listPrice + num(form.fed_sales_tax)).toFixed(2);
+// Flag to prevent infinite loops during calculations
+let isCalculating = false;
 
-    // Step 2: Calculate Trade Price Before Tax (List Price - Distribution Margin)
-    const distMargin = num(form.distribution_margin);
-    form.trade_price_before_tax = (num(form.net_list_price) - distMargin).toFixed(2);
+/**
+ * ERP/DMS Pricing Formula (Excel Style)
+ * 
+ * Forward Calculation (when Exclusive Value is entered):
+ *   TP Rate = Exclusive Value × (1 + RetailMargin)
+ *   Invoice Price = TP Rate ÷ (1 + DistributionMargin)
+ *   Unit Price = Invoice Price × (1 + SalesTax + FED)
+ * 
+ * Reverse Calculation (when Unit Price is entered):
+ *   Invoice Price = Unit Price ÷ (1 + SalesTax + FED)
+ *   TP Rate = Invoice Price × (1 + DistributionMargin)
+ *   Exclusive Value = TP Rate ÷ (1 + RetailMargin)
+ */
 
-    // Step 3: Calculate Net Trade Price
-    form.net_trade_price = (num(form.trade_price_before_tax) + num(form.fed_2) + num(form.sales_tax_3)).toFixed(2);
+// Forward calculation: Exclusive Value (Base Price) → Unit Price
+const calculateForward = () => {
+    if (isCalculating) return;
+    isCalculating = true;
+    
+    const basePrice = num(form.list_price_before_tax);
+    const retailerMargin = num(form.retail_margin) / 100;
+    const distMargin = num(form.distribution_margin) / 100;
+    const salesTax = num(form.fed_sales_tax) / 100;
+    const fed = num(form.fed_percent) / 100;
+    
+    // Step 1: Base Price + FED %
+    const priceAfterFed = basePrice * (1 + fed);
+    
+    // Step 2: (Base Price + FED) + Sale Tax % = Unit Price
+    const unitPrice = priceAfterFed * (1 + salesTax);
 
-    // Step 4: Calculate Consumer Price Before Tax (Trade + Retailer Margin)
-    const retailerMargin = num(form.retailer_margin);
-    form.consumer_price_before_tax = (num(form.net_trade_price) + retailerMargin).toFixed(2);
+    // Derived Fields Logic (Markup Logic from Unit Price)
+    // "TP Rate on Retail and Unit Price" -> Unit Price is TP + Margin
+    // So TP Rate = Unit Price / (1 + Retail Margin)
+    // Verification: 100 / 1.118971 = ~89.36 (Matches user request)
+    const tpRate = unitPrice / (1 + retailerMargin);
+    
+    // Invoice Price (Distributor Price)
+    // Invoice Price is TP Rate / (1 + Dist Margin)
+    const invoicePrice = tpRate / (1 + distMargin);
 
-    // Step 5: Calculate Net Consumer Price
-    form.net_consumer_price = (num(form.consumer_price_before_tax) + num(form.fed_5) + num(form.sales_tax_6)).toFixed(2);
-
-    // Step 6: Calculate Total Margin
-    form.total_margin = (num(form.net_consumer_price) - listPrice).toFixed(2);
-
-    // Step 7: Unit Price = Net Consumer Price
-    form.unit_price = form.net_consumer_price;
+    // Update all calculated fields
+    form.tp_rate = tpRate.toFixed(4);
+    form.invoice_price = invoicePrice.toFixed(4);
+    form.unit_price = unitPrice.toFixed(2);
+    
+    isCalculating = false;
 };
 
-// Watch for changes on input fields and recalculate
+// Reverse calculation: Unit Price → Exclusive Value (Base Price)
+const calculateReverse = () => {
+    if (isCalculating) return;
+    isCalculating = true;
+    
+    const unitPrice = num(form.unit_price);
+    const retailerMargin = num(form.retail_margin) / 100;
+    const distMargin = num(form.distribution_margin) / 100;
+    const salesTax = num(form.fed_sales_tax) / 100;
+    const fed = num(form.fed_percent) / 100;
+    
+    // Step 1: Remove Sale Tax
+    const priceAfterFed = unitPrice / (1 + salesTax);
+    
+    // Step 2: Remove FED
+    const basePrice = priceAfterFed / (1 + fed);
+    
+    // Derived Fields Logic
+    // Same as above
+    const tpRate = unitPrice / (1 + retailerMargin);
+    const invoicePrice = tpRate / (1 + distMargin);
+    
+    // Update all calculated fields
+    form.list_price_before_tax = basePrice.toFixed(8); 
+    form.tp_rate = tpRate.toFixed(4);
+    form.invoice_price = invoicePrice.toFixed(4);
+    
+    isCalculating = false;
+};
+
+// Track which field was last edited for calculation direction
+const lastEditedField = ref('exclusive'); // 'exclusive' or 'unit'
+
+// Watch Exclusive Value (List Price) changes - Forward calculation
+watch(
+    () => form.list_price_before_tax,
+    () => {
+        if (!isCalculating) {
+            lastEditedField.value = 'exclusive';
+            calculateForward();
+        }
+    }
+);
+
+// Watch Unit Price changes - Reverse calculation
+watch(
+    () => form.unit_price,
+    () => {
+        if (!isCalculating && lastEditedField.value === 'unit') {
+            calculateReverse();
+        }
+    }
+);
+
+// Watch margin/tax changes - recalculate based on last edited field
 watch(
     () => [
-        form.list_price_before_tax,
-        form.fed_tax_percent,
+        form.retail_margin,
         form.distribution_margin,
-        form.distribution_manager_percent,
-        form.fed_2,
-        form.sales_tax_3,
-        form.retailer_margin,
-        form.retailer_margin_4,
-        form.fed_5,
-        form.sales_tax_6,
+        form.fed_sales_tax,
+        form.fed_percent,
     ],
     () => {
-        calculatePrices();
+        if (!isCalculating) {
+            if (lastEditedField.value === 'unit') {
+                calculateReverse();
+            } else {
+                calculateForward();
+            }
+        }
     },
     { deep: true }
 );
 
+// Handler for Unit Price manual input
+const onUnitPriceInput = () => {
+    lastEditedField.value = 'unit';
+};
+
 // Quick-add modal states
 const isBrandModalOpen = ref(false);
-const isCategoryModalOpen = ref(false);
 const isTypeModalOpen = ref(false);
 const isPackingModalOpen = ref(false);
 
 const brandForm = useForm({ name: '', status: 'active' });
-const categoryForm = useForm({ name: '', status: 'active' });
 const typeForm = useForm({ name: '' });
 
 const submitBrand = () => {
     const newName = brandForm.name;
     brandForm.post(route('brands.store'), {
         preserveScroll: true,
-        preserveState: true, // Keep Products modal open
+        preserveState: true,
         onSuccess: (page) => {
             isBrandModalOpen.value = false;
             brandForm.reset();
-            // Find the newly created brand and auto-select it
             const newBrand = page.props.brands?.find(b => b.name === newName);
             if (newBrand) {
                 form.brand_id = newBrand.id;
@@ -191,33 +264,14 @@ const submitBrand = () => {
     });
 };
 
-const submitCategory = () => {
-    const newName = categoryForm.name;
-    categoryForm.post(route('product-categories.store'), {
-        preserveScroll: true,
-        preserveState: true, // Keep Products modal open
-        onSuccess: (page) => {
-            isCategoryModalOpen.value = false;
-            categoryForm.reset();
-            // Find the newly created category and auto-select it
-            const newCategory = page.props.categories?.find(c => c.name === newName);
-            if (newCategory) {
-                form.category_id = newCategory.id;
-            }
-            Swal.fire({ title: 'Success', text: 'Category created!', icon: 'success', timer: 1500, showConfirmButton: false });
-        }
-    });
-};
-
 const submitType = () => {
     const newName = typeForm.name;
     typeForm.post(route('product-types.store'), {
         preserveScroll: true,
-        preserveState: true, // Keep Products modal open
+        preserveState: true,
         onSuccess: (page) => {
             isTypeModalOpen.value = false;
             typeForm.reset();
-            // Find the newly created type and auto-select it
             const newType = page.props.types?.find(t => t.name === newName);
             if (newType) {
                 form.type_id = newType.id;
@@ -228,9 +282,6 @@ const submitType = () => {
 };
 
 const handlePackingSaved = () => {
-    // Rely on router reload updating props, then check flash or latest
-    // Since we use FormModal with onSuccess->emit('saved'), the props should be updated (if we preserveState=false or if partial reload happened)
-    // Actually, FormModal does router.post. That reloads the page.
     const page = usePage();
     const newId = page.props.flash?.created_packing_id;
     if (newId) {
@@ -239,42 +290,70 @@ const handlePackingSaved = () => {
     }
 };
 
+
+
+const isImportModalOpen = ref(false);
+const importProcessing = ref(false);
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+};
+
+const closeImportModal = () => {
+    isImportModalOpen.value = false;
+};
+
+const handleImport = () => {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput?.files[0];
+    
+    if (!file) {
+        Swal.fire({ title: 'Error', text: 'Please select a file to import.', icon: 'error' });
+        return;
+    }
+
+    importProcessing.value = true;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    router.post(route('products.import'), formData, {
+        onSuccess: () => {
+             importProcessing.value = false;
+             closeImportModal();
+             Swal.fire({ title: 'Success', text: 'Products imported successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
+             if(fileInput) fileInput.value = '';
+        },
+        onError: () => {
+             importProcessing.value = false;
+             Swal.fire({ title: 'Error', text: 'Import failed. Please check the file format.', icon: 'error' });
+        }
+    });
+};
+
 const openModal = (product = null) => {
     isEditing.value = !!product;
     editingProductId.value = product?.id;
     
     if (product) {
-        form.dms_code = product.dms_code;
-        form.name = product.name;
-        form.brand_id = product.brand_id;
-        form.category_id = product.category_id;
-        form.type_id = product.type_id;
-        form.list_price_before_tax = product.list_price_before_tax;
-        form.fed_tax_percent = product.fed_tax_percent;
-        form.fed_sales_tax = product.fed_sales_tax;
-        form.net_list_price = product.net_list_price;
-        form.distribution_margin = product.distribution_margin;
-        form.distribution_manager_percent = product.distribution_manager_percent;
-        form.trade_price_before_tax = product.trade_price_before_tax;
-        form.fed_2 = product.fed_2;
-        form.sales_tax_3 = product.sales_tax_3;
-        form.net_trade_price = product.net_trade_price;
-        form.retailer_margin = product.retailer_margin;
-        form.retailer_margin_4 = product.retailer_margin_4;
-        form.consumer_price_before_tax = product.consumer_price_before_tax;
-        form.fed_5 = product.fed_5;
-        form.sales_tax_6 = product.sales_tax_6;
-        form.net_consumer_price = product.net_consumer_price;
-        form.total_margin = product.total_margin;
-        form.unit_price = product.unit_price;
-        form.packing_id = product.packing_id;
-
-        form.reorder_level = product.reorder_level;
-        form.stock_quantity = product.stock_quantity;
+        form.dms_code = product.dms_code || '';
+        form.name = product.name || '';
+        form.brand_id = product.brand_id || '';
+        form.type_id = product.type_id || '';
+        form.packing_id = product.packing_id || '';
+        form.sku = product.sku || '';
+        form.list_price_before_tax = product.list_price_before_tax || 0;
+        form.retail_margin = product.retail_margin || 0;
+        form.tp_rate = product.tp_rate || 0;
+        form.distribution_margin = product.distribution_margin || 0;
+        form.invoice_price = product.invoice_price || 0;
+        form.fed_sales_tax = product.fed_sales_tax || 0;
+        form.fed_percent = product.fed_percent || 0;
+        form.unit_price = product.unit_price || 0;
+        form.reorder_level = product.reorder_level || 0;
+        form.pieces_per_packing = product.pieces_per_packing || 1;
     } else {
         form.reset();
-        // Set defaults to 0.00 equivalent strings if needed, or let placeholder handle it
-        form.stock_quantity = 0;
+        form.pieces_per_packing = 1;
     }
     
     isModalOpen.value = true;
@@ -335,9 +414,8 @@ const deleteProduct = (product) => {
                     <h1 class="text-2xl font-bold text-gray-900">Products</h1>
                     <p class="text-gray-500 mt-1">Manage your product inventory</p>
                 </div>
-                <!-- Check explicit permissions -->
                 <div class="flex items-center gap-3">
-                     <!-- Search Bar -->
+                    <!-- Search Bar -->
                     <div class="relative">
                         <input 
                             v-model="search"
@@ -360,6 +438,15 @@ const deleteProduct = (product) => {
                     </select>
 
                     <button 
+                        @click="openImportModal()"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 rounded-xl font-medium border border-gray-200 hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5"
+                    >
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import
+                    </button>
+                    <button 
                         @click="openModal()"
                         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
                     >
@@ -371,6 +458,57 @@ const deleteProduct = (product) => {
                 </div>
             </div>
 
+            <!-- Import Modal -->
+            <Modal :show="isImportModalOpen" @close="closeImportModal" maxWidth="md">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">
+                        Import Products
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                        Please use the reference template for importing products.
+                                    </p>
+                                    <a :href="route('products.template')" class="mt-2 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500">
+                                        Download Template
+                                        <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Excel File</label>
+                            <input 
+                                type="file" 
+                                id="import-file"
+                                accept=".xlsx,.csv"
+                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <SecondaryButton @click="closeImportModal">
+                            Cancel
+                        </SecondaryButton>
+                        <PrimaryButton @click="handleImport" :disabled="importProcessing" :class="{ 'opacity-25': importProcessing }">
+                            {{ importProcessing ? 'Importing...' : 'Import Products' }}
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             <!-- Products Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="overflow-x-auto">
@@ -381,71 +519,80 @@ const deleteProduct = (product) => {
                                     Code {{ getSortIcon('dms_code') }}
                                 </th>
                                 <th @click="handleSort('name')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
-                                    Name {{ getSortIcon('name') }}
+                                    Product Name {{ getSortIcon('name') }}
                                 </th>
-                                <th @click="handleSort('brand')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
-                                    Brand {{ getSortIcon('brand') }}
+                                <th class="px-6 py-4">Brand</th>
+                                <th @click="handleSort('list_price_before_tax')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                    Exclusive Value {{ getSortIcon('list_price_before_tax') }}
                                 </th>
-                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
-                                    Category
+                                <th class="px-6 py-4">SKU</th>
+                                <th class="px-6 py-4">Retail %</th>
+                                <th @click="handleSort('tp_rate')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                    T.P Rate {{ getSortIcon('tp_rate') }}
                                 </th>
-                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
-                                    Type
+                                <th class="px-6 py-4">Dist. %</th>
+                                <th class="px-6 py-4">Invoice Price</th>
+                                <th class="px-6 py-4">Sale Tax %</th>
+                                <th class="px-6 py-4">FED %</th>
+                                <th class="px-6 py-4">Types</th>
+                                <th class="px-6 py-4">Reorder Level</th>
+                                <th @click="handleSort('unit_price')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                    Unit Price {{ getSortIcon('unit_price') }}
                                 </th>
-                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
-                                    Packing
-                                </th>
-                                <th @click="handleSort('stock_quantity')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
-                                    Stock {{ getSortIcon('stock_quantity') }}
-                                </th>
-                                <th @click="handleSort('net_consumer_price')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
-                                    Price {{ getSortIcon('net_consumer_price') }}
-                                </th>
-                                <th class="px-6 py-4 text-gray-500 font-medium tracking-wider">
-                                    Status
-                                </th>
+                                <th class="px-6 py-4">Packing</th>
+                                <th class="px-6 py-4">Pcs/Packing</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="product in products.data" :key="product.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4 font-medium text-gray-900">
-                                    {{ product.dms_code }}
+                                    {{ product.dms_code || '-' }}
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">
                                     {{ product.name }}
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
-                                    <span class="px-2 py-1 bg-gray-100 rounded text-xs">{{ product.brand?.name || product.brand || 'N/A' }}</span>
+                                    <span class="px-2 py-1 bg-gray-100 rounded text-xs">{{ product.brand?.name || 'N/A' }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-gray-900 font-semibold">
+                                    {{ product.list_price_before_tax || 0 }}
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
-                                    <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">{{ product.category?.name || 'N/A' }}</span>
+                                    {{ product.sku || '-' }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ product.retail_margin || 0 }}%
+                                </td>
+                                <td class="px-6 py-4 text-gray-700 font-medium">
+                                    {{ product.tp_rate || 0 }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ product.distribution_margin || 0 }}%
+                                </td>
+                                <td class="px-6 py-4 text-gray-700 font-medium">
+                                    {{ product.invoice_price || 0 }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ product.fed_sales_tax || 0 }}%
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ product.fed_percent || 0 }}%
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">{{ product.product_type?.name || 'N/A' }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
+                                    {{ product.reorder_level || 0 }}
+                                </td>
+                                <td class="px-6 py-4 text-emerald-700 font-bold">
+                                    {{ product.unit_price || 0 }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
                                     <span class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs">{{ product.packing?.name || 'N/A' }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
-                                    <span :class="[
-                                        'px-2 py-1 rounded-full text-xs font-medium',
-                                        product.stock_quantity > 10 ? 'bg-emerald-100 text-emerald-700' : 
-                                        product.stock_quantity > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                                    ]">
-                                        {{ product.stock_quantity || 0 }} units
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-gray-900 font-semibold">
-                                    {{ product.net_consumer_price }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span :class="[
-                                        'px-2 py-1 rounded-full text-xs font-medium',
-                                        product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                    ]">
-                                        {{ product.status }}
-                                    </span>
+                                    {{ product.pieces_per_packing || 1 }}
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -471,7 +618,7 @@ const deleteProduct = (product) => {
                                 </td>
                             </tr>
                             <tr v-if="products.data.length === 0">
-                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="14" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center gap-3">
                                         <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                                             <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -501,11 +648,11 @@ const deleteProduct = (product) => {
                     {{ isEditing ? 'Edit Product' : 'Add New Product' }}
                 </h2>
 
-                <form @submit.prevent="submit" class="space-y-4 h-[70vh] overflow-y-auto pr-2">
-                    <!-- Row 1: Basic Info -->
+                <form @submit.prevent="submit" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                    <!-- Row 1: Code, Product Name, SKU -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="DMS Code" />
+                            <InputLabel value="Code" />
                             <TextInput v-model="form.dms_code" type="text" class="mt-1 block w-full" />
                             <div v-if="form.errors.dms_code" class="text-xs text-red-600 mt-1">{{ form.errors.dms_code }}</div>
                         </div>
@@ -514,6 +661,15 @@ const deleteProduct = (product) => {
                             <TextInput v-model="form.name" type="text" class="mt-1 block w-full" required />
                             <div v-if="form.errors.name" class="text-xs text-red-600 mt-1">{{ form.errors.name }}</div>
                         </div>
+                        <div>
+                            <InputLabel value="SKU" />
+                            <TextInput v-model="form.sku" type="text" class="mt-1 block w-full" />
+                            <div v-if="form.errors.sku" class="text-xs text-red-600 mt-1">{{ form.errors.sku }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Brand, Types -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Brand" />
                             <div class="flex gap-2 mt-1">
@@ -537,35 +693,8 @@ const deleteProduct = (product) => {
                                 </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Row 2: Category & Type -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="Category" />
-                            <div class="flex gap-2 mt-1">
-                                <div class="flex-1">
-                                    <SearchableSelect 
-                                        v-model="form.category_id"
-                                        :options="categories"
-                                        option-value="id"
-                                        option-label="name"
-                                        placeholder="Select Category"
-                                        :error="form.errors.category_id"
-                                    />
-                                </div>
-                                <button 
-                                    type="button"
-                                    @click="isCategoryModalOpen = true"
-                                    class="p-2.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-colors"
-                                    title="Add New Category"
-                                >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <InputLabel value="Type" />
+                            <InputLabel value="Types" />
                             <div class="flex gap-2 mt-1">
                                 <div class="flex-1">
                                     <SearchableSelect 
@@ -587,110 +716,76 @@ const deleteProduct = (product) => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Row 3: Exclusive Value, Retail Margin, T.P Rate -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="Current Stock" />
-                            <TextInput v-model="form.stock_quantity" type="number" class="mt-1 block w-full" />
+                            <InputLabel value="Exclusive Value (Base Price)" />
+                            <TextInput v-model="form.list_price_before_tax" type="number" step="0.0001" class="mt-1 block w-full" required />
+                            <div v-if="form.errors.list_price_before_tax" class="text-xs text-red-600 mt-1">{{ form.errors.list_price_before_tax }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="Retail Margin %" />
+                            <TextInput v-model="form.retail_margin" type="number" step="0.001" class="mt-1 block w-full" placeholder="e.g. 11.897" />
+                            <div v-if="form.errors.retail_margin" class="text-xs text-red-600 mt-1">{{ form.errors.retail_margin }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="T.P Rate (Calculated)" />
+                            <TextInput v-model="form.tp_rate" type="number" step="0.0001" class="mt-1 block w-full bg-gray-50" readonly />
                         </div>
                     </div>
 
-                    <!-- Row 3: Pricing -->
+                    <!-- Row 4: Dist Margin, Invoice Price -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel value="Distribution Margin %" />
+                            <TextInput v-model="form.distribution_margin" type="number" step="0.001" class="mt-1 block w-full" placeholder="e.g. 5.1" />
+                            <div v-if="form.errors.distribution_margin" class="text-xs text-red-600 mt-1">{{ form.errors.distribution_margin }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="Invoice Price (Calculated)" />
+                            <TextInput v-model="form.invoice_price" type="number" step="0.0001" class="mt-1 block w-full bg-gray-50" readonly />
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Sale Tax, FED, Unit Price -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="List Price (Before Tax)" />
-                            <TextInput v-model="form.list_price_before_tax" type="number" step="0.01" class="mt-1 block w-full" />
+                            <InputLabel value="Sale Tax %" />
+                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.01" class="mt-1 block w-full" placeholder="e.g. 18" />
+                            <div v-if="form.errors.fed_sales_tax" class="text-xs text-red-600 mt-1">{{ form.errors.fed_sales_tax }}</div>
                         </div>
                         <div>
                             <InputLabel value="FED %" />
-                            <TextInput v-model="form.fed_tax_percent" type="number" step="0.01" class="mt-1 block w-full" />
+                            <TextInput v-model="form.fed_percent" type="number" step="0.01" class="mt-1 block w-full" placeholder="e.g. 20" />
+                            <div v-if="form.errors.fed_percent" class="text-xs text-red-600 mt-1">{{ form.errors.fed_percent }}</div>
                         </div>
                         <div>
-                            <InputLabel value="FED Sales Tax" />
-                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.01" class="mt-1 block w-full" />
+                            <InputLabel value="Unit Price (Final)" />
+                            <TextInput 
+                                v-model="form.unit_price" 
+                                type="number" 
+                                step="0.01" 
+                                class="mt-1 block w-full bg-emerald-50 font-bold text-emerald-700" 
+                                @input="onUnitPriceInput"
+                                placeholder="Auto-calculated or enter manually"
+                            />
+                            <div v-if="form.errors.unit_price" class="text-xs text-red-600 mt-1">{{ form.errors.unit_price }}</div>
                         </div>
                     </div>
 
-                    <!-- Row 3 -->
+                    <!-- Row 5: Reorder Level -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="Net List Price" />
-                            <TextInput v-model="form.net_list_price" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Dist. Margin" />
-                            <TextInput v-model="form.distribution_margin" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Dist. Manager %" />
-                            <TextInput v-model="form.distribution_manager_percent" type="number" step="0.01" class="mt-1 block w-full" />
+                            <InputLabel value="Reorder Level" />
+                            <TextInput v-model="form.reorder_level" type="number" class="mt-1 block w-full" />
+                            <div v-if="form.errors.reorder_level" class="text-xs text-red-600 mt-1">{{ form.errors.reorder_level }}</div>
                         </div>
                     </div>
 
-                    <!-- Row 4 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div>
-                            <InputLabel value="Trade Price (Before Tax)" />
-                            <TextInput v-model="form.trade_price_before_tax" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="FED2" />
-                            <TextInput v-model="form.fed_2" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Sales Tax3" />
-                            <TextInput v-model="form.sales_tax_3" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                    </div>
-
-                    <!-- Row 5 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <InputLabel value="Net Trade Price" />
-                            <TextInput v-model="form.net_trade_price" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Retailer Margin" />
-                            <TextInput v-model="form.retailer_margin" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Retailer Margin4" />
-                            <TextInput v-model="form.retailer_margin_4" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                    </div>
-
-                    <!-- Row 6 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <InputLabel value="Consumer Price (Before Tax)" />
-                            <TextInput v-model="form.consumer_price_before_tax" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="FED5" />
-                            <TextInput v-model="form.fed_5" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Sales Tax6" />
-                            <TextInput v-model="form.sales_tax_6" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                    </div>
-
-                    <!-- Row 7 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <InputLabel value="Net Consumer Price" />
-                            <TextInput v-model="form.net_consumer_price" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Total Margin" />
-                            <TextInput v-model="form.total_margin" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                        <div>
-                            <InputLabel value="Unit Price" />
-                            <TextInput v-model="form.unit_price" type="number" step="0.01" class="mt-1 block w-full" />
-                        </div>
-                    </div>
-
-                    <!-- Row 8 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Row 5: Packing, Pieces per Packing -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Packing" />
                             <div class="flex gap-2 mt-1">
@@ -714,10 +809,10 @@ const deleteProduct = (product) => {
                                 </button>
                             </div>
                         </div>
-
                         <div>
-                            <InputLabel value="Reorder Level" />
-                            <TextInput v-model="form.reorder_level" type="number" class="mt-1 block w-full" />
+                            <InputLabel value="Per Packing Piece" />
+                            <TextInput v-model="form.pieces_per_packing" type="number" min="1" class="mt-1 block w-full" />
+                            <div v-if="form.errors.pieces_per_packing" class="text-xs text-red-600 mt-1">{{ form.errors.pieces_per_packing }}</div>
                         </div>
                     </div>
 
@@ -758,33 +853,6 @@ const deleteProduct = (product) => {
                 </form>
             </div>
         </Modal>
-
-        <!-- Quick-Add Category Modal -->
-        <Modal :show="isCategoryModalOpen" @close="isCategoryModalOpen = false" maxWidth="md">
-            <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Add New Product Category</h2>
-                <form @submit.prevent="submitCategory" class="space-y-4">
-                    <div>
-                        <InputLabel value="Category Name" />
-                        <TextInput v-model="categoryForm.name" type="text" class="mt-1 block w-full" :class="{ 'border-red-500': categoryForm.errors.name }" />
-                        <div v-if="categoryForm.errors.name" class="text-xs text-red-600 mt-1">{{ categoryForm.errors.name }}</div>
-                    </div>
-                    <div>
-                        <InputLabel value="Status" />
-                        <select v-model="categoryForm.status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <SecondaryButton @click="isCategoryModalOpen = false">Cancel</SecondaryButton>
-                        <PrimaryButton :disabled="categoryForm.processing" class="bg-gradient-to-r from-orange-600 to-amber-600 border-0">{{ categoryForm.processing ? 'Saving...' : 'Create Category' }}</PrimaryButton>
-                    </div>
-                </form>
-            </div>
-        </Modal>
-
-
 
         <!-- Quick-Add Type Modal -->
         <Modal :show="isTypeModalOpen" @close="isTypeModalOpen = false" maxWidth="md">

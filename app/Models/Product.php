@@ -17,42 +17,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     protected $fillable = [
-        'dms_code',
-        'name',
-        'brand_id',
-        'category_id',
-        'type_id',
-        'packing_id',
-        'list_price_before_tax',
-        'fed_tax_percent',
-        'fed_sales_tax',
-        'net_list_price',
-        'distribution_margin',
-        'distribution_manager_percent',
-        'trade_price_before_tax',
-        'fed_2',
-        'sales_tax_3',
-        'net_trade_price',
-        'retailer_margin',
-        'retailer_margin_4',
-        'consumer_price_before_tax',
-        'fed_5',
-        'sales_tax_6',
-        'net_consumer_price',
-        'total_margin',
-        'unit_price',
-        'reorder_level',
-        'stock_quantity',
-        'sku',
-        'description',
-        'price',
+        'dms_code',           // Code
+        'name',               // Product Name
+        'brand_id',           // Brand (FK)
+        'type_id',            // Types (FK)
+        'packing_id',         // Packing (FK)
+        'sku',                // SKU
+        'list_price_before_tax', // Exclusive Value (Base Price)
+        'retail_margin',      // Retail Margin %
+        'tp_rate',            // T.P Rate (calculated)
+        'distribution_margin', // Distribution Margin %
+        'invoice_price',      // Invoice Price (calculated)
+        'fed_sales_tax',      // Sale Tax %
+        'fed_percent',        // Fed %
+        'unit_price',         // Unit Price (Final)
+        'reorder_level',      // Reorder Level
+        'pieces_per_packing', // Per Packing Piece
         'status',
-        // Legacy string columns (kept for backward compatibility)
-        'brand',
-        'category',
-        'type',
-        'packing',
-        'packing_one',
     ];
 
     /**
@@ -61,14 +42,6 @@ class Product extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
-    }
-
-    /**
-     * Get the category for this product.
-     */
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(ProductCategory::class, 'category_id');
     }
 
     /**
