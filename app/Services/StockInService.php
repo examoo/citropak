@@ -84,23 +84,16 @@ class StockInService
                     'batch_number' => $item->batch_number,
                     'expiry_date' => $item->expiry_date,
                     'location' => $item->location,
-                    // Pricing fields
+                    // Pricing fields (simplified structure)
+                    'pieces_per_packing' => $item->pieces_per_packing,
                     'list_price_before_tax' => $item->list_price_before_tax,
-                    'fed_tax_percent' => $item->fed_tax_percent,
                     'fed_sales_tax' => $item->fed_sales_tax,
-                    'net_list_price' => $item->net_list_price,
+                    'fed_percent' => $item->fed_percent,
+                    'retail_margin' => $item->retail_margin,
+                    'tp_rate' => $item->tp_rate,
                     'distribution_margin' => $item->distribution_margin,
-                    'trade_price_before_tax' => $item->trade_price_before_tax,
-                    'fed_2' => $item->fed_2,
-                    'sales_tax_3' => $item->sales_tax_3,
-                    'net_trade_price' => $item->net_trade_price,
-                    'retailer_margin' => $item->retailer_margin,
-                    'consumer_price_before_tax' => $item->consumer_price_before_tax,
-                    'fed_5' => $item->fed_5,
-                    'sales_tax_6' => $item->sales_tax_6,
-                    'net_consumer_price' => $item->net_consumer_price,
+                    'invoice_price' => $item->invoice_price,
                     'unit_price' => $item->unit_price,
-                    'total_margin' => $item->total_margin,
                 ]);
             }
 

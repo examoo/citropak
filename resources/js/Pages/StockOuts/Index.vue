@@ -16,7 +16,7 @@ const props = defineProps({
     stockOuts: Object,
     filters: Object,
     availableStocks: { type: Array, default: () => [] },
-    products: { type: Array, default: () => [] }, // Restored
+    products: { type: Array, default: () => [] },
     distributions: { type: Array, default: () => [] },
 });
 
@@ -36,9 +36,9 @@ const form = useForm({
     items: [],
 });
 
-// Item form for adding products
+// Item form for adding products - NEW SIMPLIFIED STRUCTURE
 const newItem = ref({
-    stock_id: '', // Added stock_id
+    stock_id: '',
     product_id: '',
     cartons: 0,
     pieces: 0,
@@ -48,21 +48,23 @@ const newItem = ref({
     expiry_date: '',
     location: '',
     unit_cost: 0,
-    // Pricing fields (optional for stock out display, but good to have)
-    list_price_before_tax: 0, fed_tax_percent: 0, fed_sales_tax: 0, net_list_price: 0,
-    distribution_margin: 0, trade_price_before_tax: 0, fed_2: 0, sales_tax_3: 0,
-    net_trade_price: 0, retailer_margin: 0, consumer_price_before_tax: 0, fed_5: 0,
-    sales_tax_6: 0, net_consumer_price: 0, unit_price: 0, total_margin: 0,
+    // New simplified pricing fields
+    pieces_per_packing: 1,
+    list_price_before_tax: 0,
+    fed_sales_tax: 0,
+    fed_percent: 0,
+    retail_margin: 0,
+    tp_rate: 0,
+    distribution_margin: 0,
+    invoice_price: 0,
+    unit_price: 0,
 });
 
-// Calculate total quantity from cartons and pieces
 // Calculate total quantity from cartons and pieces
 const calculateQuantity = () => {
     const cartons = Number(newItem.value.cartons) || 0;
     const pieces = Number(newItem.value.pieces) || 0;
     const packing = Number(newItem.value.pieces_per_carton) || 1;
-    
-    // Safety check ensuring we don't display NaN
     newItem.value.quantity = (cartons * packing) + pieces;
 };
 
@@ -74,28 +76,26 @@ const availableBatches = computed(() => {
     
     let stocks = props.availableStocks.filter(s => Number(s.product_id) === Number(newItem.value.product_id));
 
-    // Filter by selected distribution to prevent cross-distribution stock usage
+    // Filter by selected distribution
     const distId = form.distribution_id || currentDistribution.value?.id;
     if (distId) {
         stocks = stocks.filter(s => Number(s.distribution_id) === Number(distId));
     }
 
     return stocks.map(s => ({
-            ...s,
-            // Format label to show Batch, Location, and Qty
-            label: `${s.batch_number ? 'Batch: ' + s.batch_number : 'No Batch'} ${s.location ? '(' + s.location + ')' : ''} - Qty: ${s.quantity}`,
-        }));
+        ...s,
+        label: `${s.batch_number ? 'Batch: ' + s.batch_number : 'No Batch'} ${s.location ? '(' + s.location + ')' : ''} - Qty: ${s.quantity}`,
+    }));
 });
 
-// Auto-fill details when Stock (Batch) is selected
+// Auto-fill details when Stock (Batch) is selected - NEW SIMPLIFIED STRUCTURE
 watch(() => newItem.value.stock_id, (newId) => {
     if (newId) {
         const stock = props.availableStocks.find(s => Number(s.id) === Number(newId));
         if (stock) {
-            // Auto-fill quantity (User requested)
+            // Auto-fill quantity
             newItem.value.quantity = stock.quantity;
-            
-            newItem.value.pieces_per_carton = stock.product.packing || 1;
+            newItem.value.pieces_per_carton = stock.pieces_per_packing || stock.product?.pieces_per_packing || 1;
             
             // Calculate cartons/pieces from total quantity
             if (newItem.value.pieces_per_carton > 0) {
@@ -110,26 +110,19 @@ watch(() => newItem.value.stock_id, (newId) => {
             newItem.value.batch_number = stock.batch_number || '';
             newItem.value.expiry_date = stock.expiry_date || '';
             newItem.value.location = stock.location || '';
-            newItem.value.unit_cost = stock.unit_cost || stock.product.unit_price || 0;
+            newItem.value.unit_cost = stock.unit_cost || stock.product?.unit_price || 0;
             
-            // Fill pricing
-            const product = stock.product;
-            newItem.value.list_price_before_tax = product.list_price_before_tax || 0;
-            newItem.value.fed_tax_percent = product.fed_tax_percent || 0;
-            newItem.value.fed_sales_tax = product.fed_sales_tax || 0;
-            newItem.value.net_list_price = product.net_list_price || 0;
-            newItem.value.distribution_margin = product.distribution_margin || 0;
-            newItem.value.trade_price_before_tax = product.trade_price_before_tax || 0;
-            newItem.value.fed_2 = product.fed_2 || 0;
-            newItem.value.sales_tax_3 = product.sales_tax_3 || 0;
-            newItem.value.net_trade_price = product.net_trade_price || 0;
-            newItem.value.retailer_margin = product.retailer_margin || 0;
-            newItem.value.consumer_price_before_tax = product.consumer_price_before_tax || 0;
-            newItem.value.fed_5 = product.fed_5 || 0;
-            newItem.value.sales_tax_6 = product.sales_tax_6 || 0;
-            newItem.value.net_consumer_price = product.net_consumer_price || 0;
-            newItem.value.unit_price = product.unit_price || 0;
-            newItem.value.total_margin = product.total_margin || 0;
+            // Fill new simplified pricing from stock or product
+            const product = stock.product || {};
+            newItem.value.pieces_per_packing = stock.pieces_per_packing || product.pieces_per_packing || 1;
+            newItem.value.list_price_before_tax = stock.list_price_before_tax || product.list_price_before_tax || 0;
+            newItem.value.fed_sales_tax = stock.fed_sales_tax || product.fed_sales_tax || 0;
+            newItem.value.fed_percent = stock.fed_percent || product.fed_percent || 0;
+            newItem.value.retail_margin = stock.retail_margin || product.retail_margin || 0;
+            newItem.value.tp_rate = stock.tp_rate || product.tp_rate || 0;
+            newItem.value.distribution_margin = stock.distribution_margin || product.distribution_margin || 0;
+            newItem.value.invoice_price = stock.invoice_price || product.invoice_price || 0;
+            newItem.value.unit_price = stock.unit_price || product.unit_price || 0;
         }
     }
 });
@@ -138,7 +131,6 @@ watch(() => newItem.value.stock_id, (newId) => {
 watch(() => newItem.value.product_id, (newVal, oldVal) => {
     if (newVal !== oldVal) {
         newItem.value.stock_id = '';
-        // Clear dependent fields if needed, but they will update on stock selection
     }
 });
 
@@ -160,12 +152,25 @@ const openModal = (item = null) => {
             product_id: i.product_id,
             product_name: i.product?.name,
             quantity: i.quantity,
+            cartons: i.cartons || 0,
+            pieces: i.pieces || 0,
+            pieces_per_carton: i.pieces_per_carton || 1,
             batch_number: i.batch_number,
             expiry_date: i.expiry_date?.split('T')[0] || i.expiry_date,
             location: i.location,
             unit_cost: i.unit_cost,
-            // Carry over pricing fields
-            ...i
+            stock_id: i.stock_id,
+            available_qty: i.available_qty || 0,
+            // New simplified fields
+            pieces_per_packing: i.pieces_per_packing || 1,
+            list_price_before_tax: i.list_price_before_tax || 0,
+            fed_sales_tax: i.fed_sales_tax || 0,
+            fed_percent: i.fed_percent || 0,
+            retail_margin: i.retail_margin || 0,
+            tp_rate: i.tp_rate || 0,
+            distribution_margin: i.distribution_margin || 0,
+            invoice_price: i.invoice_price || 0,
+            unit_price: i.unit_price || 0,
         })) || [];
     } else {
         form.reset();
@@ -191,10 +196,15 @@ const resetNewItem = () => {
         expiry_date: '',
         location: '',
         unit_cost: 0,
-        list_price_before_tax: 0, fed_tax_percent: 0, fed_sales_tax: 0, net_list_price: 0,
-        distribution_margin: 0, trade_price_before_tax: 0, fed_2: 0, sales_tax_3: 0,
-        net_trade_price: 0, retailer_margin: 0, consumer_price_before_tax: 0, fed_5: 0,
-        sales_tax_6: 0, net_consumer_price: 0, unit_price: 0, total_margin: 0,
+        pieces_per_packing: 1,
+        list_price_before_tax: 0,
+        fed_sales_tax: 0,
+        fed_percent: 0,
+        retail_margin: 0,
+        tp_rate: 0,
+        distribution_margin: 0,
+        invoice_price: 0,
+        unit_price: 0,
     };
 };
 
@@ -207,14 +217,14 @@ const addItem = () => {
     
     // Validate quantity
     if (newItem.value.quantity > stock.quantity) {
-         Swal.fire('Error', `Only ${stock.quantity} available in this stock`, 'error');
-         return;
+        Swal.fire('Error', `Only ${stock.quantity} available in this stock`, 'error');
+        return;
     }
 
     form.items.push({
         ...newItem.value,
         product_name: stock?.product?.name || '',
-        available_qty: stock?.quantity || 0, // Store available qty
+        available_qty: stock?.quantity || 0,
     });
     resetNewItem();
 };
@@ -247,7 +257,7 @@ const postStockOut = (item) => {
         text: 'This will deduct items from inventory. This action cannot be undone.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#ef4444', 
+        confirmButtonColor: '#ef4444',
         confirmButtonText: 'Yes, Post it!'
     }).then((result) => {
         if (result.isConfirmed) {
@@ -282,13 +292,6 @@ const deleteItem = (item) => {
 
 const totalItems = computed(() => form.items.reduce((sum, i) => sum + Number(i.quantity), 0));
 const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.quantity) * Number(i.unit_cost)), 0));
-
-// Format date helper
-const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    // Just default date string for now or use the helper if we want consistency
-    return dateStr; 
-};
 </script>
 
 <template>
@@ -396,7 +399,6 @@ const formatDate = (dateStr) => {
                                     No stock available
                                 </div>
                             </div>
-                            <!-- Adjusted remaining cols for spacing -->
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Cartons</label>
                                 <TextInput v-model="newItem.cartons" type="number" min="0" class="block w-full" placeholder="0" />
@@ -409,13 +411,14 @@ const formatDate = (dateStr) => {
                                 <label class="text-xs text-gray-500 mb-1 block">Total Qty</label>
                                 <div class="px-3 py-2 bg-rose-100 text-rose-700 font-bold text-center rounded-md">{{ newItem.quantity }}</div>
                             </div>
-                            <!-- Batch #, Unit Cost, Add Button moved below or adjusted. -->
-                            <!-- Batch # is now selected via dropdown, but maybe user wants to see it? -->
-                            <!-- Let's keep fields but make them readonly or auto-filled. -->
+                            <div>
+                                <label class="text-xs text-gray-500 mb-1 block">&nbsp;</label>
+                                <button type="button" @click="addItem" class="w-full px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700">+ Add</button>
+                            </div>
                         </div>
                         
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
-                             <div>
+                            <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Batch # (Auto)</label>
                                 <TextInput v-model="newItem.batch_number" type="text" class="block w-full bg-gray-50" readonly placeholder="-" />
                             </div>
@@ -423,17 +426,14 @@ const formatDate = (dateStr) => {
                                 <label class="text-xs text-gray-500 mb-1 block">Unit Cost (Auto)</label>
                                 <TextInput v-model="newItem.unit_cost" type="number" step="0.01" class="block w-full bg-gray-50" readonly />
                             </div>
-                             <div class="col-span-2">
-                                <label class="text-xs text-gray-500 mb-1 block">&nbsp;</label>
-                                <button type="button" @click="addItem" class="w-full px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700">+ Add</button>
+                            <div>
+                                <label class="text-xs text-gray-500 mb-1 block">T.P Rate</label>
+                                <div class="px-3 py-2 bg-emerald-50 text-emerald-700 font-bold text-center rounded-md text-sm">{{ newItem.tp_rate }}</div>
                             </div>
-                        </div>
-                        
-                        <!-- Simplified Pricing Preview for Stock Out -->
-                        <div v-if="selectedNewProduct" class="mt-4 bg-white rounded-lg p-3 border text-xs text-gray-500 flex flex-wrap gap-4">
-                           <span>Product: <strong>{{ selectedNewProduct.name }}</strong></span>
-                           <span>DMS: <strong>{{ selectedNewProduct.dms_code }}</strong></span>
-                           <span>Unit Price: <strong>{{ selectedNewProduct.unit_price }}</strong></span>
+                            <div>
+                                <label class="text-xs text-gray-500 mb-1 block">Invoice Price</label>
+                                <div class="px-3 py-2 bg-blue-50 text-blue-700 font-bold text-center rounded-md text-sm">{{ newItem.invoice_price }}</div>
+                            </div>
                         </div>
                     </div>
 
@@ -470,12 +470,13 @@ const formatDate = (dateStr) => {
                                     </td>
                                 </tr>
                                 <tr v-if="form.items.length === 0">
-                                    <td colspan="8" class="px-4 py-8 text-center text-gray-400">No items added yet</td>
+                                    <td colspan="9" class="px-4 py-8 text-center text-gray-400">No items added yet</td>
                                 </tr>
                             </tbody>
                             <tfoot class="bg-gray-50 font-semibold">
                                 <tr>
                                     <td class="px-4 py-3">Total</td>
+                                    <td class="px-4 py-3"></td>
                                     <td class="px-4 py-3"></td>
                                     <td class="px-4 py-3"></td>
                                     <td class="px-4 py-3 text-center text-rose-600">{{ totalItems }}</td>

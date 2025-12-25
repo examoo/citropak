@@ -92,7 +92,6 @@ class ClosingStockService
      */
     public function delete(ClosingStock $closingStock): bool
     {
-        // Allow deleting posted records now, as they are just reports.
         return $closingStock->delete();
     }
 
@@ -107,9 +106,6 @@ class ClosingStockService
 
     /**
      * Convert available stocks to closing stocks (auto-posted).
-     */
-    /**
-     * Convert available stocks to closing stocks (auto-posted).
      * Aggregates multiple batches of the same product into a single Closing Stock entry.
      */
     public function convertFromStocks($distributionId = null, $userId = null): int
@@ -121,25 +117,20 @@ class ClosingStockService
                 $query->where('distribution_id', $distributionId);
             }
             
-            // Fetch all stocks to process in PHP (easier for weighted averages than complex SQL)
             $stocks = $query->get();
-            
-            // Group by Product ID
             $groupedStocks = $stocks->groupBy('product_id');
             
             $count = 0;
             $today = now()->format('Y-m-d');
             
             foreach ($groupedStocks as $productId => $productStocks) {
-                // Sum quantity
                 $totalQty = $productStocks->sum('quantity');
                 
-                if ($totalQty <= 0) continue; // Skip if total quantity is 0
+                if ($totalQty <= 0) continue;
                 
                 $firstStock = $productStocks->first();
-                $distributionId = $firstStock->distribution_id; // Assuming grouped by dist too if multiple
+                $distributionId = $firstStock->distribution_id;
                 
-                // Skip if already exists for this product on today's date
                 $exists = ClosingStock::where('product_id', $productId)
                     ->where('distribution_id', $distributionId)
                     ->whereDate('date', $today)
@@ -147,19 +138,16 @@ class ClosingStockService
                 
                 if ($exists) continue;
                 
-                // Calculate Weighted Average Unit Cost
                 $totalValue = $productStocks->reduce(function ($carry, $item) {
                     return $carry + ($item->quantity * $item->unit_cost);
                 }, 0);
                 
                 $avgUnitCost = $totalValue / $totalQty;
                 
-                // Calculate cartons/pieces
-                $piecesPerCarton = (int) ($firstStock->product->packing ?? 1);
+                $piecesPerCarton = (int) ($firstStock->pieces_per_packing ?? $firstStock->product->pieces_per_packing ?? 1);
                 $cartons = $piecesPerCarton > 0 ? intdiv($totalQty, $piecesPerCarton) : 0;
                 $pieces = $piecesPerCarton > 0 ? $totalQty % $piecesPerCarton : $totalQty;
                 
-                // Create closing stock as POSTED
                 ClosingStock::create([
                     'product_id' => $productId,
                     'distribution_id' => $distributionId,
@@ -168,30 +156,23 @@ class ClosingStockService
                     'pieces' => $pieces,
                     'pieces_per_carton' => $piecesPerCarton,
                     'quantity' => $totalQty,
-                    'batch_number' => null, // Aggregated, so no specific batch
-                    'expiry_date' => null,  // Aggregated
-                    'location' => null,     // Aggregated
+                    'batch_number' => null,
+                    'expiry_date' => null,
+                    'location' => null,
                     'unit_cost' => $avgUnitCost,
                     'notes' => 'Closing stock - Aggregated from available stocks',
                     'status' => 'posted',
                     'created_by' => $userId,
-                    // Pricing fields (Take from first stock or Product default)
+                    // New simplified pricing fields
+                    'pieces_per_packing' => $firstStock->pieces_per_packing ?? $piecesPerCarton,
                     'list_price_before_tax' => $firstStock->list_price_before_tax,
-                    'fed_tax_percent' => $firstStock->fed_tax_percent,
                     'fed_sales_tax' => $firstStock->fed_sales_tax,
-                    'net_list_price' => $firstStock->net_list_price,
+                    'fed_percent' => $firstStock->fed_percent,
+                    'retail_margin' => $firstStock->retail_margin,
+                    'tp_rate' => $firstStock->tp_rate,
                     'distribution_margin' => $firstStock->distribution_margin,
-                    'trade_price_before_tax' => $firstStock->trade_price_before_tax,
-                    'fed_2' => $firstStock->fed_2,
-                    'sales_tax_3' => $firstStock->sales_tax_3,
-                    'net_trade_price' => $firstStock->net_trade_price,
-                    'retailer_margin' => $firstStock->retailer_margin,
-                    'consumer_price_before_tax' => $firstStock->consumer_price_before_tax,
-                    'fed_5' => $firstStock->fed_5,
-                    'sales_tax_6' => $firstStock->sales_tax_6,
-                    'net_consumer_price' => $firstStock->net_consumer_price,
+                    'invoice_price' => $firstStock->invoice_price,
                     'unit_price' => $firstStock->unit_price,
-                    'total_margin' => $firstStock->total_margin,
                 ]);
                 
                 $count++;

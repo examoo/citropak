@@ -40,6 +40,7 @@ const search = ref(props.filters?.search || '');
 const statusFilter = ref(props.filters?.status || '');
 const dateFilter = ref(props.filters?.date || '');
 
+// NEW SIMPLIFIED FORM STRUCTURE
 const form = useForm({
     stock_id: '',
     product_id: '',
@@ -54,23 +55,16 @@ const form = useForm({
     location: '',
     unit_cost: 0,
     notes: '',
-    // Pricing fields
+    // New simplified pricing fields
+    pieces_per_packing: 1,
     list_price_before_tax: 0,
-    fed_tax_percent: 0,
     fed_sales_tax: 0,
-    net_list_price: 0,
+    fed_percent: 0,
+    retail_margin: 0,
+    tp_rate: 0,
     distribution_margin: 0,
-    trade_price_before_tax: 0,
-    fed_2: 0,
-    sales_tax_3: 0,
-    net_trade_price: 0,
-    retailer_margin: 0,
-    consumer_price_before_tax: 0,
-    fed_5: 0,
-    sales_tax_6: 0,
-    net_consumer_price: 0,
+    invoice_price: 0,
     unit_price: 0,
-    total_margin: 0,
 });
 
 // Get selected stock
@@ -93,7 +87,7 @@ const calculateQuantity = () => {
 // Watch cartons and pieces for auto-calculation
 watch([() => form.cartons, () => form.pieces, () => form.pieces_per_carton], calculateQuantity);
 
-// Auto-fill from selected stock
+// Auto-fill from selected stock - NEW SIMPLIFIED STRUCTURE
 watch(() => form.stock_id, (newId) => {
     if (newId && !isEditing.value) {
         const stock = props.availableStocks.find(s => Number(s.id) === Number(newId));
@@ -101,33 +95,26 @@ watch(() => form.stock_id, (newId) => {
             const product = stock.product;
             form.product_id = stock.product_id;
             form.distribution_id = stock.distribution_id;
-            form.pieces_per_carton = product?.packing || 1;
+            form.pieces_per_carton = product?.pieces_per_packing || 1;
             // Calculate cartons and pieces from quantity
-            const piecesPerCarton = product?.packing || 1;
+            const piecesPerCarton = product?.pieces_per_packing || 1;
             form.cartons = Math.floor(stock.quantity / piecesPerCarton);
             form.pieces = stock.quantity % piecesPerCarton;
             form.quantity = stock.quantity;
             form.batch_number = stock.batch_number || '';
             form.expiry_date = stock.expiry_date || '';
             form.location = stock.location || '';
-            form.unit_cost = stock.unit_cost || product?.net_trade_price || 0;
-            // Pricing fields from product
+            form.unit_cost = stock.unit_cost || product?.unit_price || 0;
+            // New simplified pricing fields
+            form.pieces_per_packing = product?.pieces_per_packing || 1;
             form.list_price_before_tax = product?.list_price_before_tax || 0;
-            form.fed_tax_percent = product?.fed_tax_percent || 0;
             form.fed_sales_tax = product?.fed_sales_tax || 0;
-            form.net_list_price = product?.net_list_price || 0;
+            form.fed_percent = product?.fed_percent || 0;
+            form.retail_margin = product?.retail_margin || 0;
+            form.tp_rate = product?.tp_rate || 0;
             form.distribution_margin = product?.distribution_margin || 0;
-            form.trade_price_before_tax = product?.trade_price_before_tax || 0;
-            form.fed_2 = product?.fed_2 || 0;
-            form.sales_tax_3 = product?.sales_tax_3 || 0;
-            form.net_trade_price = product?.net_trade_price || 0;
-            form.retailer_margin = product?.retailer_margin || 0;
-            form.consumer_price_before_tax = product?.consumer_price_before_tax || 0;
-            form.fed_5 = product?.fed_5 || 0;
-            form.sales_tax_6 = product?.sales_tax_6 || 0;
-            form.net_consumer_price = product?.net_consumer_price || 0;
+            form.invoice_price = product?.invoice_price || 0;
             form.unit_price = product?.unit_price || 0;
-            form.total_margin = product?.total_margin || 0;
         }
     }
 });
@@ -160,6 +147,16 @@ const openModal = (item = null) => {
         form.location = item.location;
         form.unit_cost = item.unit_cost;
         form.notes = item.notes;
+        // New simplified fields
+        form.pieces_per_packing = item.pieces_per_packing || 1;
+        form.list_price_before_tax = item.list_price_before_tax || 0;
+        form.fed_sales_tax = item.fed_sales_tax || 0;
+        form.fed_percent = item.fed_percent || 0;
+        form.retail_margin = item.retail_margin || 0;
+        form.tp_rate = item.tp_rate || 0;
+        form.distribution_margin = item.distribution_margin || 0;
+        form.invoice_price = item.invoice_price || 0;
+        form.unit_price = item.unit_price || 0;
     } else {
         form.reset();
         form.date = new Date().toISOString().split('T')[0];
@@ -191,7 +188,7 @@ const submit = () => {
 const postStock = (item) => {
     Swal.fire({
         title: 'Post Opening Stock?',
-        text: 'This will add the stock to inventory. This action cannot be undone.',
+        text: 'This will mark as posted. This action cannot be undone.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#10b981',
@@ -200,7 +197,7 @@ const postStock = (item) => {
         if (result.isConfirmed) {
             router.post(route('opening-stocks.post', item.id), {}, {
                 preserveScroll: true,
-                onSuccess: () => Swal.fire('Posted!', 'Opening stock added to inventory.', 'success')
+                onSuccess: () => Swal.fire('Posted!', 'Opening stock marked as posted.', 'success')
             });
         }
     });
@@ -381,18 +378,50 @@ const convertFromStocks = () => {
                         </div>
                     </div>
 
-                    <!-- Product Pricing Preview -->
+                    <!-- Product Pricing Preview - NEW SIMPLIFIED -->
                     <div v-if="selectedProduct" class="bg-white rounded-lg p-4 border">
                         <h5 class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Product Pricing Info</h5>
-                        <div class="grid grid-cols-4 md:grid-cols-8 gap-2 text-xs">
-                            <div class="p-2 bg-gray-50 rounded"><span class="text-gray-500">DMS:</span> {{ selectedProduct.dms_code }}</div>
-                            <div class="p-2 bg-gray-50 rounded"><span class="text-gray-500">List:</span> {{ selectedProduct.list_price_before_tax || 0 }}</div>
-                            <div class="p-2 bg-orange-50 rounded"><span class="text-orange-600">FED%:</span> {{ selectedProduct.fed_tax_percent || 0 }}</div>
-                            <div class="p-2 bg-emerald-50 rounded"><span class="text-emerald-600">Trade:</span> {{ selectedProduct.net_trade_price || 0 }}</div>
-                            <div class="p-2 bg-blue-50 rounded"><span class="text-blue-600">Unit:</span> {{ selectedProduct.unit_price || 0 }}</div>
-                            <div class="p-2 bg-amber-50 rounded"><span class="text-amber-600">Margin:</span> {{ selectedProduct.total_margin || 0 }}</div>
-                            <div class="p-2 bg-gray-50 rounded"><span class="text-gray-500">Packing:</span> {{ selectedProduct.packing || 1 }}</div>
-                            <div class="p-2 bg-purple-50 rounded"><span class="text-purple-600">Value:</span> {{ (form.quantity * form.unit_cost).toFixed(2) }}</div>
+                        <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-xs">
+                            <div class="p-2 bg-gray-50 rounded">
+                                <div class="text-gray-500">DMS Code</div>
+                                <div class="font-semibold">{{ selectedProduct.dms_code || '-' }}</div>
+                            </div>
+                            <div class="p-2 bg-gray-50 rounded">
+                                <div class="text-gray-500">List Price</div>
+                                <div class="font-semibold">{{ selectedProduct.list_price_before_tax || 0 }}</div>
+                            </div>
+                            <div class="p-2 bg-orange-50 rounded">
+                                <div class="text-gray-500">FED %</div>
+                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_percent || 0 }}%</div>
+                            </div>
+                            <div class="p-2 bg-orange-50 rounded">
+                                <div class="text-gray-500">Sales Tax %</div>
+                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_sales_tax || 0 }}%</div>
+                            </div>
+                            <div class="p-2 bg-gray-50 rounded">
+                                <div class="text-gray-500">Retail Margin %</div>
+                                <div class="font-semibold">{{ selectedProduct.retail_margin || 0 }}%</div>
+                            </div>
+                            <div class="p-2 bg-emerald-50 rounded">
+                                <div class="text-gray-500">T.P Rate</div>
+                                <div class="font-semibold text-emerald-600">{{ selectedProduct.tp_rate || 0 }}</div>
+                            </div>
+                            <div class="p-2 bg-gray-50 rounded">
+                                <div class="text-gray-500">Dist. Margin %</div>
+                                <div class="font-semibold">{{ selectedProduct.distribution_margin || 0 }}%</div>
+                            </div>
+                            <div class="p-2 bg-blue-50 rounded">
+                                <div class="text-gray-500">Invoice Price</div>
+                                <div class="font-semibold text-blue-600">{{ selectedProduct.invoice_price || 0 }}</div>
+                            </div>
+                            <div class="p-2 bg-blue-50 rounded">
+                                <div class="text-gray-500">Unit Price</div>
+                                <div class="font-semibold text-blue-600">{{ selectedProduct.unit_price || 0 }}</div>
+                            </div>
+                            <div class="p-2 bg-purple-50 rounded">
+                                <div class="text-gray-500">Total Value</div>
+                                <div class="font-semibold text-purple-600">{{ (form.quantity * form.unit_cost).toFixed(2) }}</div>
+                            </div>
                         </div>
                     </div>
 

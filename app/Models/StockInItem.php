@@ -18,23 +18,16 @@ class StockInItem extends Model
         'expiry_date',
         'location',
         'unit_cost',
-        // Pricing fields
+        // Pricing fields (simplified structure)
+        'pieces_per_packing',
         'list_price_before_tax',
-        'fed_tax_percent',
         'fed_sales_tax',
-        'net_list_price',
+        'fed_percent',
+        'retail_margin',
+        'tp_rate',
         'distribution_margin',
-        'trade_price_before_tax',
-        'fed_2',
-        'sales_tax_3',
-        'net_trade_price',
-        'retailer_margin',
-        'consumer_price_before_tax',
-        'fed_5',
-        'sales_tax_6',
-        'net_consumer_price',
+        'invoice_price',
         'unit_price',
-        'total_margin',
     ];
 
     protected $casts = [

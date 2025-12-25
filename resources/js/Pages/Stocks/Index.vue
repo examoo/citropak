@@ -29,6 +29,7 @@ const editingId = ref(null);
 const search = ref(props.filters?.search || '');
 const lowStockFilter = ref(props.filters?.low_stock || false);
 
+// NEW SIMPLIFIED FORM STRUCTURE
 const form = useForm({
     product_id: '',
     distribution_id: '',
@@ -40,23 +41,16 @@ const form = useForm({
     expiry_date: '',
     location: '',
     notes: '',
-    // Pricing fields
+    // New simplified pricing fields
+    pieces_per_packing: 1,
     list_price_before_tax: 0,
-    fed_tax_percent: 0,
     fed_sales_tax: 0,
-    net_list_price: 0,
+    fed_percent: 0,
+    retail_margin: 0,
+    tp_rate: 0,
     distribution_margin: 0,
-    trade_price_before_tax: 0,
-    fed_2: 0,
-    sales_tax_3: 0,
-    net_trade_price: 0,
-    retailer_margin: 0,
-    consumer_price_before_tax: 0,
-    fed_5: 0,
-    sales_tax_6: 0,
-    net_consumer_price: 0,
+    invoice_price: 0,
     unit_price: 0,
-    total_margin: 0,
 });
 
 // Get selected product details
@@ -65,29 +59,22 @@ const selectedProduct = computed(() => {
     return props.products.find(p => Number(p.id) === Number(form.product_id));
 });
 
-// Auto-fill pricing from product when selected
+// Auto-fill pricing from product when selected - NEW SIMPLIFIED STRUCTURE
 watch(() => form.product_id, (newId) => {
     if (newId && !isEditing.value) {
         const product = props.products.find(p => Number(p.id) === Number(newId));
         if (product) {
-            // Populate all pricing fields from product
-            form.unit_cost = product.unit_price || product.net_trade_price || 0;
+            // Populate new simplified pricing fields from product
+            form.unit_cost = product.unit_price || product.invoice_price || 0;
+            form.pieces_per_packing = product.pieces_per_packing || 1;
             form.list_price_before_tax = product.list_price_before_tax || 0;
-            form.fed_tax_percent = product.fed_tax_percent || 0;
             form.fed_sales_tax = product.fed_sales_tax || 0;
-            form.net_list_price = product.net_list_price || 0;
+            form.fed_percent = product.fed_percent || 0;
+            form.retail_margin = product.retail_margin || 0;
+            form.tp_rate = product.tp_rate || 0;
             form.distribution_margin = product.distribution_margin || 0;
-            form.trade_price_before_tax = product.trade_price_before_tax || 0;
-            form.fed_2 = product.fed_2 || 0;
-            form.sales_tax_3 = product.sales_tax_3 || 0;
-            form.net_trade_price = product.net_trade_price || 0;
-            form.retailer_margin = product.retailer_margin || 0;
-            form.consumer_price_before_tax = product.consumer_price_before_tax || 0;
-            form.fed_5 = product.fed_5 || 0;
-            form.sales_tax_6 = product.sales_tax_6 || 0;
-            form.net_consumer_price = product.net_consumer_price || 0;
+            form.invoice_price = product.invoice_price || 0;
             form.unit_price = product.unit_price || 0;
-            form.total_margin = product.total_margin || 0;
         }
     }
 });
@@ -116,6 +103,16 @@ const openModal = (item = null) => {
         form.expiry_date = item.expiry_date?.split('T')[0] || item.expiry_date;
         form.location = item.location;
         form.notes = item.notes;
+        // New simplified fields
+        form.pieces_per_packing = item.pieces_per_packing || 1;
+        form.list_price_before_tax = item.list_price_before_tax || 0;
+        form.fed_sales_tax = item.fed_sales_tax || 0;
+        form.fed_percent = item.fed_percent || 0;
+        form.retail_margin = item.retail_margin || 0;
+        form.tp_rate = item.tp_rate || 0;
+        form.distribution_margin = item.distribution_margin || 0;
+        form.invoice_price = item.invoice_price || 0;
+        form.unit_price = item.unit_price || 0;
     } else {
         form.reset();
         form.quantity = 0;
@@ -303,14 +300,13 @@ const adjustStock = (item, type) => {
                         </div>
                     </div>
                     
-                    <!-- Product Pricing Info Panel -->
+                    <!-- Product Pricing Info Panel - NEW SIMPLIFIED -->
                     <div v-if="selectedProduct" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
                         <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                             Product Pricing Info
                         </h4>
-                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3 text-xs">
-                            <!-- Row 1: Basic Info -->
+                        <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-xs">
                             <div class="bg-white rounded-lg p-2 shadow-sm">
                                 <div class="text-gray-500">DMS Code</div>
                                 <div class="font-semibold text-gray-900">{{ selectedProduct.dms_code || '-' }}</div>
@@ -320,73 +316,40 @@ const adjustStock = (item, type) => {
                                 <div class="font-semibold">{{ selectedProduct.list_price_before_tax || 0 }}</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">FED Tax %</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_tax_percent || 0 }}%</div>
+                                <div class="text-gray-500">FED %</div>
+                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_percent || 0 }}%</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">FED Sales Tax</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_sales_tax || 0 }}</div>
+                                <div class="text-gray-500">Sales Tax %</div>
+                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_sales_tax || 0 }}%</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Net List Price</div>
-                                <div class="font-semibold">{{ selectedProduct.net_list_price || 0 }}</div>
+                                <div class="text-gray-500">Retail Margin %</div>
+                                <div class="font-semibold">{{ selectedProduct.retail_margin || 0 }}%</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Dist. Margin</div>
-                                <div class="font-semibold">{{ selectedProduct.distribution_margin || 0 }}</div>
-                            </div>
-                            <!-- Row 2: Trade Info -->
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Trade Price</div>
-                                <div class="font-semibold">{{ selectedProduct.trade_price_before_tax || 0 }}</div>
+                                <div class="text-gray-500">T.P Rate</div>
+                                <div class="font-semibold text-emerald-600">{{ selectedProduct.tp_rate || 0 }}</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">FED 2</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_2 || 0 }}</div>
+                                <div class="text-gray-500">Dist. Margin %</div>
+                                <div class="font-semibold">{{ selectedProduct.distribution_margin || 0 }}%</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Sales Tax 3</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.sales_tax_3 || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Net Trade</div>
-                                <div class="font-semibold text-emerald-600">{{ selectedProduct.net_trade_price || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Retailer Margin</div>
-                                <div class="font-semibold">{{ selectedProduct.retailer_margin || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Consumer Price</div>
-                                <div class="font-semibold">{{ selectedProduct.consumer_price_before_tax || 0 }}</div>
-                            </div>
-                            <!-- Row 3: Consumer & Final -->
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">FED 5</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_5 || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Sales Tax 6</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.sales_tax_6 || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Net Consumer</div>
-                                <div class="font-semibold text-blue-600">{{ selectedProduct.net_consumer_price || 0 }}</div>
+                                <div class="text-gray-500">Invoice Price</div>
+                                <div class="font-semibold text-blue-600">{{ selectedProduct.invoice_price || 0 }}</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
                                 <div class="text-gray-500">Unit Price</div>
                                 <div class="font-semibold text-blue-600">{{ selectedProduct.unit_price || 0 }}</div>
                             </div>
                             <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Total Margin</div>
-                                <div class="font-semibold text-amber-600">{{ selectedProduct.total_margin || 0 }}</div>
-                            </div>
-                            <div class="bg-white rounded-lg p-2 shadow-sm">
-                                <div class="text-gray-500">Packing</div>
-                                <div class="font-semibold">{{ selectedProduct.packing || '-' }}</div>
+                                <div class="text-gray-500">Pcs/Packing</div>
+                                <div class="font-semibold">{{ selectedProduct.pieces_per_packing || 1 }}</div>
                             </div>
                         </div>
                     </div>
+
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <InputLabel value="Quantity" />
