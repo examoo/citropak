@@ -32,6 +32,15 @@ class InvoiceItem extends Model
         'fed_percent',
         'fed_amount',
         'line_total',
+        // New simplified product fields
+        'pieces_per_packing',
+        'list_price_before_tax',
+        'fed_sales_tax',
+        'retail_margin',
+        'tp_rate',
+        'distribution_margin',
+        'invoice_price',
+        'unit_price',
     ];
 
     protected $casts = [

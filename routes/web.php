@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
+    Route::get('api/customers-by-van/{vanCode}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByVan'])->name('api.customers-by-van');
     Route::get('api/customer-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getCustomerByCode'])->name('api.customer-by-code');
     Route::get('api/product-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getProductByCode'])->name('api.product-by-code');
     Route::get('api/schemes-for-product/{product}', [\App\Http\Controllers\InvoiceController::class, 'getSchemesForProduct'])->name('api.schemes-for-product');

@@ -20,6 +20,7 @@ class Product extends Model
         'dms_code',           // Code
         'name',               // Product Name
         'brand_id',           // Brand (FK)
+        'category_id',        // Category (FK)
         'type_id',            // Types (FK)
         'packing_id',         // Packing (FK)
         'sku',                // SKU
@@ -42,6 +43,14 @@ class Product extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    /**
+     * Get the category for this product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'category_id');
     }
 
     /**
@@ -73,7 +82,10 @@ class Product extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where(function($q) {
+            $q->where('status', 'active')
+              ->orWhereNull('status');
+        });
     }
 
     /**

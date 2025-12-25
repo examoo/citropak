@@ -50,9 +50,15 @@ const newItem = ref({
     cartons: 0,
     pieces: 0,
     total_pieces: 0,
-    price: 0,
+    exclusive_price: 0,      // Price before tax (list_price_before_tax)
+    fed_percent: 0,          // FED %
+    sales_tax_percent: 0,    // Sales Tax %
+    adv_tax_percent: 0,      // Advance Tax % (from customer)
+    net_unit_price: 0,       // Price with taxes
     scheme_id: '',
-    scheme_discount: 0
+    scheme_discount: 0,
+    manual_discount_percent: 0,  // Manual discount %
+    manual_discount_amount: 0    // Manual discount amount (Rs)
 });
 const productSchemes = ref([]);
 
@@ -77,41 +83,60 @@ const productOptions = computed(() => {
     }));
 });
 
-// Watch VAN change -> Load Order Bookers
+// Watch VAN change -> Auto-select Order Booker + Load Customers
 watch(() => form.van_id, async (vanId) => {
-    form.order_booker_id = '';
     form.customer_id = '';
     selectedCustomer.value = null;
     filteredCustomers.value = [];
     
     if (vanId) {
         try {
-            const response = await axios.get(route('api.bookers-by-van', vanId));
-            filteredBookers.value = response.data;
+            // Get order bookers for van and auto-select if only one
+            const bookersResponse = await axios.get(route('api.bookers-by-van', vanId));
+            filteredBookers.value = bookersResponse.data;
+            
+            // Auto-select order booker if only one exists
+            if (bookersResponse.data.length === 1) {
+                form.order_booker_id = bookersResponse.data[0].id;
+            } else {
+                form.order_booker_id = '';
+            }
+            
+            // Load customers by van code
+            const van = props.vans.find(v => v.id === parseInt(vanId));
+            if (van) {
+                const customersResponse = await axios.get(route('api.customers-by-van', van.code), {
+                    params: { day: orderDay.value || undefined }
+                });
+                filteredCustomers.value = customersResponse.data;
+            }
         } catch (e) {
             filteredBookers.value = [];
-        }
-    } else {
-        filteredBookers.value = [];
-    }
-});
-
-// Watch Order Booker + Day -> Load Customers
-watch([() => form.order_booker_id, orderDay], async ([bookerId, day]) => {
-    form.customer_id = '';
-    selectedCustomer.value = null;
-    
-    if (bookerId) {
-        try {
-            const response = await axios.get(route('api.customers-by-booker', bookerId), {
-                params: { day: day || undefined }
-            });
-            filteredCustomers.value = response.data;
-        } catch (e) {
             filteredCustomers.value = [];
         }
     } else {
+        filteredBookers.value = [];
         filteredCustomers.value = [];
+    }
+});
+
+// Watch Day change -> Reload Customers for current Van
+watch(orderDay, async (day) => {
+    form.customer_id = '';
+    selectedCustomer.value = null;
+    
+    if (form.van_id) {
+        try {
+            const van = props.vans.find(v => v.id === parseInt(form.van_id));
+            if (van) {
+                const response = await axios.get(route('api.customers-by-van', van.code), {
+                    params: { day: day || undefined }
+                });
+                filteredCustomers.value = response.data;
+            }
+        } catch (e) {
+            filteredCustomers.value = [];
+        }
     }
 });
 
@@ -136,15 +161,46 @@ const searchCustomerByCode = async () => {
     }
 };
 
+// Helper to calculate net unit price with taxes (matches Product calculation)
+// Formula: Base Price * (1 + FED%) * (1 + Sales Tax%) * (1 + Advance Tax%)
+const calculateNetUnitPrice = () => {
+    const exclusive = parseFloat(newItem.value.exclusive_price) || 0;
+    const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
+    const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
+    const advTax = parseFloat(newItem.value.adv_tax_percent) / 100 || 0;
+    
+    // Compound calculation (same as Product):
+    // Step 1: Base Price + FED %
+    let netPrice = exclusive * (1 + fed);
+    // Step 2: (Base Price + FED) + Sales Tax %
+    netPrice = netPrice * (1 + salesTax);
+    // Step 3: Add Advance Tax (customer specific)
+    netPrice = netPrice * (1 + advTax);
+    
+    newItem.value.net_unit_price = netPrice;
+};
+
 // Search product by code
 const searchProductByCode = async () => {
     if (!productCode.value) return;
     try {
         const response = await axios.get(route('api.product-by-code', productCode.value));
-        selectedProduct.value = response.data;
-        newItem.value.product_id = response.data.id;
-        newItem.value.price = response.data.net_trade_price || response.data.price || 0;
-        loadProductSchemes(response.data.id);
+        const product = response.data;
+        selectedProduct.value = product;
+        newItem.value.product_id = product.id;
+        // Use list_price_before_tax as exclusive price (before taxes)
+        newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || 0;
+        newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
+        newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
+        // Get advance tax from selected customer
+        newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
+        // Use product's unit_price if available (already calculated with taxes)
+        if (product.unit_price && parseFloat(product.unit_price) > 0) {
+            newItem.value.net_unit_price = parseFloat(product.unit_price);
+        } else {
+            calculateNetUnitPrice();
+        }
+        loadProductSchemes(product.id);
     } catch (e) {
         selectedProduct.value = null;
     }
@@ -156,10 +212,30 @@ watch(() => newItem.value.product_id, (productId) => {
         const product = props.products.find(p => p.id === parseInt(productId));
         if (product) {
             selectedProduct.value = product;
-            newItem.value.price = product.net_trade_price || product.price || 0;
+            // Use list_price_before_tax as exclusive price (before taxes)
+            newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || 0;
+            newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
+            newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
+            // Get advance tax from selected customer
+            newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
+            // Use product's unit_price if available (already calculated with taxes)
+            // Otherwise calculate from exclusive price + taxes
+            if (product.unit_price && parseFloat(product.unit_price) > 0) {
+                newItem.value.net_unit_price = parseFloat(product.unit_price);
+            } else {
+                calculateNetUnitPrice();
+            }
             loadProductSchemes(productId);
             productCode.value = product.dms_code || product.sku || '';
         }
+    }
+});
+
+// Watch customer selection to update advance tax
+watch(() => selectedCustomer.value, (customer) => {
+    if (customer && newItem.value.product_id) {
+        newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
+        calculateNetUnitPrice();
     }
 });
 
@@ -175,7 +251,8 @@ const loadProductSchemes = async (productId) => {
 
 // Watch cartons/pieces -> Calculate total
 watch([() => newItem.value.cartons, () => newItem.value.pieces], () => {
-    const packing = selectedProduct.value?.packing?.quantity || 12; // Default 12 pieces per carton
+    // Use pieces_per_packing from new simplified structure
+    const packing = selectedProduct.value?.pieces_per_packing || selectedProduct.value?.packing?.quantity || 12;
     newItem.value.total_pieces = (newItem.value.cartons * packing) + newItem.value.pieces;
 });
 
@@ -184,7 +261,7 @@ watch(() => newItem.value.scheme_id, (schemeId) => {
     if (schemeId) {
         const scheme = productSchemes.value.find(s => s.id === parseInt(schemeId));
         if (scheme) {
-            const baseAmount = newItem.value.total_pieces * newItem.value.price;
+            const baseAmount = newItem.value.total_pieces * newItem.value.net_unit_price;
             if (scheme.discount_type === 'percentage') {
                 newItem.value.scheme_discount = baseAmount * (scheme.discount_value / 100);
             } else {
@@ -203,6 +280,11 @@ const addItem = () => {
     const product = props.products.find(p => p.id === parseInt(newItem.value.product_id));
     const scheme = productSchemes.value.find(s => s.id === parseInt(newItem.value.scheme_id));
     
+    // Calculate total discount (scheme + manual)
+    const grossAmount = newItem.value.total_pieces * newItem.value.net_unit_price;
+    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
+    const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
+    
     form.items.push({
         product_id: newItem.value.product_id,
         product_name: product?.name,
@@ -211,10 +293,18 @@ const addItem = () => {
         cartons: newItem.value.cartons,
         pieces: newItem.value.pieces,
         total_pieces: newItem.value.total_pieces,
-        price: newItem.value.price,
+        exclusive_price: newItem.value.exclusive_price,
+        fed_percent: newItem.value.fed_percent,
+        sales_tax_percent: newItem.value.sales_tax_percent,
+        adv_tax_percent: newItem.value.adv_tax_percent,
+        net_unit_price: newItem.value.net_unit_price,
+        price: newItem.value.net_unit_price, // For backward compatibility
         scheme_id: newItem.value.scheme_id || null,
         scheme_name: scheme?.product?.name || scheme?.brand?.name || null,
-        scheme_discount: newItem.value.scheme_discount
+        scheme_discount: newItem.value.scheme_discount,
+        manual_discount_percent: newItem.value.manual_discount_percent,
+        manual_discount_amount: newItem.value.manual_discount_amount,
+        total_discount: newItem.value.scheme_discount + totalManualDiscount
     });
     
     // Reset
@@ -227,9 +317,15 @@ const resetNewItem = () => {
         cartons: 0,
         pieces: 0,
         total_pieces: 0,
-        price: 0,
+        exclusive_price: 0,
+        fed_percent: 0,
+        sales_tax_percent: 0,
+        adv_tax_percent: selectedCustomer.value?.adv_tax_percent || 0,
+        net_unit_price: 0,
         scheme_id: '',
-        scheme_discount: 0
+        scheme_discount: 0,
+        manual_discount_percent: 0,
+        manual_discount_amount: 0
     };
     selectedProduct.value = null;
     productCode.value = '';
@@ -240,12 +336,61 @@ const removeItem = (index) => {
     form.items.splice(index, 1);
 };
 
+// Calculate item discount (scheme + manual)
+const getItemDiscount = (item) => {
+    const grossAmount = item.total_pieces * item.net_unit_price;
+    const manualDiscountFromPercent = grossAmount * ((item.manual_discount_percent || 0) / 100);
+    return (item.scheme_discount || 0) + manualDiscountFromPercent + (item.manual_discount_amount || 0);
+};
+
+// Calculate item exclusive amount
+const getItemExclusive = (item) => {
+    return item.exclusive_price * item.total_pieces;
+};
+
+// Calculate item FED amount
+const getItemFed = (item) => {
+    return getItemExclusive(item) * (item.fed_percent / 100);
+};
+
+// Calculate item Sales Tax amount
+const getItemSalesTax = (item) => {
+    return getItemExclusive(item) * (1 + item.fed_percent / 100) * (item.sales_tax_percent / 100);
+};
+
+// Calculate item Advance Tax amount
+const getItemAdvTax = (item) => {
+    return getItemExclusive(item) * (1 + item.fed_percent / 100) * (1 + item.sales_tax_percent / 100) * (item.adv_tax_percent / 100);
+};
+
+// Invoice summary totals
+const totalExclusive = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemExclusive(item), 0);
+});
+
+const totalFed = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemFed(item), 0);
+});
+
+const totalSalesTax = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemSalesTax(item), 0);
+});
+
+const totalAdvTax = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemAdvTax(item), 0);
+});
+
+const totalGrossAmount = computed(() => {
+    return form.items.reduce((sum, item) => sum + (item.total_pieces * item.net_unit_price), 0);
+});
+
+const totalDiscount = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemDiscount(item), 0);
+});
+
 // Calculate totals
 const grandTotal = computed(() => {
-    return form.items.reduce((sum, item) => {
-        const lineTotal = (item.total_pieces * item.price) - item.scheme_discount;
-        return sum + lineTotal;
-    }, 0);
+    return totalGrossAmount.value - totalDiscount.value;
 });
 
 // Format amount
@@ -457,7 +602,9 @@ const submit = () => {
                 <!-- Product Entry -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-8 gap-3 items-end">
+                    
+                    <!-- Row 1: Product selection -->
+                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end mb-4">
                         <!-- Product Code -->
                         <div>
                             <InputLabel value="Product Code" />
@@ -493,10 +640,43 @@ const submit = () => {
                             <InputLabel value="Total Pcs" />
                             <TextInput :value="newItem.total_pieces" type="number" class="mt-1 bg-gray-100" readonly />
                         </div>
+                    </div>
+
+                    <!-- Row 2: Pricing breakdown (visible when product selected) -->
+                    <div v-if="newItem.product_id" class="grid grid-cols-2 md:grid-cols-7 gap-3 items-end mb-4 bg-gray-50 p-3 rounded-lg">
+                        <!-- Exclusive Price -->
+                        <div>
+                            <InputLabel value="Excl. Price" class="text-xs" />
+                            <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.01" class="mt-1 text-sm" />
+                        </div>
+
+                        <!-- FED % -->
+                        <div>
+                            <InputLabel value="FED %" class="text-xs" />
+                            <TextInput v-model.number="newItem.fed_percent" type="number" step="0.01" class="mt-1 text-sm" @input="calculateNetUnitPrice" />
+                        </div>
+
+                        <!-- Sales Tax % -->
+                        <div>
+                            <InputLabel value="S.Tax %" class="text-xs" />
+                            <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.01" class="mt-1 text-sm" @input="calculateNetUnitPrice" />
+                        </div>
+
+                        <!-- Advance Tax % -->
+                        <div>
+                            <InputLabel value="Adv.Tax %" class="text-xs" />
+                            <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.01" class="mt-1 text-sm" @input="calculateNetUnitPrice" />
+                        </div>
+
+                        <!-- Net Unit Price -->
+                        <div>
+                            <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
+                            <TextInput :value="newItem.net_unit_price.toFixed(2)" type="text" class="mt-1 bg-indigo-50 font-bold text-indigo-700 text-sm" readonly />
+                        </div>
 
                         <!-- Scheme -->
                         <div>
-                            <InputLabel value="Scheme" />
+                            <InputLabel value="Scheme" class="text-xs" />
                             <select v-model="newItem.scheme_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm">
                                 <option value="">No Scheme</option>
                                 <option v-for="scheme in productSchemes" :key="scheme.id" :value="scheme.id">
@@ -505,12 +685,29 @@ const submit = () => {
                             </select>
                         </div>
 
+                        <!-- Manual Discount % -->
+                        <div>
+                            <InputLabel value="Disc. %" class="text-xs" />
+                            <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.01" min="0" max="100" class="mt-1 text-sm" placeholder="0" />
+                        </div>
+
+                        <!-- Manual Discount Amount -->
+                        <div>
+                            <InputLabel value="Disc. Rs" class="text-xs" />
+                            <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.01" min="0" class="mt-1 text-sm" placeholder="0" />
+                        </div>
+
                         <!-- Add Button -->
                         <div>
                             <button type="button" @click="addItem" :disabled="!newItem.product_id || newItem.total_pieces <= 0" class="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                                 + Add
                             </button>
                         </div>
+                    </div>
+
+                    <!-- No product selected message -->
+                    <div v-else class="text-center py-4 text-gray-400 text-sm">
+                        Select a product to see pricing details
                     </div>
                 </div>
 
@@ -523,54 +720,100 @@ const submit = () => {
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500">
                                 <tr>
-                                    <th class="px-4 py-3">#</th>
-                                    <th class="px-4 py-3">Product</th>
-                                    <th class="px-4 py-3 text-right">Ctns</th>
-                                    <th class="px-4 py-3 text-right">Pcs</th>
-                                    <th class="px-4 py-3 text-right">Total</th>
-                                    <th class="px-4 py-3 text-right">Price</th>
-                                    <th class="px-4 py-3">Scheme</th>
-                                    <th class="px-4 py-3 text-right">Discount</th>
-                                    <th class="px-4 py-3 text-right">Amount</th>
-                                    <th class="px-4 py-3"></th>
+                                    <th class="px-2 py-3">#</th>
+                                    <th class="px-2 py-3">Product</th>
+                                    <th class="px-2 py-3 text-right">Ctns</th>
+                                    <th class="px-2 py-3 text-right">Pcs</th>
+                                    <th class="px-2 py-3 text-right">Total</th>
+                                    <th class="px-2 py-3 text-right">Rate</th>
+                                    <th class="px-2 py-3 text-right">Excl. Amt</th>
+                                    <th class="px-2 py-3 text-right">FED</th>
+                                    <th class="px-2 py-3 text-right">S.Tax</th>
+                                    <th class="px-2 py-3 text-right">Adv.Tax</th>
+                                    <th class="px-2 py-3 text-right">Gross</th>
+                                    <th class="px-2 py-3 text-right">Discount</th>
+                                    <th class="px-2 py-3 text-right">Net</th>
+                                    <th class="px-2 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 <tr v-for="(item, index) in form.items" :key="index">
-                                    <td class="px-4 py-3">{{ index + 1 }}</td>
-                                    <td class="px-4 py-3">
+                                    <td class="px-2 py-3">{{ index + 1 }}</td>
+                                    <td class="px-2 py-3">
                                         <div class="font-medium">{{ item.product_name }}</div>
                                         <div class="text-xs text-gray-500">{{ item.product_code }}</div>
                                     </td>
-                                    <td class="px-4 py-3 text-right">{{ item.cartons }}</td>
-                                    <td class="px-4 py-3 text-right">{{ item.pieces }}</td>
-                                    <td class="px-4 py-3 text-right font-medium">{{ item.total_pieces }}</td>
-                                    <td class="px-4 py-3 text-right">{{ formatAmount(item.price) }}</td>
-                                    <td class="px-4 py-3">{{ item.scheme_name || '-' }}</td>
-                                    <td class="px-4 py-3 text-right text-red-600">-{{ formatAmount(item.scheme_discount) }}</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-emerald-600">
-                                        {{ formatAmount((item.total_pieces * item.price) - item.scheme_discount) }}
+                                    <td class="px-2 py-3 text-right">{{ item.cartons }}</td>
+                                    <td class="px-2 py-3 text-right">{{ item.pieces }}</td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
+                                    <td class="px-2 py-3 text-right">{{ formatAmount(item.exclusive_price) }}</td>
+                                    <td class="px-2 py-3 text-right text-gray-600">{{ formatAmount(getItemExclusive(item)) }}</td>
+                                    <td class="px-2 py-3 text-right text-gray-500">
+                                        {{ formatAmount(getItemFed(item)) }}
+                                        <div class="text-xs">({{ item.fed_percent }}%)</div>
                                     </td>
-                                    <td class="px-4 py-3">
+                                    <td class="px-2 py-3 text-right text-gray-500">
+                                        {{ formatAmount(getItemSalesTax(item)) }}
+                                        <div class="text-xs">({{ item.sales_tax_percent }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-gray-500">
+                                        {{ formatAmount(getItemAdvTax(item)) }}
+                                        <div class="text-xs">({{ item.adv_tax_percent }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.total_pieces * item.net_unit_price) }}</td>
+                                    <td class="px-2 py-3 text-right text-red-600">-{{ formatAmount(getItemDiscount(item)) }}</td>
+                                    <td class="px-2 py-3 text-right font-semibold text-emerald-600">
+                                        {{ formatAmount((item.total_pieces * item.net_unit_price) - getItemDiscount(item)) }}
+                                    </td>
+                                    <td class="px-2 py-3">
                                         <button type="button" @click="removeItem(index)" class="text-red-600 hover:text-red-800">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </td>
                                 </tr>
                                 <tr v-if="form.items.length === 0">
-                                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                                    <td colspan="14" class="px-4 py-8 text-center text-gray-500">
                                         No items added. Use the form above to add products.
                                     </td>
                                 </tr>
                             </tbody>
-                            <tfoot class="bg-gray-50 font-bold">
-                                <tr>
-                                    <td colspan="8" class="px-4 py-3 text-right">Grand Total:</td>
-                                    <td class="px-4 py-3 text-right text-lg text-emerald-600">Rs. {{ formatAmount(grandTotal) }}</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
                         </table>
+                    </div>
+                    
+                    <!-- Invoice Summary -->
+                    <div v-if="form.items.length > 0" class="border-t border-gray-200 bg-gray-50 p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Exclusive</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalExclusive) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total FED</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalFed) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Sales Tax</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalSalesTax) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Adv. Tax</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalAdvTax) }}</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mt-4 text-sm">
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Gross Amount</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalGrossAmount) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-red-200">
+                                <div class="text-red-500 text-xs uppercase">Total Discount</div>
+                                <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div>
+                            </div>
+                            <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
+                                <div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div>
+                                <div class="font-bold text-2xl text-emerald-700">Rs. {{ formatAmount(grandTotal) }}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

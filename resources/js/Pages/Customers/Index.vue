@@ -104,7 +104,26 @@ const selectedChannelId = ref('');
 // Helpers to safely get attributes or empty array
 const getAttributes = (type) => props.attributes[type] || [];
 
-const channelOptions = computed(() => getAttributes('channel'));
+// Filtered options based on selected distribution (form.distribution_id or currentDistribution)
+const activeDistributionId = computed(() => {
+    return form.distribution_id || currentDistribution.value?.id || null;
+});
+
+// Filter attributes by distribution - show items matching selected distribution or global (no distribution_id)
+const filterByDistribution = (items) => {
+    if (!activeDistributionId.value) return items;
+    return items.filter(item => 
+        !item.distribution_id || item.distribution_id == activeDistributionId.value
+    );
+};
+
+const filteredVanOptions = computed(() => filterByDistribution(getAttributes('van')));
+const filteredCategoryOptions = computed(() => filterByDistribution(getAttributes('category')));
+const filteredSubAddressOptions = computed(() => filterByDistribution(getAttributes('sub_address')));
+const filteredSubDistributionOptions = computed(() => filterByDistribution(getAttributes('sub_distribution')));
+const filteredChannelOptions = computed(() => filterByDistribution(getAttributes('channel')));
+
+const channelOptions = computed(() => filteredChannelOptions.value);
 
 // Update form fields when detailed channel selection changes (by ID)
 watch(selectedChannelId, (newId) => {
@@ -696,7 +715,7 @@ const submitImport = () => {
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
                                     <option value="">Select VAN</option>
-                                    <option v-for="attr in getAttributes('van')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredVanOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
                                 <button type="button" @click="isVanModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -733,7 +752,7 @@ const submitImport = () => {
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
                                     <option value="">Select Sub Address</option>
-                                    <option v-for="attr in getAttributes('sub_address')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredSubAddressOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
                                 <button type="button" @click="isSubAddressModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Address">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -756,7 +775,7 @@ const submitImport = () => {
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
                                     <option value="">Select Category</option>
-                                    <option v-for="attr in getAttributes('category')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredCategoryOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
                                 <button type="button" @click="isCategoryModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Category">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -794,7 +813,7 @@ const submitImport = () => {
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                 >
                                     <option value="">Select Sub Distribution</option>
-                                    <option v-for="attr in getAttributes('sub_distribution')" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredSubDistributionOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
                                 </select>
                                 <button type="button" @click="isSubDistributionModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Distribution">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -974,7 +993,8 @@ const submitImport = () => {
         :show="isVanModalOpen"
         @close="isVanModalOpen = false"
         @saved="(vanCode) => { form.van = vanCode; }"
-        :distributions="[]"
+        :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id"
     />
 
     <!-- Channel Form Modal (Shared Component) -->
@@ -982,7 +1002,8 @@ const submitImport = () => {
         :show="isChannelModalOpen"
         @close="isChannelModalOpen = false"
         @saved="(channelName) => { form.channel = channelName; }"
-        :distributions="[]"
+        :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id"
     />
 
     <!-- Sub Address Form Modal (Shared Component) -->
@@ -990,7 +1011,8 @@ const submitImport = () => {
         :show="isSubAddressModalOpen"
         @close="isSubAddressModalOpen = false"
         @saved="(subAddressName) => { form.sub_address = subAddressName; }"
-        :distributions="[]"
+        :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id"
     />
 
     <!-- Sub Distribution Form Modal (Shared Component) -->
@@ -998,7 +1020,8 @@ const submitImport = () => {
         :show="isSubDistributionModalOpen"
         @close="isSubDistributionModalOpen = false"
         @saved="(subDistName) => { form.sub_distribution = subDistName; }"
-        :distributions="[]"
+        :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id"
     />
 
     <!-- Category Form Modal (Shared Component) -->
@@ -1006,6 +1029,7 @@ const submitImport = () => {
         :show="isCategoryModalOpen"
         @close="isCategoryModalOpen = false"
         @saved="(categoryName) => { form.category = categoryName; }"
-        :distributions="[]"
+        :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id"
     />
 </template>

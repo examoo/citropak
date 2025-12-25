@@ -20,6 +20,10 @@ const props = defineProps({
     distributions: {
         type: Array,
         default: () => []
+    },
+    parentDistributionId: {
+        type: [String, Number],
+        default: ''
     }
 });
 
@@ -46,7 +50,8 @@ watch(() => props.show, (newValue) => {
         } else {
             form.reset();
             form.status = 'active';
-            form.distribution_id = currentDistribution.value?.id || '';
+            // Use parent distribution if provided, otherwise use current distribution
+            form.distribution_id = props.parentDistributionId || currentDistribution.value?.id || '';
         }
     }
 });
@@ -115,7 +120,7 @@ const submit = () => {
                         label="Distribution"
                         :options="distributions"
                         option-value="id"
-                        option-label="name"
+                        option-label="value"
                         placeholder="Select a distribution"
                         :error="form.errors.distribution_id"
                         required

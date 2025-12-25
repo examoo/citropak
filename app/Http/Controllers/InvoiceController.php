@@ -346,6 +346,23 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Get customers by van code and optional day.
+     */
+    public function getCustomersByVan(Request $request, $vanCode)
+    {
+        $day = $request->query('day');
+
+        $customers = Customer::query()
+            ->where('van', $vanCode)
+            ->where('status', 'active')
+            ->when($day, fn($q) => $q->where('day', $day))
+            ->orderBy('shop_name')
+            ->get();
+        
+        return response()->json($customers);
+    }
+
+    /**
      * Get customer by code.
      */
     public function getCustomerByCode($code)
