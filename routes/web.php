@@ -73,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('sales-reports', [\App\Http\Controllers\SalesReportController::class, 'index'])->name('sales-reports.index');
     Route::get('customer-sales-reports', [\App\Http\Controllers\CustomerSalesReportController::class, 'index'])->name('customer-sales-reports.index');
     Route::get('daily-sales-reports', [\App\Http\Controllers\DailySalesReportController::class, 'index'])->name('daily-sales-reports.index');
+    Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
     Route::get('api/customers-by-van/{vanCode}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByVan'])->name('api.customers-by-van');

@@ -186,6 +186,7 @@ const navigation = [
             { name: 'Sales Sheet', href: 'sales-sheets.index', permission: 'reports.view' },
             { name: 'Customer Sales Report', href: 'customer-sales-reports.index', permission: 'reports.view' },
             { name: 'Daily Sales Report', href: 'daily-sales-reports.index', permission: 'reports.view' },
+            { name: 'Sale Tax Invoices Monthly Report', href: 'sale-tax-invoices-reports.index', permission: 'reports.view' },
         ]
     },
     {
@@ -417,7 +418,7 @@ const handleClickOutside = (event) => {
                                         d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
                                 <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name
-                                }}</span>
+                                    }}</span>
                             </div>
                             <svg v-if="isSidebarOpen"
                                 :class="['w-4 h-4 transition-transform duration-200', isExpanded(item.name) ? 'rotate-180' : '']"
@@ -555,7 +556,7 @@ const handleClickOutside = (event) => {
                                 </svg>
                                 <span>{{ currentDistribution && currentDistribution.code ? currentDistribution.code :
                                     'ALL'
-                                }}</span>
+                                    }}</span>
                                 <svg v-if="!page.props.auth.user.distribution_id" class="w-3 h-3"
                                     :class="{ 'rotate-180': isDistributionDropdownOpen }" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
