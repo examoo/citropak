@@ -65,7 +65,14 @@ Route::middleware(['auth'])->group(function () {
     
     // Good Issue Notes
     // Invoices
+    Route::post('invoices/{invoice}/mark-credit', [\App\Http\Controllers\InvoiceController::class, 'markAsCredit'])->name('invoices.mark-credit');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    Route::resource('recoveries', \App\Http\Controllers\RecoveryController::class);
+    Route::get('sales-accounts', [\App\Http\Controllers\SalesAccountController::class, 'index'])->name('sales-accounts.index');
+    Route::get('sales-sheets', [\App\Http\Controllers\SalesSheetController::class, 'index'])->name('sales-sheets.index');
+    Route::get('sales-reports', [\App\Http\Controllers\SalesReportController::class, 'index'])->name('sales-reports.index');
+    Route::get('customer-sales-reports', [\App\Http\Controllers\CustomerSalesReportController::class, 'index'])->name('customer-sales-reports.index');
+    Route::get('daily-sales-reports', [\App\Http\Controllers\DailySalesReportController::class, 'index'])->name('daily-sales-reports.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
     Route::get('api/customers-by-van/{vanCode}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByVan'])->name('api.customers-by-van');
@@ -75,6 +82,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/next-order-date', [\App\Http\Controllers\InvoiceController::class, 'getNextOrderDateApi'])->name('api.next-order-date');
     
     // Good Issue Notes
+    Route::get('good-issue-notes/pending-items', [\App\Http\Controllers\GoodIssueNoteController::class, 'getPendingItems'])->name('good-issue-notes.pending-items');
     Route::post('good-issue-notes/{good_issue_note}/issue', [\App\Http\Controllers\GoodIssueNoteController::class, 'issue'])->name('good-issue-notes.issue');
     Route::post('good-issue-notes/{good_issue_note}/cancel', [\App\Http\Controllers\GoodIssueNoteController::class, 'cancel'])->name('good-issue-notes.cancel');
     Route::resource('good-issue-notes', \App\Http\Controllers\GoodIssueNoteController::class);

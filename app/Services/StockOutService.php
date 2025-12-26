@@ -11,24 +11,35 @@ class StockOutService
     /**
      * Get all stock outs with filters.
      */
+    /**
+     * Get all stock out items with filters.
+     */
     public function getAll(array $filters = [], $distributionId = null)
     {
-        $query = StockOut::with(['distribution', 'items.product', 'creator']);
+        $query = \App\Models\StockOutItem::query()
+            ->join('stock_outs', 'stock_out_items.stock_out_id', '=', 'stock_outs.id')
+            ->select('stock_out_items.*', 'stock_outs.date', 'stock_outs.bilty_number', 'stock_outs.status', 'stock_outs.distribution_id as parent_distribution_id')
+            ->with(['stockOut.distribution', 'product']);
 
         if ($distributionId) {
-            $query->where('distribution_id', $distributionId);
+            $query->where('stock_outs.distribution_id', $distributionId);
         }
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where('bilty_number', 'like', "%{$search}%");
+            $query->where(function($q) use ($search) {
+                $q->where('stock_outs.bilty_number', 'like', "%{$search}%")
+                  ->orWhereHas('product', function($p) use ($search) {
+                      $p->where('name', 'like', "%{$search}%");
+                  });
+            });
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('stock_outs.status', $filters['status']);
         }
 
-        return $query->latest()->paginate(15)->withQueryString();
+        return $query->latest('stock_outs.date')->paginate(15)->withQueryString();
     }
 
     /**

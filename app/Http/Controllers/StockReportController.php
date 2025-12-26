@@ -59,9 +59,7 @@ class StockReportController extends Controller
                     ->sum('quantity');
 
                 // Stock Out
-                $out = StockOutItem::whereHas('stock', function($q) use ($product) {
-                        $q->where('product_id', $product->id);
-                    })
+                $out = StockOutItem::where('product_id', $product->id)
                     ->whereHas('stockOut', function ($q) use ($date, $distributionId) {
                         $q->whereDate('date', $date)
                           ->where('distribution_id', $distributionId);

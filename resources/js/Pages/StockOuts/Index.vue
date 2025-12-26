@@ -73,7 +73,7 @@ watch([() => newItem.value.cartons, () => newItem.value.pieces, () => newItem.va
 // Get available batches/stocks for the selected product
 const availableBatches = computed(() => {
     if (!newItem.value.product_id) return [];
-    
+
     let stocks = props.availableStocks.filter(s => Number(s.product_id) === Number(newItem.value.product_id));
 
     // Filter by selected distribution
@@ -96,7 +96,7 @@ watch(() => newItem.value.stock_id, (newId) => {
             // Auto-fill quantity
             newItem.value.quantity = stock.quantity;
             newItem.value.pieces_per_carton = stock.pieces_per_packing || stock.product?.pieces_per_packing || 1;
-            
+
             // Calculate cartons/pieces from total quantity
             if (newItem.value.pieces_per_carton > 0) {
                 newItem.value.cartons = Math.floor(stock.quantity / newItem.value.pieces_per_carton);
@@ -111,7 +111,7 @@ watch(() => newItem.value.stock_id, (newId) => {
             newItem.value.expiry_date = stock.expiry_date || '';
             newItem.value.location = stock.location || '';
             newItem.value.unit_cost = stock.unit_cost || stock.product?.unit_price || 0;
-            
+
             // Fill new simplified pricing from stock or product
             const product = stock.product || {};
             newItem.value.pieces_per_packing = stock.pieces_per_packing || product.pieces_per_packing || 1;
@@ -214,7 +214,7 @@ const addItem = () => {
         return;
     }
     const stock = props.availableStocks.find(s => Number(s.id) === Number(newItem.value.stock_id));
-    
+
     // Validate quantity
     if (newItem.value.quantity > stock.quantity) {
         Swal.fire('Error', `Only ${stock.quantity} available in this stock`, 'error');
@@ -295,6 +295,7 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
 </script>
 
 <template>
+
     <Head title="Stock Out" />
     <DashboardLayout>
         <div class="space-y-6">
@@ -305,11 +306,20 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="relative">
-                        <input v-model="search" type="text" placeholder="Search..." class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-rose-500 focus:ring-rose-500 w-64 shadow-sm">
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <input v-model="search" type="text" placeholder="Search..."
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-rose-500 focus:ring-rose-500 w-64 shadow-sm">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
-                    <button @click="openModal()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl font-medium shadow-lg shadow-rose-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    <button @click="openModal()"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-xl font-medium shadow-lg shadow-rose-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
                         New Stock Out
                     </button>
                 </div>
@@ -319,64 +329,81 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                 <table class="w-full text-left text-sm text-gray-600">
                     <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                         <tr>
+                            <th class="px-6 py-4">Date</th>
                             <th class="px-6 py-4">Bilty #</th>
                             <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
-                            <th class="px-6 py-4">Date</th>
-                            <th class="px-6 py-4">Items</th>
+                            <th class="px-6 py-4">Product</th>
+                            <th class="px-6 py-4">Batch</th>
+                            <th class="px-6 py-4 text-center">Quantity</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="item in stockOuts.data" :key="item.id" class="hover:bg-gray-50/50">
-                            <td class="px-6 py-4 font-medium text-gray-900">{{ item.bilty_number || `SO-${item.id}` }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ item.date }}</td>
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ item.bilty_number ||
+                                `SO-${item.stock_out_id}` }}</td>
                             <td v-if="!currentDistribution?.id" class="px-6 py-4">
-                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">{{ item.distribution?.code }}</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">{{
+                                    item.stock_out?.distribution?.code }}</span>
                             </td>
-                            <td class="px-6 py-4">{{ item.date }}</td>
-                            <td class="px-6 py-4">{{ item.items?.length || 0 }} items</td>
+                            <td class="px-6 py-4 font-medium">{{ item.product?.name }}</td>
+                            <td class="px-6 py-4 text-xs font-mono">{{ item.batch_number || '-' }}</td>
+                            <td class="px-6 py-4 text-center font-bold text-rose-600">{{ item.quantity }}</td>
                             <td class="px-6 py-4">
-                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', item.status === 'posted' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700']">
+                                <span
+                                    :class="['px-2 py-1 rounded-full text-xs font-medium', item.status === 'posted' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700']">
                                     {{ item.status.toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
-                                    <button v-if="item.status === 'draft'" @click="postStockOut(item)" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg" title="Post">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                    </button>
-                                    <button v-if="item.status === 'draft'" @click="openModal(item)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button v-if="item.status === 'draft'" @click="deleteItem(item)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <button v-if="item.status === 'draft'"
+                                        @click="openModal(item.stock_out || { id: item.stock_out_id })"
+                                        class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                        title="View/Edit Bilty">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                         <tr v-if="stockOuts.data.length === 0">
-                            <td :colspan="!currentDistribution?.id ? 6 : 5" class="px-6 py-12 text-center text-gray-500">No stock out records found.</td>
+                            <td :colspan="!currentDistribution?.id ? 8 : 7"
+                                class="px-6 py-12 text-center text-gray-500">No stock out items found.</td>
                         </tr>
                     </tbody>
                 </table>
-                <div class="p-4 border-t border-gray-100 bg-gray-50/50"><Pagination :links="stockOuts.links" /></div>
+                <div class="p-4 border-t border-gray-100 bg-gray-50/50">
+                    <Pagination :links="stockOuts.links" />
+                </div>
             </div>
         </div>
+
 
         <!-- Stock Out Modal -->
         <Modal :show="isModalOpen" @close="closeModal" maxWidth="5xl">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'New' }} Stock Out</h2>
+                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'New' }} Stock
+                    Out</h2>
                 <form @submit.prevent="submit" class="space-y-4">
                     <!-- Header Fields -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Distribution" />
-                            <SearchableSelect v-model="form.distribution_id" :options="distributions" option-value="id" option-label="name" placeholder="Select Distribution" class="mt-1" :disabled="currentDistribution?.id" />
+                            <SearchableSelect v-model="form.distribution_id" :options="distributions" option-value="id"
+                                option-label="name" placeholder="Select Distribution" class="mt-1"
+                                :disabled="currentDistribution?.id" />
                         </div>
                         <div>
                             <InputLabel value="Bilty Number" />
-                            <TextInput v-model="form.bilty_number" type="text" class="mt-1 block w-full" placeholder="Enter bilty number" />
+                            <TextInput v-model="form.bilty_number" type="text" class="mt-1 block w-full"
+                                placeholder="Enter bilty number" />
                         </div>
                         <div>
                             <InputLabel value="Date" />
@@ -390,49 +417,65 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                         <div class="grid grid-cols-2 md:grid-cols-8 gap-3">
                             <div class="col-span-2">
                                 <label class="text-xs text-gray-500 mb-1 block">Product</label>
-                                <SearchableSelect v-model="newItem.product_id" :options="products" option-value="id" option-label="name" placeholder="Select Product" />
+                                <SearchableSelect v-model="newItem.product_id" :options="products" option-value="id"
+                                    option-label="name" placeholder="Select Product" />
                             </div>
                             <div class="col-span-2">
                                 <label class="text-xs text-gray-500 mb-1 block">Batch / Stock</label>
-                                <SearchableSelect v-model="newItem.stock_id" :options="availableBatches" option-value="id" option-label="label" placeholder="Select Batch" :disabled="!newItem.product_id" />
-                                <div v-if="newItem.product_id && availableBatches.length === 0" class="text-xs text-red-500 mt-1">
+                                <SearchableSelect v-model="newItem.stock_id" :options="availableBatches"
+                                    option-value="id" option-label="label" placeholder="Select Batch"
+                                    :disabled="!newItem.product_id" />
+                                <div v-if="newItem.product_id && availableBatches.length === 0"
+                                    class="text-xs text-red-500 mt-1">
                                     No stock available
                                 </div>
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Cartons</label>
-                                <TextInput v-model="newItem.cartons" type="number" min="0" class="block w-full" placeholder="0" />
+                                <TextInput v-model="newItem.cartons" type="number" min="0" class="block w-full"
+                                    placeholder="0" />
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 mb-1 block">× {{ newItem.pieces_per_carton }} pcs</label>
-                                <TextInput v-model="newItem.pieces" type="number" min="0" class="block w-full" placeholder="0" />
+                                <label class="text-xs text-gray-500 mb-1 block">× {{ newItem.pieces_per_carton }}
+                                    pcs</label>
+                                <TextInput v-model="newItem.pieces" type="number" min="0" class="block w-full"
+                                    placeholder="0" />
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Total Qty</label>
-                                <div class="px-3 py-2 bg-rose-100 text-rose-700 font-bold text-center rounded-md">{{ newItem.quantity }}</div>
+                                <div class="px-3 py-2 bg-rose-100 text-rose-700 font-bold text-center rounded-md">{{
+                                    newItem.quantity }}</div>
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">&nbsp;</label>
-                                <button type="button" @click="addItem" class="w-full px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700">+ Add</button>
+                                <button type="button" @click="addItem"
+                                    class="w-full px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700">+
+                                    Add</button>
                             </div>
                         </div>
-                        
+
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Batch # (Auto)</label>
-                                <TextInput v-model="newItem.batch_number" type="text" class="block w-full bg-gray-50" readonly placeholder="-" />
+                                <TextInput v-model="newItem.batch_number" type="text" class="block w-full bg-gray-50"
+                                    readonly placeholder="-" />
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Unit Cost (Auto)</label>
-                                <TextInput v-model="newItem.unit_cost" type="number" step="0.01" class="block w-full bg-gray-50" readonly />
+                                <TextInput v-model="newItem.unit_cost" type="number" step="0.01"
+                                    class="block w-full bg-gray-50" readonly />
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">T.P Rate</label>
-                                <div class="px-3 py-2 bg-emerald-50 text-emerald-700 font-bold text-center rounded-md text-sm">{{ newItem.tp_rate }}</div>
+                                <div
+                                    class="px-3 py-2 bg-emerald-50 text-emerald-700 font-bold text-center rounded-md text-sm">
+                                    {{ newItem.tp_rate }}</div>
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Invoice Price</label>
-                                <div class="px-3 py-2 bg-blue-50 text-blue-700 font-bold text-center rounded-md text-sm">{{ newItem.invoice_price }}</div>
+                                <div
+                                    class="px-3 py-2 bg-blue-50 text-blue-700 font-bold text-center rounded-md text-sm">
+                                    {{ newItem.invoice_price }}</div>
                             </div>
                         </div>
                     </div>
@@ -456,16 +499,24 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                             <tbody class="divide-y">
                                 <tr v-for="(item, index) in form.items" :key="index">
                                     <td class="px-4 py-3">{{ item.product_name }}</td>
-                                    <td class="px-4 py-3 text-center">{{ item.cartons }}<span class="text-gray-400 text-xs"> ×{{ item.pieces_per_carton }}</span></td>
+                                    <td class="px-4 py-3 text-center">{{ item.cartons }}<span
+                                            class="text-gray-400 text-xs"> ×{{ item.pieces_per_carton }}</span></td>
                                     <td class="px-4 py-3 text-center">{{ item.pieces }}</td>
-                                    <td class="px-4 py-3 text-center font-medium text-blue-600">{{ item.available_qty }}</td>
+                                    <td class="px-4 py-3 text-center font-medium text-blue-600">{{ item.available_qty }}
+                                    </td>
                                     <td class="px-4 py-3 text-center font-bold text-rose-600">{{ item.quantity }}</td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">{{ item.batch_number || '-' }}</td>
+                                    <td class="px-4 py-3 text-center font-mono text-xs">{{ item.batch_number || '-' }}
+                                    </td>
                                     <td class="px-4 py-3 text-center">{{ item.unit_cost }}</td>
-                                    <td class="px-4 py-3 text-center font-semibold">{{ (item.quantity * item.unit_cost).toFixed(2) }}</td>
+                                    <td class="px-4 py-3 text-center font-semibold">{{ (item.quantity *
+                                        item.unit_cost).toFixed(2) }}</td>
                                     <td class="px-4 py-3 text-center">
-                                        <button type="button" @click="removeItem(index)" class="text-red-600 hover:text-red-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        <button type="button" @click="removeItem(index)"
+                                            class="text-red-600 hover:text-red-800">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
                                         </button>
                                     </td>
                                 </tr>
@@ -492,12 +543,14 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                     <!-- Remarks -->
                     <div>
                         <InputLabel value="Remarks" />
-                        <textarea v-model="form.remarks" rows="2" class="mt-1 block w-full border-gray-300 focus:border-rose-500 focus:ring-rose-500 rounded-md shadow-sm"></textarea>
+                        <textarea v-model="form.remarks" rows="2"
+                            class="mt-1 block w-full border-gray-300 focus:border-rose-500 focus:ring-rose-500 rounded-md shadow-sm"></textarea>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
-                        <PrimaryButton :disabled="form.processing" class="bg-gradient-to-r from-rose-600 to-pink-600 border-0">
+                        <PrimaryButton :disabled="form.processing"
+                            class="bg-gradient-to-r from-rose-600 to-pink-600 border-0">
                             {{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Save as Draft') }}
                         </PrimaryButton>
                     </div>

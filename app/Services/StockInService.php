@@ -11,24 +11,35 @@ class StockInService
     /**
      * Get all stock ins with filters.
      */
+    /**
+     * Get all stock in items with filters.
+     */
     public function getAll(array $filters = [], $distributionId = null)
     {
-        $query = StockIn::with(['distribution', 'items.product', 'creator']);
+        $query = \App\Models\StockInItem::query()
+            ->join('stock_ins', 'stock_in_items.stock_in_id', '=', 'stock_ins.id')
+            ->select('stock_in_items.*', 'stock_ins.date', 'stock_ins.bilty_number', 'stock_ins.status', 'stock_ins.distribution_id as parent_distribution_id')
+            ->with(['stockIn.distribution', 'product']);
 
         if ($distributionId) {
-            $query->where('distribution_id', $distributionId);
+            $query->where('stock_ins.distribution_id', $distributionId);
         }
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where('bilty_number', 'like', "%{$search}%");
+            $query->where(function($q) use ($search) {
+                $q->where('stock_ins.bilty_number', 'like', "%{$search}%")
+                  ->orWhereHas('product', function($p) use ($search) {
+                      $p->where('name', 'like', "%{$search}%");
+                  });
+            });
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('stock_ins.status', $filters['status']);
         }
 
-        return $query->latest()->paginate(15)->withQueryString();
+        return $query->latest('stock_ins.date')->paginate(15)->withQueryString();
     }
 
     /**

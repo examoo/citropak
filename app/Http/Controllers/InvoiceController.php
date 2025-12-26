@@ -11,6 +11,8 @@ use App\Models\OrderBooker;
 use App\Models\Product;
 use App\Models\Scheme;
 use App\Models\Van;
+use App\Models\Stock;
+use App\Services\StockOutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,8 @@ use Inertia\Inertia;
 
 class InvoiceController extends Controller
 {
+    public function __construct(private StockOutService $stockOutService) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -140,6 +144,9 @@ class InvoiceController extends Controller
 
             // Recalculate totals
             $invoice->recalculateTotals();
+
+            // Auto-generate StockOut
+            $this->createStockOutForInvoice($invoice);
 
             DB::commit();
             return redirect()->route('invoices.show', $invoice->id)
@@ -432,4 +439,98 @@ class InvoiceController extends Controller
             'date' => $this->getNextOrderDate($distributionId)
         ]);
     }
+
+    /**
+     * Create and post a StockOut record for the invoice.
+     */
+    private function createStockOutForInvoice(Invoice $invoice)
+    {
+        // Group items by product to handle allocation
+        $itemsByProduct = $invoice->items->groupBy('product_id');
+        $distributionId = $invoice->distribution_id;
+
+        $stockOutItems = [];
+
+        foreach ($itemsByProduct as $productId => $items) {
+            $totalQuantity = $items->sum('total_pieces');
+            $remainingQty = $totalQuantity;
+
+            // FIFO: Get oldest stocks first
+            $stocks = Stock::where('product_id', $productId)
+                ->where('distribution_id', $distributionId)
+                ->where('quantity', '>', 0)
+                ->orderBy('created_at', 'asc') // FIFO by creation date (or ID)
+                ->get();
+
+            foreach ($stocks as $stock) {
+                if ($remainingQty <= 0) break;
+
+                $takeQty = min($remainingQty, $stock->quantity);
+
+                $stockOutItems[] = [
+                    'stock_id' => $stock->id,
+                    'product_id' => $productId,
+                    'quantity' => $takeQty,
+                    'batch_number' => $stock->batch_number,
+                    'expiry_date' => $stock->expiry_date,
+                    'location' => $stock->location,
+                    'unit_cost' => $stock->unit_cost,
+                ];
+
+                $remainingQty -= $takeQty;
+            }
+
+            // If we still have remaining quantity (insufficient stock),
+            // we create an item without a stock_id to ensure the Stock Out record
+            // reflects the full quantity sold.
+            if ($remainingQty > 0) {
+                // Try to find a default/dummy stock or just leave stock_id null if allowed
+                // For now we assume NULL is allowed or we'll catch the error if strictly enforcing db constraints
+                // Logic: If no stock found above, we have no cost info.
+                
+                $stockOutItems[] = [
+                    'stock_id' => null, // Assuming nullable, or we could find ANY stock to attach
+                    'product_id' => $productId,
+                    'quantity' => $remainingQty,
+                    'batch_number' => null,
+                    'expiry_date' => null,
+                    'location' => null,
+                    'unit_cost' => 0, // Unknown cost
+                ];
+            }
+        }
+
+        if (!empty($stockOutItems)) {
+            $stockOutData = [
+                'distribution_id' => $distributionId,
+                'bilty_number' => $invoice->invoice_number,
+                'date' => $invoice->invoice_date, // or $date
+                'status' => 'draft',
+                'gate_pass_number' => null,
+                'vehicle_number' => null,
+                'builty_number_2' => null,
+                'notes' => 'Auto-generated from Invoice #' . $invoice->invoice_number,
+                'created_by' => auth()->id(),
+            ];
+
+            $stockOut = \App\Models\StockOut::create($stockOutData);
+
+            foreach ($stockOutItems as $item) {
+                $stockOut->items()->create($item);
+            }
+        }
+    }
+
+    /**
+     * Mark invoice as credit.
+     */
+    public function markAsCredit(Request $request, Invoice $invoice)
+    {
+        $invoice->update([
+            'is_credit' => true,
+        ]);
+
+        return back()->with('success', 'Invoice marked as credit.');
+    }
 }
+

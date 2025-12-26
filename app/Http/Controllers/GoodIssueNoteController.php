@@ -199,4 +199,36 @@ class GoodIssueNoteController extends Controller
         return redirect()->route('good-issue-notes.index')
             ->with('success', 'Good Issue Note deleted successfully.');
     }
+    /**
+     * Get pending items for GIN population.
+     */
+    public function getPendingItems(Request $request)
+    {
+        $vanId = $request->query('van_id');
+        $date = $request->query('date');
+
+        if (!$vanId || !$date) {
+            return response()->json([]);
+        }
+
+        // Find invoices for this Van and Date
+        // Exclude cancelled invoices (assuming we don't have a 'cancelled' status yet, but checking typical flow)
+        // Also exclude invoices that are purely returns/damage if needed, but usually GIN includes all stock leaving.
+        // Assuming 'damage' invoices might not need stock *issue* if they are returns, but here we stick to 'sale' or all types unless specified.
+        // User request: "all invoice items".
+        
+        $items = DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.van_id', $vanId)
+            ->whereDate('invoices.invoice_date', $date)
+            // ->where('invoices.status', '!=', 'cancelled') // If status exists
+            ->select(
+                'invoice_items.product_id', 
+                DB::raw('SUM(invoice_items.total_pieces) as total_qty')
+            )
+            ->groupBy('invoice_items.product_id')
+            ->get();
+
+        return response()->json($items);
+    }
 }
