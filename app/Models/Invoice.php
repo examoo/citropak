@@ -23,7 +23,6 @@ class Invoice extends Model
         'order_booker_id',
         'customer_id',
         'invoice_type',
-        'tax_type',
         'subtotal',
         'discount_amount',
         'tax_amount',

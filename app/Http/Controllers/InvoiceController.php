@@ -78,7 +78,6 @@ class InvoiceController extends Controller
             'order_booker_id' => 'required|exists:order_bookers,id',
             'customer_id' => 'required|exists:customers,id',
             'invoice_type' => 'required|in:sale,damage,shelf_rent',
-            'tax_type' => 'required|in:food,juice',
             'invoice_date' => 'required|date',
             'is_credit' => 'boolean',
             'notes' => 'nullable|string',
@@ -89,6 +88,8 @@ class InvoiceController extends Controller
             'items.*.pieces' => 'required|integer|min:0',
             'items.*.total_pieces' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
+            'items.*.fed_percent' => 'nullable|numeric|min:0',
+            'items.*.sales_tax_percent' => 'nullable|numeric|min:0', // Frontend sends sales_tax_percent
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
         ]);
@@ -109,7 +110,6 @@ class InvoiceController extends Controller
                 'order_booker_id' => $validated['order_booker_id'],
                 'customer_id' => $validated['customer_id'],
                 'invoice_type' => $validated['invoice_type'],
-                'tax_type' => $validated['tax_type'],
                 'invoice_date' => $validated['invoice_date'],
                 'is_credit' => $validated['is_credit'] ?? false,
                 'notes' => $validated['notes'] ?? null,
@@ -127,12 +127,14 @@ class InvoiceController extends Controller
                     'total_pieces' => $itemData['total_pieces'],
                     'quantity' => $itemData['total_pieces'],
                     'price' => $itemData['price'],
+                    'fed_percent' => $itemData['fed_percent'] ?? 0,
+                    'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
                 ]);
                 
-                // Calculate taxes based on type
-                $item->calculateAmounts($validated['tax_type'], $isDamage);
+                // Calculate taxes based on stored percentages
+                $item->calculateAmounts($isDamage);
                 $item->save();
             }
 
@@ -199,7 +201,6 @@ class InvoiceController extends Controller
     {
         $validated = $request->validate([
             'invoice_type' => 'required|in:sale,damage,shelf_rent',
-            'tax_type' => 'required|in:food,juice',
             'is_credit' => 'boolean',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -209,6 +210,8 @@ class InvoiceController extends Controller
             'items.*.pieces' => 'required|integer|min:0',
             'items.*.total_pieces' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
+            'items.*.fed_percent' => 'nullable|numeric|min:0',
+            'items.*.sales_tax_percent' => 'nullable|numeric|min:0', // Frontend sends sales_tax_percent
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
         ]);
@@ -220,7 +223,6 @@ class InvoiceController extends Controller
             // Update invoice
             $invoice->update([
                 'invoice_type' => $validated['invoice_type'],
-                'tax_type' => $validated['tax_type'],
                 'is_credit' => $validated['is_credit'] ?? false,
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -244,11 +246,13 @@ class InvoiceController extends Controller
                     'total_pieces' => $itemData['total_pieces'],
                     'quantity' => $itemData['total_pieces'],
                     'price' => $itemData['price'],
+                    'fed_percent' => $itemData['fed_percent'] ?? 0,
+                    'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
                 ]);
                 
-                $item->calculateAmounts($validated['tax_type'], $isDamage);
+                $item->calculateAmounts($isDamage);
                 $item->save();
             }
 

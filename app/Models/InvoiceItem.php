@@ -92,7 +92,7 @@ class InvoiceItem extends Model
     /**
      * Calculate and set all amounts.
      */
-    public function calculateAmounts(string $taxType = 'food', bool $isDamage = false): void
+    public function calculateAmounts(bool $isDamage = false): void
     {
         $baseAmount = $this->total_pieces * $this->price;
         
@@ -109,19 +109,10 @@ class InvoiceItem extends Model
         // Apply scheme discount
         $afterDiscount = $baseAmount - $this->scheme_discount;
         
-        if ($taxType === 'food') {
-            // Food: 18% Sales Tax + 4% Extra (if ATL)
-            $this->tax_percent = 18;
-            $this->fed_percent = 0;
-            $this->tax = $afterDiscount * 0.18;
-            $this->fed_amount = 0; // Extra tax handled separately based on customer ATL
-        } else {
-            // Juice: 18% Sales Tax + 20% FED
-            $this->tax_percent = 18;
-            $this->fed_percent = 20;
-            $this->tax = $afterDiscount * 0.18;
-            $this->fed_amount = $afterDiscount * 0.20;
-        }
+        // Calculate Tax Amounts based on stored percentages
+        // Formula: (value after discount) * percent / 100
+        $this->fed_amount = $afterDiscount * ($this->fed_percent / 100);
+        $this->tax = $afterDiscount * ($this->tax_percent / 100);
         
         $this->line_total = $afterDiscount + $this->tax + $this->fed_amount;
     }
