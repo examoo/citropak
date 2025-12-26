@@ -183,7 +183,7 @@ const calculateReverse = () => {
     const invoicePrice = tpRate / (1 + distMargin);
 
     // Update all calculated fields
-    form.list_price_before_tax = basePrice.toFixed(8);
+    form.list_price_before_tax = basePrice.toFixed(4);
     form.tp_rate = tpRate.toFixed(4);
     form.invoice_price = invoicePrice.toFixed(4);
 
@@ -724,8 +724,8 @@ const deleteProduct = (product) => {
                         </div>
                         <div>
                             <InputLabel value="Retail Margin %" />
-                            <TextInput v-model="form.retail_margin" type="number" step="0.001" class="mt-1 block w-full"
-                                placeholder="e.g. 11.897" />
+                            <TextInput v-model="form.retail_margin" type="number" step="0.0001"
+                                class="mt-1 block w-full" placeholder="e.g. 11.8970" />
                             <div v-if="form.errors.retail_margin" class="text-xs text-red-600 mt-1">{{
                                 form.errors.retail_margin }}</div>
                         </div>
@@ -740,8 +740,8 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Distribution Margin %" />
-                            <TextInput v-model="form.distribution_margin" type="number" step="0.001"
-                                class="mt-1 block w-full" placeholder="e.g. 5.1" />
+                            <TextInput v-model="form.distribution_margin" type="number" step="0.0001"
+                                class="mt-1 block w-full" placeholder="e.g. 5.1000" />
                             <div v-if="form.errors.distribution_margin" class="text-xs text-red-600 mt-1">{{
                                 form.errors.distribution_margin }}</div>
                         </div>
@@ -756,21 +756,21 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Sale Tax %" />
-                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.01" class="mt-1 block w-full"
-                                placeholder="e.g. 18" />
+                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.0001"
+                                class="mt-1 block w-full" placeholder="e.g. 18.0000" />
                             <div v-if="form.errors.fed_sales_tax" class="text-xs text-red-600 mt-1">{{
                                 form.errors.fed_sales_tax }}</div>
                         </div>
                         <div>
                             <InputLabel value="FED %" />
-                            <TextInput v-model="form.fed_percent" type="number" step="0.01" class="mt-1 block w-full"
-                                placeholder="e.g. 20" />
+                            <TextInput v-model="form.fed_percent" type="number" step="0.0001" class="mt-1 block w-full"
+                                placeholder="e.g. 20.0000" />
                             <div v-if="form.errors.fed_percent" class="text-xs text-red-600 mt-1">{{
                                 form.errors.fed_percent }}</div>
                         </div>
                         <div>
                             <InputLabel value="Unit Price (Final)" />
-                            <TextInput v-model="form.unit_price" type="number" step="0.01"
+                            <TextInput v-model="form.unit_price" type="number" step="0.0001"
                                 class="mt-1 block w-full bg-emerald-50 font-bold text-emerald-700"
                                 @input="onUnitPriceInput" placeholder="Auto-calculated or enter manually" />
                             <div v-if="form.errors.unit_price" class="text-xs text-red-600 mt-1">{{
