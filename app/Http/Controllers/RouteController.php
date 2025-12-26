@@ -46,7 +46,7 @@ class RouteController extends Controller
 
         $this->service->create($validated);
 
-        return redirect()->route('routes.index')
+        return redirect()->back()
             ->with('success', 'Route created successfully.');
     }
 
@@ -67,7 +67,7 @@ class RouteController extends Controller
 
         $this->service->update($id, $validated);
 
-        return redirect()->route('routes.index')
+        return redirect()->back()
             ->with('success', 'Route updated successfully.');
     }
 

@@ -113,6 +113,19 @@ class CustomerService
         });
         $attributes->put('category', $categories);
 
+        // Fetch Routes scoped by distribution (global + specific)
+        $routeQuery = \App\Models\Route::where('status', 'active');
+        if ($distributionId) {
+            $routeQuery->where(function($q) use ($distributionId) {
+                $q->whereNull('distribution_id')
+                  ->orWhere('distribution_id', $distributionId);
+            });
+        }
+        $routes = $routeQuery->latest()->get()->map(function($route) {
+            return ['id' => $route->id, 'value' => $route->name, 'type' => 'route', 'distribution_id' => $route->distribution_id];
+        });
+        $attributes->put('route', $routes);
+
         // Fetch Distributions (for customer distribution dropdown, if needed)
         $distributions = \App\Models\Distribution::where('status', 'active')->get()->map(function($dist) {
             return ['id' => $dist->id, 'value' => $dist->name, 'type' => 'distribution'];

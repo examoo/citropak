@@ -28,6 +28,7 @@ class Customer extends Model
         'day',
         'address',
         'sub_address',
+        'route',
         'phone',
         'ntn_number',
         'sales_tax_number',

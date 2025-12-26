@@ -27,6 +27,7 @@ class CustomerRequest extends FormRequest
             'shop_name' => 'required|string|max:255',
             'address' => 'nullable|string',
             'sub_address' => 'nullable|string|max:255',
+            'route' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'category' => 'nullable|string|max:100',
             'channel' => 'nullable|string|max:100',

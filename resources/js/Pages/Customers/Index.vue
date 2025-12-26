@@ -13,6 +13,7 @@ import ChannelFormModal from '@/Components/ChannelFormModal.vue';
 import SubAddressFormModal from '@/Components/SubAddressFormModal.vue';
 import SubDistributionFormModal from '@/Components/SubDistributionFormModal.vue';
 import CategoryFormModal from '@/Components/CategoryFormModal.vue';
+import RouteFormModal from '@/Components/RouteFormModal.vue';
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { debounce } from 'lodash';
 import { watch, ref, computed, nextTick } from 'vue';
@@ -43,6 +44,7 @@ const isChannelModalOpen = ref(false);
 const isSubAddressModalOpen = ref(false);
 const isSubDistributionModalOpen = ref(false);
 const isCategoryModalOpen = ref(false);
+const isRouteModalOpen = ref(false);
 
 // Filter State
 const search = ref(props.filters.search || '');
@@ -74,7 +76,7 @@ const handleSort = (field) => {
 };
 
 const getSortIcon = (field) => {
-    if (sortField.value !== field) return '↕'; 
+    if (sortField.value !== field) return '↕';
     return sortDirection.value === 'asc' ? '↑' : '↓';
 };
 
@@ -96,7 +98,8 @@ const form = useForm({
     adv_tax_percent: '0.00',
     percentage: '0.00',
     cnic: '',
-    sales_tax_number: ''
+    sales_tax_number: '',
+    route: ''
 });
 
 const selectedChannelId = ref('');
@@ -112,7 +115,7 @@ const activeDistributionId = computed(() => {
 // Filter attributes by distribution - show items matching selected distribution or global (no distribution_id)
 const filterByDistribution = (items) => {
     if (!activeDistributionId.value) return items;
-    return items.filter(item => 
+    return items.filter(item =>
         !item.distribution_id || item.distribution_id == activeDistributionId.value
     );
 };
@@ -122,6 +125,7 @@ const filteredCategoryOptions = computed(() => filterByDistribution(getAttribute
 const filteredSubAddressOptions = computed(() => filterByDistribution(getAttributes('sub_address')));
 const filteredSubDistributionOptions = computed(() => filterByDistribution(getAttributes('sub_distribution')));
 const filteredChannelOptions = computed(() => filterByDistribution(getAttributes('channel')));
+const filteredRouteOptions = computed(() => filterByDistribution(getAttributes('route')));
 
 const channelOptions = computed(() => filteredChannelOptions.value);
 
@@ -132,10 +136,10 @@ watch(selectedChannelId, (newId) => {
         // Let's keep form sync if needed. But usually selection drives form.
         return;
     }
-    
+
     // Find the full channel object by unique ID
     const channel = channelOptions.value.find(ch => ch.id === newId);
-    
+
     if (channel) {
         // Sync the form data
         form.channel = channel.value; // The name
@@ -147,7 +151,7 @@ watch(selectedChannelId, (newId) => {
 const openModal = (customer = null) => {
     isEditing.value = !!customer;
     editingCustomerId.value = customer?.id;
-    
+
     // Reset selection ID first
     selectedChannelId.value = '';
 
@@ -169,15 +173,16 @@ const openModal = (customer = null) => {
         form.percentage = customer.percentage;
         form.cnic = customer.cnic;
         form.sales_tax_number = customer.sales_tax_number;
-        
+        form.route = customer.route || '';
+
         // Smartly find the correct channel ID to select
         // Match by Name AND ATL status to distinguish duplicates
         if (customer.channel) {
-            const match = channelOptions.value.find(ch => 
-                ch.value === customer.channel && 
+            const match = channelOptions.value.find(ch =>
+                ch.value === customer.channel &&
                 ch.atl === (customer.atl || 'active')
             );
-            
+
             // Fallback to name only if exact match fails
             if (match) {
                 selectedChannelId.value = match.id;
@@ -193,14 +198,15 @@ const openModal = (customer = null) => {
         form.atl = 'active';
         form.adv_tax_percent = '0.00';
         form.percentage = '0.00';
+        form.route = '';
         selectedChannelId.value = '';
-        
+
         // Auto-select distribution if scoped (DMS mode)
         if (currentDistribution.value?.id) {
             form.distribution_id = currentDistribution.value.id;
         }
     }
-    
+
     isModalOpen.value = true;
 };
 
@@ -272,7 +278,7 @@ const deleteCustomer = (customer) => {
 const quickAddAttribute = async (type, title) => {
     // Check for open dialog to attach SweetAlert
     const openDialog = document.querySelector('dialog[open]');
-    
+
     // Special handling for Channel - needs ATL and Advance Tax fields
     if (type === 'channel') {
         const { value: formValues } = await Swal.fire({
@@ -308,12 +314,12 @@ const quickAddAttribute = async (type, title) => {
                 const name = document.getElementById('swal-channel-name').value;
                 const atl = document.getElementById('swal-channel-atl').value;
                 const advTax = document.getElementById('swal-channel-adv-tax').value;
-                
+
                 if (!name) {
                     Swal.showValidationMessage('Channel name is required');
                     return false;
                 }
-                
+
                 return { name, atl, advTax };
             }
         });
@@ -336,13 +342,13 @@ const quickAddAttribute = async (type, title) => {
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    
+
                     // Find the newly added channel ID (matching name and ATL) and select it
-                    const newChannel = props.attributes.channel.find(ch => 
-                        ch.value === formValues.name && 
+                    const newChannel = props.attributes.channel.find(ch =>
+                        ch.value === formValues.name &&
                         ch.atl === formValues.atl // Exact match
                     );
-                    
+
                     if (newChannel) {
                         selectedChannelId.value = newChannel.id;
                     } else {
@@ -364,7 +370,7 @@ const quickAddAttribute = async (type, title) => {
         }
         return;
     }
-    
+
     const { value: newValue } = await Swal.fire({
         title: `Add New ${title}`,
         input: 'text',
@@ -373,7 +379,7 @@ const quickAddAttribute = async (type, title) => {
         showCancelButton: true,
         target: openDialog || 'body',
         customClass: {
-            container: 'z-[9999]' 
+            container: 'z-[9999]'
         },
         inputValidator: (value) => {
             if (!value) {
@@ -397,9 +403,9 @@ const quickAddAttribute = async (type, title) => {
             preserveScroll: true,
             preserveState: true,
             onSuccess: () => {
-                 Swal.fire({
-                    title: 'Success', 
-                    text: `${title} added successfully`, 
+                Swal.fire({
+                    title: 'Success',
+                    text: `${title} added successfully`,
                     icon: 'success',
                     target: openDialog || 'body',
                     timer: 1500,
@@ -466,8 +472,8 @@ const submitImport = () => {
             });
         },
         onError: () => {
-             closeImportModal(); // Close modal on error too? Or keep open? User preference usually keep open. But keeping simple.
-             Swal.fire({
+            closeImportModal(); // Close modal on error too? Or keep open? User preference usually keep open. But keeping simple.
+            Swal.fire({
                 title: 'Error',
                 text: 'Failed to import customers',
                 icon: 'error'
@@ -478,6 +484,7 @@ const submitImport = () => {
 </script>
 
 <template>
+
     <Head title="Customer Management" />
 
     <DashboardLayout>
@@ -488,46 +495,40 @@ const submitImport = () => {
                     <h1 class="text-2xl font-bold text-gray-900">Customers</h1>
                     <p class="text-gray-500 mt-1">Manage your customer database</p>
                 </div>
-                
+
                 <div class="flex items-center gap-3">
-                     <!-- Search Bar -->
+                    <!-- Search Bar -->
                     <div class="relative">
-                        <input 
-                            v-model="search"
-                            type="text" 
-                            placeholder="Search customers..." 
-                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 w-64 shadow-sm"
-                        >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <input v-model="search" type="text" placeholder="Search customers..."
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 w-64 shadow-sm">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
 
-                    <select 
-                        v-model="filterStatus"
-                        class="py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 bg-white shadow-sm"
-                    >
+                    <select v-model="filterStatus"
+                        class="py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 bg-white shadow-sm">
                         <option value="">All Status</option>
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
 
-                    <button 
-                        @click="openImportModal"
-                        class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
-                    >
-                        <svg class="w-5 h-5 mr-2 -ml-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="openImportModal"
+                        class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                        <svg class="w-5 h-5 mr-2 -ml-1 text-green-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         Import Excel
                     </button>
 
-                    <button 
-                        @click="openModal()"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
-                    >
+                    <button @click="openModal()"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         Add Customer
                     </button>
@@ -541,16 +542,20 @@ const submitImport = () => {
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
                                 <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
-                                <th @click="handleSort('customer_code')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('customer_code')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Code {{ getSortIcon('customer_code') }}
                                 </th>
-                                <th @click="handleSort('shop_name')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('shop_name')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Shop Name {{ getSortIcon('shop_name') }}
                                 </th>
-                                <th @click="handleSort('van')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('van')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     VAN {{ getSortIcon('van') }}
                                 </th>
-                                <th @click="handleSort('channel')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('channel')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Channel {{ getSortIcon('channel') }}
                                 </th>
                                 <th class="px-6 py-4">Category</th>
@@ -559,22 +564,27 @@ const submitImport = () => {
                                 <th class="px-6 py-4">NTN/STRN</th>
                                 <th class="px-6 py-4">CNIC</th>
                                 <th class="px-6 py-4">Percentage</th>
-                                <th @click="handleSort('phone')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('phone')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Telephone {{ getSortIcon('phone') }}
                                 </th>
-                                <th @click="handleSort('status')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                <th @click="handleSort('status')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Status {{ getSortIcon('status') }}
                                 </th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="customer in customers.data" :key="customer.id" class="hover:bg-gray-50/50 transition-colors">
+                            <tr v-for="customer in customers.data" :key="customer.id"
+                                class="hover:bg-gray-50/50 transition-colors">
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4">
-                                    <span v-if="customer.distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <span v-if="customer.distribution"
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                         {{ customer.distribution.name }}
                                     </span>
-                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    <span v-else
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                         Global
                                     </span>
                                 </td>
@@ -594,7 +604,8 @@ const submitImport = () => {
                                     {{ customer.category || '-' }}
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span v-if="customer.sub_distribution" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                                    <span v-if="customer.sub_distribution"
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
                                         {{ customer.sub_distribution }}
                                     </span>
                                     <span v-else class="text-gray-400">-</span>
@@ -603,9 +614,9 @@ const submitImport = () => {
                                     {{ customer.day || '-' }}
                                 </td>
                                 <td class="px-6 py-4 text-gray-500 text-xs">
-                                     <div v-if="customer.ntn_number">NTN: {{ customer.ntn_number }}</div>
-                                     <div v-if="customer.sales_tax_number">STRN: {{ customer.sales_tax_number }}</div>
-                                     <div v-if="!customer.ntn_number && !customer.sales_tax_number">-</div>
+                                    <div v-if="customer.ntn_number">NTN: {{ customer.ntn_number }}</div>
+                                    <div v-if="customer.sales_tax_number">STRN: {{ customer.sales_tax_number }}</div>
+                                    <div v-if="!customer.ntn_number && !customer.sales_tax_number">-</div>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.cnic || '-' }}
@@ -626,22 +637,20 @@ const submitImport = () => {
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button 
-                                            @click="openModal(customer)"
+                                        <button @click="openModal(customer)"
                                             class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            title="Edit Customer"
-                                        >
+                                            title="Edit Customer">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                         </button>
-                                        <button 
-                                            @click="deleteCustomer(customer)"
+                                        <button @click="deleteCustomer(customer)"
                                             class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete Customer"
-                                        >
+                                            title="Delete Customer">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
                                     </div>
@@ -650,9 +659,12 @@ const submitImport = () => {
                             <tr v-if="customers.data.length === 0">
                                 <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center gap-3">
-                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        <div
+                                            class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                             </svg>
                                         </div>
                                         <p class="font-medium">No customers found</p>
@@ -663,7 +675,7 @@ const submitImport = () => {
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Pagination -->
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50">
                     <Pagination :links="customers.links" />
@@ -681,16 +693,9 @@ const submitImport = () => {
                 <form @submit.prevent="submit" class="space-y-4">
                     <!-- Distribution Select (Only if Global View) -->
                     <div v-if="!currentDistribution?.id && !isEditing">
-                        <SearchableSelect 
-                            v-model="form.distribution_id"
-                            label="Distribution"
-                            :options="getAttributes('distribution')"
-                            option-value="id"
-                            option-label="value"
-                            placeholder="Select a distribution"
-                            :error="form.errors.distribution_id"
-                            required
-                        />
+                        <SearchableSelect v-model="form.distribution_id" label="Distribution"
+                            :options="getAttributes('distribution')" option-value="id" option-label="value"
+                            placeholder="Select a distribution" :error="form.errors.distribution_id" required />
                         <p class="text-xs text-gray-500 mt-1">Select the distribution this customer belongs to.</p>
                     </div>
 
@@ -698,27 +703,28 @@ const submitImport = () => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Customer Code" />
-                            <TextInput 
-                                v-model="form.customer_code" 
-                                type="text" 
-                                class="mt-1 block w-full" 
+                            <TextInput v-model="form.customer_code" type="text" class="mt-1 block w-full"
                                 :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.customer_code }"
-                                placeholder="e.g. CPSSGD03739" 
-                            />
-                            <div v-if="form.errors.customer_code" class="text-xs text-red-600 mt-1">{{ form.errors.customer_code }}</div>
+                                placeholder="e.g. CPSSGD03739" />
+                            <div v-if="form.errors.customer_code" class="text-xs text-red-600 mt-1">{{
+                                form.errors.customer_code }}</div>
                         </div>
                         <div>
                             <InputLabel value="VAN" />
                             <div class="flex gap-2">
-                                <select 
-                                    v-model="form.van"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
+                                <select v-model="form.van"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select VAN</option>
-                                    <option v-for="attr in filteredVanOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredVanOptions" :key="attr.id" :value="attr.value">{{
+                                        attr.value }}</option>
                                 </select>
-                                <button type="button" @click="isVanModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New VAN">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                <button type="button" @click="isVanModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New VAN">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -728,34 +734,54 @@ const submitImport = () => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Shop Name" />
-                            <TextInput 
-                                v-model="form.shop_name" 
-                                type="text" 
-                                class="mt-1 block w-full" 
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.shop_name }"
-                            />
-                            <div v-if="form.errors.shop_name" class="text-xs text-red-600 mt-1">{{ form.errors.shop_name }}</div>
+                            <TextInput v-model="form.shop_name" type="text" class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.shop_name }" />
+                            <div v-if="form.errors.shop_name" class="text-xs text-red-600 mt-1">{{ form.errors.shop_name
+                            }}</div>
                         </div>
-                         <div>
+                        <div>
                             <InputLabel value="Address" />
                             <TextInput v-model="form.address" type="text" class="mt-1 block w-full" />
                         </div>
                     </div>
 
                     <!-- Row 3 -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
                             <InputLabel value="Sub Address" />
                             <div class="flex gap-2">
-                                <select 
-                                    v-model="form.sub_address"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
+                                <select v-model="form.sub_address"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select Sub Address</option>
-                                    <option v-for="attr in filteredSubAddressOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredSubAddressOptions" :key="attr.id"
+                                        :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="isSubAddressModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Address">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                <button type="button" @click="isSubAddressModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New Sub Address">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel value="Route" />
+                            <div class="flex gap-2">
+                                <select v-model="form.route"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                    <option value="">Select Route</option>
+                                    <option v-for="attr in filteredRouteOptions" :key="attr.id" :value="attr.value">{{
+                                        attr.value }}</option>
+                                </select>
+                                <button type="button" @click="isRouteModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New Route">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -767,35 +793,42 @@ const submitImport = () => {
 
                     <!-- Row 4 -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
+                        <div>
                             <InputLabel value="Categories" />
                             <div class="flex gap-2">
-                                <select 
-                                    v-model="form.category"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
+                                <select v-model="form.category"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select Category</option>
-                                    <option v-for="attr in filteredCategoryOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredCategoryOptions" :key="attr.id" :value="attr.value">
+                                        {{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="isCategoryModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Category">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                <button type="button" @click="isCategoryModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New Category">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
-                         <div>
+                        <div>
                             <InputLabel value="Channel" />
                             <div class="flex gap-2">
-                                <select 
-                                    v-model="selectedChannelId"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
+                                <select v-model="selectedChannelId"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select Channel</option>
                                     <option v-for="attr in channelOptions" :key="attr.id" :value="attr.id">
                                         {{ attr.value }} ({{ attr.atl ? 'ATL' : 'Non-ATL' }})
                                     </option>
                                 </select>
-                                <button type="button" @click="isChannelModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Channel">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                <button type="button" @click="isChannelModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New Channel">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -808,25 +841,27 @@ const submitImport = () => {
                         <div>
                             <InputLabel value="Sub Distribution" />
                             <div class="flex gap-2">
-                                <select 
-                                    v-model="form.sub_distribution"
-                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                >
+                                <select v-model="form.sub_distribution"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select Sub Distribution</option>
-                                    <option v-for="attr in filteredSubDistributionOptions" :key="attr.id" :value="attr.value">{{ attr.value }}</option>
+                                    <option v-for="attr in filteredSubDistributionOptions" :key="attr.id"
+                                        :value="attr.value">{{ attr.value }}</option>
                                 </select>
-                                <button type="button" @click="isSubDistributionModalOpen = true" class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="Add New Sub Distribution">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                <button type="button" @click="isSubDistributionModalOpen = true"
+                                    class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
+                                    title="Add New Sub Distribution">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div>
                             <InputLabel value="Day" />
-                            <select 
-                                v-model="form.day"
+                            <select v-model="form.day"
                                 class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.day }"
-                            >
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.day }">
                                 <option value="">Select Day</option>
                                 <option value="Monday">Monday</option>
                                 <option value="Tuesday">Tuesday</option>
@@ -844,48 +879,35 @@ const submitImport = () => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="NTN Number" />
-                            <TextInput 
-                                v-model="form.ntn_number" 
-                                type="text" 
-                                class="mt-1 block w-full"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.ntn_number }"
-                            />
-                            <div v-if="form.errors.ntn_number" class="text-xs text-red-600 mt-1">{{ form.errors.ntn_number }}</div>
+                            <TextInput v-model="form.ntn_number" type="text" class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.ntn_number }" />
+                            <div v-if="form.errors.ntn_number" class="text-xs text-red-600 mt-1">{{
+                                form.errors.ntn_number }}</div>
                         </div>
                         <div>
                             <InputLabel value="CNIC" />
-                            <TextInput 
-                                v-model="form.cnic" 
-                                type="text" 
-                                class="mt-1 block w-full"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.cnic }"
-                            />
+                            <TextInput v-model="form.cnic" type="text" class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.cnic }" />
                             <div v-if="form.errors.cnic" class="text-xs text-red-600 mt-1">{{ form.errors.cnic }}</div>
                         </div>
                     </div>
 
-                     <!-- Row 7 -->
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Row 7 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Sale Tax Number" />
-                            <TextInput 
-                                v-model="form.sales_tax_number" 
-                                type="text" 
-                                class="mt-1 block w-full"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.sales_tax_number }"
-                            />
-                            <div v-if="form.errors.sales_tax_number" class="text-xs text-red-600 mt-1">{{ form.errors.sales_tax_number }}</div>
+                            <TextInput v-model="form.sales_tax_number" type="text" class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.sales_tax_number }" />
+                            <div v-if="form.errors.sales_tax_number" class="text-xs text-red-600 mt-1">{{
+                                form.errors.sales_tax_number }}</div>
                         </div>
                         <div>
                             <InputLabel value="Adv. Tax (%)" />
-                            <TextInput 
-                                v-model="form.adv_tax_percent" 
-                                type="number" 
-                                step="0.01" 
+                            <TextInput v-model="form.adv_tax_percent" type="number" step="0.01"
                                 class="mt-1 block w-full"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.adv_tax_percent }"
-                            />
-                            <div v-if="form.errors.adv_tax_percent" class="text-xs text-red-600 mt-1">{{ form.errors.adv_tax_percent }}</div>
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.adv_tax_percent }" />
+                            <div v-if="form.errors.adv_tax_percent" class="text-xs text-red-600 mt-1">{{
+                                form.errors.adv_tax_percent }}</div>
                         </div>
                     </div>
 
@@ -893,31 +915,23 @@ const submitImport = () => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Percentage" />
-                            <TextInput 
-                                v-model="form.percentage" 
-                                type="number" 
-                                step="0.01" 
-                                class="mt-1 block w-full"
-                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.percentage }"
-                            />
-                            <div v-if="form.errors.percentage" class="text-xs text-red-600 mt-1">{{ form.errors.percentage }}</div>
+                            <TextInput v-model="form.percentage" type="number" step="0.01" class="mt-1 block w-full"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.percentage }" />
+                            <div v-if="form.errors.percentage" class="text-xs text-red-600 mt-1">{{
+                                form.errors.percentage }}</div>
                         </div>
                         <div>
                             <InputLabel value="ATL" />
-                            <select 
-                                v-model="form.atl" 
-                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                            >
+                            <select v-model="form.atl"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
                         </div>
                         <div>
                             <InputLabel value="Status" />
-                            <select 
-                                v-model="form.status" 
-                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                            >
+                            <select v-model="form.status"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
@@ -926,10 +940,8 @@ const submitImport = () => {
 
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
-                        <PrimaryButton 
-                            :disabled="form.processing"
-                            class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0"
-                        >
+                        <PrimaryButton :disabled="form.processing"
+                            class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">
                             {{ form.processing ? 'Saving...' : (isEditing ? 'Update Customer' : 'Create Customer') }}
                         </PrimaryButton>
                     </div>
@@ -941,39 +953,29 @@ const submitImport = () => {
     <Modal :show="isImportModalOpen" @close="closeImportModal" maxWidth="md">
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900 mb-4">Import Customers</h2>
-            
+
             <div class="space-y-4">
                 <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <span class="text-sm text-gray-600">Download sample format</span>
-                     <a 
-                        :href="route('customers.template')" 
-                        class="text-sm text-indigo-600 hover:text-indigo-900 font-medium hover:underline"
-                    >
+                    <a :href="route('customers.template')"
+                        class="text-sm text-indigo-600 hover:text-indigo-900 font-medium hover:underline">
                         Download Format
                     </a>
                 </div>
 
                 <div>
                     <!-- Distribution Selection for Import (Global View) -->
-                     <div v-if="!currentDistribution?.id" class="mb-4">
-                        <SearchableSelect 
-                            v-model="importDistributionId"
-                            label="Target Distribution (Optional)"
-                            :options="getAttributes('distribution')"
-                            option-value="id"
-                            option-label="value"
-                            placeholder="Select target distribution"
-                        />
-                        <p class="text-xs text-gray-500 mt-1">Select a distribution to import all customers into. If empty, uses 'Distribution' column from Excel.</p>
+                    <div v-if="!currentDistribution?.id" class="mb-4">
+                        <SearchableSelect v-model="importDistributionId" label="Target Distribution (Optional)"
+                            :options="getAttributes('distribution')" option-value="id" option-label="value"
+                            placeholder="Select target distribution" />
+                        <p class="text-xs text-gray-500 mt-1">Select a distribution to import all customers into. If
+                            empty, uses 'Distribution' column from Excel.</p>
                     </div>
 
                     <InputLabel value="Select Excel File" class="mb-2" />
-                    <input 
-                        type="file" 
-                        accept=".xlsx,.csv"
-                        @change="handleImportFileChange"
-                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                    >
+                    <input type="file" accept=".xlsx,.csv" @change="handleImportFileChange"
+                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
                 </div>
             </div>
 
@@ -989,47 +991,31 @@ const submitImport = () => {
     </Modal>
 
     <!-- Van Form Modal (Shared Component) -->
-    <VanFormModal 
-        :show="isVanModalOpen"
-        @close="isVanModalOpen = false"
-        @saved="(vanCode) => { form.van = vanCode; }"
-        :distributions="getAttributes('distribution')"
-        :parentDistributionId="form.distribution_id"
-    />
+    <VanFormModal :show="isVanModalOpen" @close="isVanModalOpen = false" @saved="(vanCode) => { form.van = vanCode; }"
+        :distributions="getAttributes('distribution')" :parentDistributionId="form.distribution_id" />
 
     <!-- Channel Form Modal (Shared Component) -->
-    <ChannelFormModal 
-        :show="isChannelModalOpen"
-        @close="isChannelModalOpen = false"
-        @saved="(channelName) => { form.channel = channelName; }"
-        :distributions="getAttributes('distribution')"
-        :parentDistributionId="form.distribution_id"
-    />
+    <ChannelFormModal :show="isChannelModalOpen" @close="isChannelModalOpen = false"
+        @saved="(channelName) => { form.channel = channelName; }" :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id" />
 
     <!-- Sub Address Form Modal (Shared Component) -->
-    <SubAddressFormModal 
-        :show="isSubAddressModalOpen"
-        @close="isSubAddressModalOpen = false"
+    <SubAddressFormModal :show="isSubAddressModalOpen" @close="isSubAddressModalOpen = false"
         @saved="(subAddressName) => { form.sub_address = subAddressName; }"
-        :distributions="getAttributes('distribution')"
-        :parentDistributionId="form.distribution_id"
-    />
+        :distributions="getAttributes('distribution')" :parentDistributionId="form.distribution_id" />
 
     <!-- Sub Distribution Form Modal (Shared Component) -->
-    <SubDistributionFormModal 
-        :show="isSubDistributionModalOpen"
-        @close="isSubDistributionModalOpen = false"
+    <SubDistributionFormModal :show="isSubDistributionModalOpen" @close="isSubDistributionModalOpen = false"
         @saved="(subDistName) => { form.sub_distribution = subDistName; }"
-        :distributions="getAttributes('distribution')"
-        :parentDistributionId="form.distribution_id"
-    />
+        :distributions="getAttributes('distribution')" :parentDistributionId="form.distribution_id" />
 
     <!-- Category Form Modal (Shared Component) -->
-    <CategoryFormModal 
-        :show="isCategoryModalOpen"
-        @close="isCategoryModalOpen = false"
-        @saved="(categoryName) => { form.category = categoryName; }"
-        :distributions="getAttributes('distribution')"
-        :parentDistributionId="form.distribution_id"
-    />
+    <CategoryFormModal :show="isCategoryModalOpen" @close="isCategoryModalOpen = false"
+        @saved="(categoryName) => { form.category = categoryName; }" :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id" />
+
+    <!-- Route Form Modal (Shared Component) -->
+    <RouteFormModal :show="isRouteModalOpen" @close="isRouteModalOpen = false"
+        @saved="(routeName) => { form.route = routeName; }" :distributions="getAttributes('distribution')"
+        :parentDistributionId="form.distribution_id" />
 </template>
