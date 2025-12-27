@@ -183,8 +183,29 @@ const navigation = [
             { name: 'Stock Report', href: 'stock-reports.index', permission: 'reports.view' },
             { name: 'Sales Sheet', href: 'sales-sheets.index', permission: 'reports.view' },
             { name: 'Customer Sales Report', href: 'customer-sales-reports.index', permission: 'reports.view' },
+            { name: 'Customer Ledger', href: 'customer-ledgers.index', permission: 'reports.view' },
+            { name: 'Van Comparison', href: 'van-comparison.index', permission: 'reports.view' },
             { name: 'Daily Sales Report', href: 'daily-sales-reports.index', permission: 'reports.view' },
             { name: 'Sale Tax Invoices Monthly Report', href: 'sale-tax-invoices-reports.index', permission: 'reports.view' },
+        ]
+    },
+    {
+        name: 'Credit Management',
+        icon: 'credit',
+        permission: 'invoices.view',
+        children: [
+            { name: 'Home', href: 'credit-management.index', permission: 'invoices.view' },
+            { name: 'Credit Booker', href: 'credit-bookers.index', permission: 'invoices.view' },
+            { name: 'Credit Entries', href: 'credit-management.entries', permission: 'invoices.view' },
+            { name: 'Recovery', href: 'recoveries.index', permission: 'invoices.view' },
+            { name: 'Summary', href: 'credit-management.summary', permission: 'invoices.view' },
+            { name: 'Credit Bill Summary', href: 'credit-management.bill-summary', permission: 'invoices.view' },
+            { name: 'Ledger', href: 'customer-ledgers.index', permission: 'invoices.view' },
+            { name: 'Bill-Wise Recovery', href: 'credit-management.bill-wise-recovery', permission: 'invoices.view' },
+            { name: 'Search', href: 'credit-management.search', permission: 'invoices.view' },
+            { name: 'Daily Report', href: 'credit-management.daily-report', permission: 'invoices.view' },
+            { name: 'Daily Credit Progress', href: 'credit-management.daily-progress', permission: 'invoices.view' },
+            { name: 'Sales Sheet', href: 'credit-management.sales-sheet', permission: 'invoices.view' },
         ]
     },
     {
@@ -414,6 +435,12 @@ const handleClickOutside = (event) => {
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <!-- Credit Icon -->
+                                <svg v-else-if="item.icon === 'credit'" class="w-5 h-5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                 </svg>
                                 <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name
                                 }}</span>

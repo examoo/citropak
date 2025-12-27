@@ -71,7 +71,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('sales-sheets', [\App\Http\Controllers\SalesSheetController::class, 'index'])->name('sales-sheets.index');
     Route::get('sales-reports', [\App\Http\Controllers\SalesReportController::class, 'index'])->name('sales-reports.index');
     Route::get('customer-sales-reports', [\App\Http\Controllers\CustomerSalesReportController::class, 'index'])->name('customer-sales-reports.index');
+    Route::get('customer-ledgers', [\App\Http\Controllers\CustomerLedgerController::class, 'index'])->name('customer-ledgers.index');
     Route::get('daily-sales-reports', [\App\Http\Controllers\DailySalesReportController::class, 'index'])->name('daily-sales-reports.index');
+    Route::get('van-comparison', [\App\Http\Controllers\VanComparisonController::class, 'index'])->name('van-comparison.index');
     Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
@@ -86,6 +88,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('good-issue-notes/{good_issue_note}/issue', [\App\Http\Controllers\GoodIssueNoteController::class, 'issue'])->name('good-issue-notes.issue');
     Route::post('good-issue-notes/{good_issue_note}/cancel', [\App\Http\Controllers\GoodIssueNoteController::class, 'cancel'])->name('good-issue-notes.cancel');
     Route::resource('good-issue-notes', \App\Http\Controllers\GoodIssueNoteController::class);
+    
+    // Credit Management
+    Route::get('credit-management', [\App\Http\Controllers\CreditManagementController::class, 'index'])->name('credit-management.index');
+    Route::get('credit-management/entries', [\App\Http\Controllers\CreditManagementController::class, 'entries'])->name('credit-management.entries');
+    Route::get('credit-management/summary', [\App\Http\Controllers\CreditManagementController::class, 'summary'])->name('credit-management.summary');
+    Route::get('credit-management/bill-summary', [\App\Http\Controllers\CreditManagementController::class, 'billSummary'])->name('credit-management.bill-summary');
+    Route::get('credit-management/bill-wise-recovery', [\App\Http\Controllers\CreditManagementController::class, 'billWiseRecovery'])->name('credit-management.bill-wise-recovery');
+    Route::get('credit-management/daily-report', [\App\Http\Controllers\CreditManagementController::class, 'dailyReport'])->name('credit-management.daily-report');
+    Route::get('credit-management/daily-progress', [\App\Http\Controllers\CreditManagementController::class, 'dailyProgress'])->name('credit-management.daily-progress');
+    Route::get('credit-management/search', [\App\Http\Controllers\CreditManagementController::class, 'search'])->name('credit-management.search');
+    Route::get('credit-management/sales-sheet', [\App\Http\Controllers\CreditManagementController::class, 'salesSheet'])->name('credit-management.sales-sheet');
+    Route::resource('credit-bookers', \App\Http\Controllers\CreditBookerController::class)->except(['create', 'edit', 'show']);
     
     // Distribution-Based Modules
     Route::post('distributions/{distribution}/switch', [\App\Http\Controllers\DistributionController::class, 'switch'])->name('distributions.switch');

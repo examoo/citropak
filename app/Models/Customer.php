@@ -39,6 +39,7 @@ class Customer extends Model
         'adv_tax_percent',
         'area', // Keeping older fields just in case if they exist
         'contact', // Keeping older fields just in case if they exist
+        'opening_balance',
     ];
 
     /**
