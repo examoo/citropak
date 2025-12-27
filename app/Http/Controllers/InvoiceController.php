@@ -10,6 +10,7 @@ use App\Models\InvoiceItem;
 use App\Models\OrderBooker;
 use App\Models\Product;
 use App\Models\Scheme;
+use App\Models\DiscountScheme;
 use App\Models\Van;
 use App\Models\Stock;
 use App\Services\StockOutService;
@@ -96,6 +97,7 @@ class InvoiceController extends Controller
             'items.*.sales_tax_percent' => 'nullable|numeric|min:0', // Frontend sends sales_tax_percent
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
+            'items.*.is_free' => 'nullable|boolean',
         ]);
 
         $distId = $request->distribution_id ?? $userDistributionId;
@@ -135,6 +137,7 @@ class InvoiceController extends Controller
                     'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
+                    'is_free' => $itemData['is_free'] ?? false,
                 ]);
                 
                 // Calculate taxes based on stored percentages
@@ -423,6 +426,61 @@ class InvoiceController extends Controller
             })
             ->with(['brand', 'product'])
             ->get();
+        
+        return response()->json($schemes);
+    }
+
+    /**
+     * Get discount schemes for a product based on quantity.
+     */
+    public function getDiscountSchemes(Request $request, $productId)
+    {
+        $product = Product::find($productId);
+        $quantity = (int) $request->query('quantity', 0);
+        
+        if (!$product) {
+            return response()->json([]);
+        }
+
+        // Get applicable discount schemes for this product or its brand
+        $schemes = DiscountScheme::active()
+            ->where(function($q) use ($product) {
+                $q->where(function($inner) use ($product) {
+                    $inner->where('scheme_type', 'product')
+                          ->where('product_id', $product->id);
+                })->orWhere(function($inner) use ($product) {
+                    $inner->where('scheme_type', 'brand')
+                          ->where('brand_id', $product->brand_id);
+                });
+            })
+            ->where('from_qty', '<=', $quantity > 0 ? $quantity : 1)
+            ->where(function($q) use ($quantity) {
+                $q->whereNull('to_qty')
+                  ->orWhere('to_qty', '>=', $quantity > 0 ? $quantity : 1);
+            })
+            ->get()
+            ->map(function($scheme) use ($product) {
+                // Get free product details if applicable
+                $freeProduct = null;
+                if ($scheme->free_product_code) {
+                    $freeProduct = Product::where('dms_code', $scheme->free_product_code)
+                        ->orWhere('sku', $scheme->free_product_code)
+                        ->first(['id', 'dms_code', 'name', 'list_price_before_tax', 'unit_price']);
+                }
+
+                return [
+                    'id' => $scheme->id,
+                    'name' => $scheme->name,
+                    'scheme_type' => $scheme->scheme_type,
+                    'from_qty' => $scheme->from_qty,
+                    'to_qty' => $scheme->to_qty,
+                    'discount_type' => $scheme->amount_less > 0 ? 'amount_less' : 'free_product',
+                    'amount_less' => $scheme->amount_less,
+                    'free_pieces' => $scheme->pieces,
+                    'free_product_code' => $scheme->free_product_code,
+                    'free_product' => $freeProduct,
+                ];
+            });
         
         return response()->json($schemes);
     }

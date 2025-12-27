@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/customer-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getCustomerByCode'])->name('api.customer-by-code');
     Route::get('api/product-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getProductByCode'])->name('api.product-by-code');
     Route::get('api/schemes-for-product/{product}', [\App\Http\Controllers\InvoiceController::class, 'getSchemesForProduct'])->name('api.schemes-for-product');
+    Route::get('api/discount-schemes/{product}', [\App\Http\Controllers\InvoiceController::class, 'getDiscountSchemes'])->name('api.discount-schemes');
     Route::get('api/next-order-date', [\App\Http\Controllers\InvoiceController::class, 'getNextOrderDateApi'])->name('api.next-order-date');
     
     // Good Issue Notes

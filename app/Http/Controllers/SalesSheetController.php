@@ -52,11 +52,20 @@ class SalesSheetController extends Controller
                         'net_sale' => 0,
                     ];
                 }
-                $productAggregates[$productId]['qty'] += $item->total_pieces ?? 0;
-                $productAggregates[$productId]['issued'] += $item->total_pieces ?? 0;
-                $productAggregates[$productId]['gross_sale'] += $item->line_total ?? 0;
-                $productAggregates[$productId]['discount'] += $item->scheme_discount ?? 0;
-                $productAggregates[$productId]['net_sale'] += ($item->line_total ?? 0) - ($item->scheme_discount ?? 0);
+                
+                $pieces = $item->total_pieces ?? 0;
+                $isFreeItem = $item->is_free ?? false;
+                
+                // Separate free items from regular qty
+                if ($isFreeItem) {
+                    $productAggregates[$productId]['free'] += $pieces;
+                } else {
+                    $productAggregates[$productId]['qty'] += $pieces;
+                    $productAggregates[$productId]['issued'] += $pieces;
+                    $productAggregates[$productId]['gross_sale'] += $item->line_total ?? 0;
+                    $productAggregates[$productId]['discount'] += $item->scheme_discount ?? 0;
+                    $productAggregates[$productId]['net_sale'] += ($item->line_total ?? 0) - ($item->scheme_discount ?? 0);
+                }
                 
                 // Accumulate advance tax (fed_amount + tax)
                 $totalAdvanceTax += ($item->fed_amount ?? 0) + ($item->tax ?? 0);

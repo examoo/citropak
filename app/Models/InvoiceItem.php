@@ -41,6 +41,7 @@ class InvoiceItem extends Model
         'distribution_margin',
         'invoice_price',
         'unit_price',
+        'is_free',
     ];
 
     protected $casts = [
@@ -52,6 +53,7 @@ class InvoiceItem extends Model
         'fed_percent' => 'decimal:2',
         'fed_amount' => 'decimal:2',
         'line_total' => 'decimal:2',
+        'is_free' => 'boolean',
     ];
 
     /**

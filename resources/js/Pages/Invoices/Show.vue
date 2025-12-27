@@ -109,19 +109,23 @@ const printInvoice = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in invoice.items" :key="item.id">
+                        <tr v-for="(item, index) in invoice.items" :key="item.id"
+                            :class="item.price == 0 ? 'bg-green-50' : ''">
                             <td class="border border-gray-300 px-2 py-2">{{ index + 1 }}</td>
                             <td class="border border-gray-300 px-2 py-2">
-                                <div class="font-medium">{{ item.product?.name }}</div>
+                                <div class="font-medium">
+                                    {{ item.product?.name }}
+                                    <span v-if="item.price == 0" class="ml-2 px-2 py-0.5 text-xs bg-green-500 text-white rounded-full">FREE</span>
+                                </div>
                                 <div class="text-xs text-gray-500">{{ item.product?.dms_code }}</div>
                             </td>
                             <td class="border border-gray-300 px-2 py-2 text-right">{{ item.cartons }}</td>
                             <td class="border border-gray-300 px-2 py-2 text-right">{{ item.pieces }}</td>
                             <td class="border border-gray-300 px-2 py-2 text-right font-medium">{{ item.total_pieces }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ formatAmount(item.price) }}</td>
+                            <td class="border border-gray-300 px-2 py-2 text-right">{{ item.price == 0 ? 'FREE' : formatAmount(item.price) }}</td>
                             <td class="border border-gray-300 px-2 py-2 text-right text-red-600">-{{ formatAmount(item.scheme_discount) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ formatAmount(parseFloat(item.tax) + parseFloat(item.fed_amount)) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-semibold">{{ formatAmount(item.line_total) }}</td>
+                            <td class="border border-gray-300 px-2 py-2 text-right">{{ formatAmount(parseFloat(item.tax || 0) + parseFloat(item.fed_amount || 0)) }}</td>
+                            <td class="border border-gray-300 px-2 py-2 text-right font-semibold">{{ item.price == 0 ? '-' : formatAmount(item.line_total) }}</td>
                         </tr>
                     </tbody>
                 </table>

@@ -57,10 +57,14 @@ const newItem = ref({
     net_unit_price: 0,       // Price with taxes
     scheme_id: '',
     scheme_discount: 0,
+    discount_scheme_id: '',  // DiscountScheme (quantity-based)
+    free_product: null,      // Free product from scheme
+    free_pieces: 0,          // Free pieces quantity
     manual_discount_percent: 0,  // Manual discount %
     manual_discount_amount: 0    // Manual discount amount (Rs)
 });
 const productSchemes = ref([]);
+const discountSchemes = ref([]);
 
 // Day options
 const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -213,18 +217,22 @@ watch(() => newItem.value.product_id, (productId) => {
         if (product) {
             selectedProduct.value = product;
             // Use list_price_before_tax as exclusive price (before taxes)
-            newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || 0;
+            newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || parseFloat(product.unit_price) || 0;
             newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
             newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
             // Get advance tax from selected customer
             newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
-            // Use product's unit_price if available (already calculated with taxes)
-            // Otherwise calculate from exclusive price + taxes
-            if (product.unit_price && parseFloat(product.unit_price) > 0) {
+            
+            // Always calculate net unit price
+            calculateNetUnitPrice();
+            
+            // If product has pre-calculated unit_price and exclusive is 0, use it directly
+            if (newItem.value.exclusive_price === 0 && product.unit_price && parseFloat(product.unit_price) > 0) {
                 newItem.value.net_unit_price = parseFloat(product.unit_price);
-            } else {
-                calculateNetUnitPrice();
+                // Reverse-calculate exclusive price from unit price (approximate)
+                newItem.value.exclusive_price = parseFloat(product.unit_price);
             }
+            
             loadProductSchemes(productId);
             productCode.value = product.dms_code || product.sku || '';
         }
@@ -249,11 +257,49 @@ const loadProductSchemes = async (productId) => {
     }
 };
 
-// Watch cartons/pieces -> Calculate total
+// Load discount schemes for product based on quantity
+const loadDiscountSchemes = async (productId, quantity) => {
+    try {
+        const response = await axios.get(route('api.discount-schemes', productId), {
+            params: { quantity }
+        });
+        discountSchemes.value = response.data;
+        // Auto-apply if only one scheme matches
+        if (discountSchemes.value.length === 1) {
+            applyDiscountScheme(discountSchemes.value[0]);
+        }
+    } catch (e) {
+        discountSchemes.value = [];
+    }
+};
+
+// Apply a discount scheme (amount_less or free_product)
+const applyDiscountScheme = (scheme) => {
+    newItem.value.discount_scheme_id = scheme.id;
+    
+    if (scheme.discount_type === 'amount_less' && scheme.amount_less > 0) {
+        // Amount-based discount
+        newItem.value.scheme_discount = parseFloat(scheme.amount_less);
+        newItem.value.free_product = null;
+        newItem.value.free_pieces = 0;
+    } else if (scheme.discount_type === 'free_product' && scheme.free_product) {
+        // Free product scheme
+        newItem.value.scheme_discount = 0;
+        newItem.value.free_product = scheme.free_product;
+        newItem.value.free_pieces = scheme.free_pieces || 0;
+    }
+};
+
+// Watch cartons/pieces -> Calculate total and load discount schemes
 watch([() => newItem.value.cartons, () => newItem.value.pieces], () => {
     // Use pieces_per_packing from new simplified structure
     const packing = selectedProduct.value?.pieces_per_packing || selectedProduct.value?.packing?.quantity || 12;
     newItem.value.total_pieces = (newItem.value.cartons * packing) + newItem.value.pieces;
+    
+    // Load discount schemes based on quantity
+    if (newItem.value.product_id && newItem.value.total_pieces > 0) {
+        loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces);
+    }
 });
 
 // Watch scheme selection -> Apply discount
@@ -302,10 +348,42 @@ const addItem = () => {
         scheme_id: newItem.value.scheme_id || null,
         scheme_name: scheme?.product?.name || scheme?.brand?.name || null,
         scheme_discount: newItem.value.scheme_discount,
+        discount_scheme_id: newItem.value.discount_scheme_id || null,
+        free_product: newItem.value.free_product,
+        free_pieces: newItem.value.free_pieces,
         manual_discount_percent: newItem.value.manual_discount_percent,
         manual_discount_amount: newItem.value.manual_discount_amount,
         total_discount: newItem.value.scheme_discount + totalManualDiscount
     });
+
+    // If there's a free product, add it as a separate item with 0 price
+    if (newItem.value.free_product && newItem.value.free_pieces > 0) {
+        form.items.push({
+            product_id: newItem.value.free_product.id,
+            product_name: newItem.value.free_product.name + ' (FREE)',
+            product_code: newItem.value.free_product.dms_code,
+            brand_name: '',
+            cartons: 0,
+            pieces: newItem.value.free_pieces,
+            total_pieces: newItem.value.free_pieces,
+            exclusive_price: 0,
+            fed_percent: 0,
+            sales_tax_percent: 0,
+            adv_tax_percent: 0,
+            net_unit_price: 0,
+            price: 0,
+            scheme_id: null,
+            scheme_name: 'FREE',
+            scheme_discount: 0,
+            discount_scheme_id: newItem.value.discount_scheme_id,
+            free_product: null,
+            free_pieces: 0,
+            manual_discount_percent: 0,
+            manual_discount_amount: 0,
+            total_discount: 0,
+            is_free: true // Mark as free item
+        });
+    }
 
     // Reset
     resetNewItem();
@@ -324,12 +402,16 @@ const resetNewItem = () => {
         net_unit_price: 0,
         scheme_id: '',
         scheme_discount: 0,
+        discount_scheme_id: '',
+        free_product: null,
+        free_pieces: 0,
         manual_discount_percent: 0,
         manual_discount_amount: 0
     };
     selectedProduct.value = null;
     productCode.value = '';
     productSchemes.value = [];
+    discountSchemes.value = [];
 };
 
 const removeItem = (index) => {
@@ -578,110 +660,146 @@ const submit = () => {
                     <h2 class="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
 
                     <!-- Row 1: Product selection -->
-                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end mb-4">
+                    <div class="grid grid-cols-6 lg:grid-cols-12 gap-3 items-end mb-4">
                         <!-- Product Code -->
-                        <div>
+                        <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Product Code" />
-                            <TextInput v-model="productCode" placeholder="Enter code" class="mt-1"
+                            <TextInput v-model="productCode" placeholder="Enter code" class="mt-1 w-full"
                                 @keyup.enter="searchProductByCode" />
                         </div>
 
                         <!-- Product Select -->
-                        <div class="md:col-span-2">
+                        <div class="col-span-4 lg:col-span-4">
                             <SearchableSelect v-model="newItem.product_id" label="Product" :options="productOptions"
-                                option-value="id" option-label="displayLabel" placeholder="Search..." />
+                                option-value="id" option-label="displayLabel" placeholder="Search product..." />
                         </div>
 
                         <!-- Cartons -->
-                        <div>
+                        <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Cartons" />
-                            <TextInput v-model.number="newItem.cartons" type="number" min="0" class="mt-1" />
+                            <TextInput v-model.number="newItem.cartons" type="number" min="0" class="mt-1 w-full text-center font-medium" />
                         </div>
 
                         <!-- Pieces -->
-                        <div>
+                        <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Pieces" />
-                            <TextInput v-model.number="newItem.pieces" type="number" min="0" class="mt-1" />
+                            <TextInput v-model.number="newItem.pieces" type="number" min="0" class="mt-1 w-full text-center font-medium" />
                         </div>
 
                         <!-- Total Pieces (readonly) -->
-                        <div>
+                        <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Total Pcs" />
-                            <TextInput :value="newItem.total_pieces" type="number" class="mt-1 bg-gray-100" readonly />
+                            <TextInput :value="newItem.total_pieces" type="number" class="mt-1 w-full bg-emerald-50 text-emerald-700 text-center font-bold" readonly />
                         </div>
                     </div>
 
                     <!-- Row 2: Pricing breakdown (visible when product selected) -->
-                    <div v-if="newItem.product_id"
-                        class="grid grid-cols-2 md:grid-cols-7 gap-3 items-end mb-4 bg-gray-50 p-3 rounded-lg">
-                        <!-- Exclusive Price -->
-                        <div>
-                            <InputLabel value="Excl. Price" class="text-xs" />
-                            <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.01"
-                                class="mt-1 text-sm" />
-                        </div>
+                    <div v-if="newItem.product_id" class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="grid grid-cols-6 lg:grid-cols-10 gap-3 items-end">
+                            <!-- Exclusive Price -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Excl. Price" class="text-xs" />
+                                <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center" />
+                            </div>
 
-                        <!-- FED % -->
-                        <div>
-                            <InputLabel value="FED %" class="text-xs" />
-                            <TextInput v-model.number="newItem.fed_percent" type="number" step="0.01"
-                                class="mt-1 text-sm" @input="calculateNetUnitPrice" />
-                        </div>
+                            <!-- FED % -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="FED %" class="text-xs" />
+                                <TextInput v-model.number="newItem.fed_percent" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                            </div>
 
-                        <!-- Sales Tax % -->
-                        <div>
-                            <InputLabel value="S.Tax %" class="text-xs" />
-                            <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.01"
-                                class="mt-1 text-sm" @input="calculateNetUnitPrice" />
-                        </div>
+                            <!-- Sales Tax % -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="S.Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                            </div>
 
-                        <!-- Advance Tax % -->
-                        <div>
-                            <InputLabel value="Adv.Tax %" class="text-xs" />
-                            <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.01"
-                                class="mt-1 text-sm" @input="calculateNetUnitPrice" />
-                        </div>
+                            <!-- Advance Tax % -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Adv.Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                            </div>
 
-                        <!-- Net Unit Price -->
-                        <div>
-                            <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
-                            <TextInput :value="newItem.net_unit_price.toFixed(2)" type="text"
-                                class="mt-1 bg-indigo-50 font-bold text-indigo-700 text-sm" readonly />
-                        </div>
+                            <!-- Net Unit Price -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
+                                <TextInput :value="newItem.net_unit_price.toFixed(2)" type="text"
+                                    class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center" readonly />
+                            </div>
 
-                        <!-- Scheme -->
-                        <div>
-                            <InputLabel value="Scheme" class="text-xs" />
-                            <select v-model="newItem.scheme_id"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm">
-                                <option value="">No Scheme</option>
-                                <option v-for="scheme in productSchemes" :key="scheme.id" :value="scheme.id">
-                                    {{ scheme.discount_value }}{{ scheme.discount_type === 'percentage' ? '%' : ' Rs' }}
+                            <!-- Discount Scheme Dropdown -->
+                            <div class="col-span-3 lg:col-span-2">
+                                <InputLabel value="Scheme" class="text-xs" />
+                                <select v-model="newItem.discount_scheme_id"
+                                    @change="discountSchemes.length > 0 && applyDiscountScheme(discountSchemes.find(s => s.id == newItem.discount_scheme_id))"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm h-[42px]"
+                                    :class="newItem.free_product ? 'bg-green-50 border-green-300' : (newItem.scheme_discount > 0 ? 'bg-orange-50 border-orange-300' : '')">
+                                    <option value="">No Scheme</option>
+                                    <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
+                                        {{ scheme.name }} - {{ scheme.discount_type === 'amount_less' ? `Rs ${scheme.amount_less}` : `${scheme.free_pieces} FREE` }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Manual Discount % -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Disc. %" class="text-xs" />
+                                <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.01"
+                                    min="0" max="100" class="mt-1 w-full text-sm text-center" placeholder="0" />
+                            </div>
+
+                            <!-- Manual Discount Amount -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Disc. Rs" class="text-xs" />
+                                <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.01" min="0"
+                                    class="mt-1 w-full text-sm text-center" placeholder="0" />
+                            </div>
+
+                            <!-- Add Button -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value=" " class="text-xs invisible" />
+                                <button type="button" @click="addItem"
+                                    :disabled="!newItem.product_id || newItem.total_pieces <= 0"
+                                    class="w-full mt-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">
+                                    + Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Discount Scheme Banner (when applicable) -->
+                    <div v-if="newItem.product_id && discountSchemes.length > 0" 
+                        class="mb-4 p-3 rounded-lg border-2"
+                        :class="newItem.free_product ? 'bg-green-50 border-green-300' : 'bg-orange-50 border-orange-300'">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span v-if="newItem.free_product" class="text-2xl">🎁</span>
+                                <span v-else class="text-2xl">💰</span>
+                                <div>
+                                    <p class="font-bold" :class="newItem.free_product ? 'text-green-700' : 'text-orange-700'">
+                                        {{ discountSchemes[0]?.name || 'Discount Scheme Applied' }}
+                                    </p>
+                                    <p class="text-sm" :class="newItem.free_product ? 'text-green-600' : 'text-orange-600'">
+                                        <span v-if="newItem.scheme_discount > 0">
+                                            Discount: Rs {{ formatAmount(newItem.scheme_discount) }}
+                                        </span>
+                                        <span v-else-if="newItem.free_product">
+                                            FREE: {{ newItem.free_pieces }} x {{ newItem.free_product.name }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <select v-if="discountSchemes.length > 1" 
+                                @change="applyDiscountScheme(discountSchemes.find(s => s.id == $event.target.value))"
+                                class="text-sm rounded-md border-gray-300">
+                                <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
+                                    {{ scheme.name }} ({{ scheme.discount_type === 'amount_less' ? `Rs ${scheme.amount_less}` : `${scheme.free_pieces} FREE` }})
                                 </option>
                             </select>
-                        </div>
-
-                        <!-- Manual Discount % -->
-                        <div>
-                            <InputLabel value="Disc. %" class="text-xs" />
-                            <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.01"
-                                min="0" max="100" class="mt-1 text-sm" placeholder="0" />
-                        </div>
-
-                        <!-- Manual Discount Amount -->
-                        <div>
-                            <InputLabel value="Disc. Rs" class="text-xs" />
-                            <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.01" min="0"
-                                class="mt-1 text-sm" placeholder="0" />
-                        </div>
-
-                        <!-- Add Button -->
-                        <div>
-                            <button type="button" @click="addItem"
-                                :disabled="!newItem.product_id || newItem.total_pieces <= 0"
-                                class="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                                + Add
-                            </button>
                         </div>
                     </div>
 
