@@ -187,6 +187,7 @@ const navigation = [
             { name: 'Van Comparison', href: 'van-comparison.index', permission: 'reports.view' },
             { name: 'Daily Sales Report', href: 'daily-sales-reports.index', permission: 'reports.view' },
             { name: 'Sale Tax Invoices Monthly Report', href: 'sale-tax-invoices-reports.index', permission: 'reports.view' },
+            { name: 'Day Closing', href: 'day-closing.index', permission: 'reports.view' },
         ]
     },
     {
@@ -221,6 +222,18 @@ const navigation = [
         href: 'holidays.index',
         icon: 'calendar',
         permission: 'users.view'
+    },
+    {
+        name: 'Notice Board',
+        href: 'notice-board.index',
+        icon: 'notice',
+        permission: 'view dashboard'
+    },
+    {
+        name: 'Reorder Live',
+        href: 'reorder-live.index',
+        icon: 'reorder',
+        permission: 'view dashboard'
     },
 ];
 
@@ -441,6 +454,18 @@ const handleClickOutside = (event) => {
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                                <!-- Notice Icon -->
+                                <svg v-else-if="item.icon === 'notice'" class="w-5 h-5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                </svg>
+                                <!-- Reorder Icon -->
+                                <svg v-else-if="item.icon === 'reorder'" class="w-5 h-5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                                 <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name
                                 }}</span>

@@ -42,7 +42,27 @@ class CustomerSheetController extends Controller
             'vans' => $vans,
             'filters' => ['van_name' => $selectedVanCode],
             'booker' => $booker,
-            'customers' => $customers
+            'customers' => $customers,
+            'allCustomers' => Customer::where('status', 'active')
+                ->select('id', 'customer_code', 'shop_name', 'van')
+                ->orderBy('customer_code')
+                ->get(),
         ]);
+    }
+
+    /**
+     * Assign customer to a new van.
+     */
+    public function assignToVan(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'van_code' => 'required|string',
+        ]);
+
+        $customer = Customer::findOrFail($validated['customer_id']);
+        $customer->update(['van' => $validated['van_code']]);
+
+        return redirect()->back()->with('success', 'Customer assigned to van successfully.');
     }
 }

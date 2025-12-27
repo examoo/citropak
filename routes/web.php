@@ -61,6 +61,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('target-sheets', [\App\Http\Controllers\TargetSheetController::class, 'index'])->name('target-sheets.index');
     Route::resource('vans', \App\Http\Controllers\VanController::class);
     Route::get('customer-sheets', [\App\Http\Controllers\CustomerSheetController::class, 'index'])->name('customer-sheets.index');
+    Route::post('customer-sheets/assign-to-van', [\App\Http\Controllers\CustomerSheetController::class, 'assignToVan'])->name('customer-sheets.assign-to-van');
     
     // Good Issue Notes
     // Invoices
@@ -75,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('daily-sales-reports', [\App\Http\Controllers\DailySalesReportController::class, 'index'])->name('daily-sales-reports.index');
     Route::get('van-comparison', [\App\Http\Controllers\VanComparisonController::class, 'index'])->name('van-comparison.index');
     Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
+    Route::get('day-closing', [\App\Http\Controllers\DayClosingController::class, 'index'])->name('day-closing.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
     Route::get('api/customers-by-van/{vanCode}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByVan'])->name('api.customers-by-van');
@@ -109,6 +111,15 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('routes', \App\Http\Controllers\RouteController::class);
     Route::resource('schemes', \App\Http\Controllers\SchemeController::class);
     Route::resource('holidays', \App\Http\Controllers\HolidayController::class);
+    
+    // Notice Board
+    Route::get('notice-board', [\App\Http\Controllers\NoticeBoardController::class, 'index'])->name('notice-board.index');
+    Route::post('notice-board', [\App\Http\Controllers\NoticeBoardController::class, 'store'])->name('notice-board.store');
+    Route::put('notice-board/{notice}', [\App\Http\Controllers\NoticeBoardController::class, 'update'])->name('notice-board.update');
+    Route::delete('notice-board/{notice}', [\App\Http\Controllers\NoticeBoardController::class, 'destroy'])->name('notice-board.destroy');
+    
+    // Reorder Live
+    Route::get('reorder-live', [\App\Http\Controllers\ReorderLiveController::class, 'index'])->name('reorder-live.index');
     Route::resource('channels', \App\Http\Controllers\ChannelController::class);
     Route::resource('sub-addresses', \App\Http\Controllers\SubAddressController::class);
     Route::resource('sub-distributions', \App\Http\Controllers\SubDistributionController::class);
