@@ -35,6 +35,9 @@ class Product extends Model
         'reorder_level',      // Reorder Level
         'pieces_per_packing', // Per Packing Piece
         'status',
+        // FBR Fields
+        'hs_code',            // Harmonized System Code
+        'uom_code',           // Unit of Measure Code
     ];
 
     /**

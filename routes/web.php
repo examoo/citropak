@@ -66,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
     // Good Issue Notes
     // Invoices
     Route::post('invoices/{invoice}/mark-credit', [\App\Http\Controllers\InvoiceController::class, 'markAsCredit'])->name('invoices.mark-credit');
+    Route::post('invoices/{invoice}/resync-fbr', [\App\Http\Controllers\InvoiceController::class, 'resyncFbr'])->name('invoices.resync-fbr');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     Route::resource('recoveries', \App\Http\Controllers\RecoveryController::class);
     Route::get('sales-accounts', [\App\Http\Controllers\SalesAccountController::class, 'index'])->name('sales-accounts.index');
@@ -112,6 +113,14 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('routes', \App\Http\Controllers\RouteController::class);
     Route::resource('schemes', \App\Http\Controllers\SchemeController::class);
     Route::resource('holidays', \App\Http\Controllers\HolidayController::class);
+    
+    // FBR Settings
+    Route::prefix('settings/fbr')->group(function () {
+        Route::get('/', [\App\Http\Controllers\FbrSettingsController::class, 'show'])->name('fbr-settings.show');
+        Route::put('/', [\App\Http\Controllers\FbrSettingsController::class, 'update'])->name('fbr-settings.update');
+        Route::post('/test', [\App\Http\Controllers\FbrSettingsController::class, 'testConnection'])->name('fbr-settings.test');
+        Route::get('/summary', [\App\Http\Controllers\FbrSettingsController::class, 'summary'])->name('fbr-settings.summary');
+    });
     
     // Notice Board
     Route::get('notice-board', [\App\Http\Controllers\NoticeBoardController::class, 'index'])->name('notice-board.index');

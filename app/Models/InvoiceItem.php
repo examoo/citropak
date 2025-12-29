@@ -48,6 +48,9 @@ class InvoiceItem extends Model
         'invoice_price',
         'unit_price',
         'is_free',
+        // FBR Fields
+        'hs_code',
+        'uom_code',
     ];
 
     protected $casts = [

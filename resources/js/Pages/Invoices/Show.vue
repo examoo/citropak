@@ -50,6 +50,15 @@ const totalNet = computed(() => props.invoice.items?.reduce((sum, item) => sum +
 const printInvoice = () => {
     window.print();
 };
+
+const resyncFbr = () => {
+    router.post(route('invoices.resync-fbr', props.invoice.id), {}, {
+        preserveScroll: true,
+        onError: (errors) => {
+            alert(errors.error || 'Failed to sync with FBR');
+        }
+    });
+};
 </script>
 
 <template>
@@ -61,9 +70,27 @@ const printInvoice = () => {
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 print:hidden">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">{{ invoice.invoice_number }}</h1>
-                    <p class="text-gray-500 mt-1">Invoice Details</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-gray-500">Invoice Details</p>
+                        <!-- FBR Status Badge -->
+                        <span v-if="invoice.fbr_status === 'synced'" class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            FBR Synced
+                        </span>
+                        <span v-else-if="invoice.fbr_status === 'pending'" class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                            FBR Pending
+                        </span>
+                        <span v-else-if="invoice.fbr_status === 'failed'" class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                            FBR Failed
+                        </span>
+                    </div>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button v-if="invoice.fbr_status === 'failed' || (invoice.fbr_status === 'pending' && !invoice.fbr_invoice_number)" 
+                        @click="resyncFbr" 
+                        class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200 hover:bg-indigo-100 text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Resync FBR
+                    </button>
                     <Link :href="route('invoices.index')" class="text-gray-500 hover:text-gray-700">← Back</Link>
                     <Link :href="route('invoices.edit', invoice.id)" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Edit</Link>
                     <button @click="printInvoice" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
@@ -92,15 +119,35 @@ const printInvoice = () => {
                         <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
                     </div>
 
-                    <!-- Right: Distribution/Company Info -->
+                    <!-- Right: Distribution/Company Info & FBR QR -->
                     <div class="text-right space-y-1">
-                        <div class="font-bold text-sm">CITROPAK LTD</div>
-                        <div>15-6 New Civil Line Sargodha</div>
-                        <div>NTN No: 0683798-7</div>
-                        <div>Contact#: 0301-8441306</div>
-                        <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
-                        <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}</div>
-                        <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
+                        <div class="flex justify-end gap-4">
+                            <!-- FBR QR Code Display -->
+                            <div v-if="invoice.fbr_qr_code" class="flex flex-col items-center">
+                                <div class="w-16 h-16 bg-white p-1 border border-gray-200">
+                                    <img :src="`data:image/png;base64,${invoice.fbr_qr_code}`" alt="FBR QR" class="w-full h-full object-contain" v-if="invoice.fbr_qr_code.length > 200" />
+                                    <!-- Fallback for text-based QR code content -->
+                                    <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 text-[8px] text-center overflow-hidden">
+                                        FBR QR
+                                    </div>
+                                </div>
+                                <div class="text-[8px] font-bold mt-0.5">FBR Invoice</div>
+                                <div class="text-[8px] font-mono">{{ invoice.fbr_invoice_number }}</div>
+                            </div>
+
+                            <div class="text-right space-y-1">
+                                <div class="font-bold text-sm">CITROPAK LTD</div>
+                                <div>15-6 New Civil Line Sargodha</div>
+                                <div>NTN No: 0683798-7</div>
+                                <div>Contact#: 0301-8441306</div>
+                                <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
+                                <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}</div>
+                                <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
+                                <!-- FBR Info -->
+                                <div v-if="invoice.fbr_invoice_number"><span class="font-semibold">FBR Inv#:</span> {{ invoice.fbr_invoice_number }}</div>
+                                <div v-if="invoice.fbr_pos_id"><span class="font-semibold">POS ID:</span> {{ invoice.fbr_pos_id }}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

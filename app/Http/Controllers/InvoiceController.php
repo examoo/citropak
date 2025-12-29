@@ -14,6 +14,7 @@ use App\Models\DiscountScheme;
 use App\Models\Van;
 use App\Models\Stock;
 use App\Services\StockOutService;
+use App\Services\FbrService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,10 @@ use Inertia\Inertia;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private StockOutService $stockOutService) {}
+    public function __construct(
+        private StockOutService $stockOutService,
+        private FbrService $fbrService
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -183,8 +187,26 @@ class InvoiceController extends Controller
             // Recalculate totals
             $invoice->recalculateTotals();
 
+            // Populate buyer info from customer
+            $invoice->populateBuyerInfo();
+
             // Auto-generate StockOut
             $this->createStockOutForInvoice($invoice);
+
+            // Sync with FBR if enabled
+            $distribution = Distribution::find($distId);
+            if ($distribution && $distribution->isFbrEnabled()) {
+                $invoice->update(['fbr_status' => 'pending', 'fbr_pos_id' => $distribution->pos_id]);
+                try {
+                    $this->fbrService->syncInvoice($invoice);
+                } catch (\Exception $e) {
+                    // Log error but don't fail the invoice creation
+                    \Log::error('FBR Sync Error on Invoice Create', [
+                        'invoice_id' => $invoice->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             DB::commit();
             return redirect()->route('invoices.show', $invoice->id)
@@ -665,6 +687,28 @@ class InvoiceController extends Controller
         ]);
 
         return back()->with('success', 'Invoice marked as credit.');
+    }
+
+    /**
+     * Resync invoice with FBR.
+     */
+    public function resyncFbr(Request $request, Invoice $invoice)
+    {
+        if (!$invoice->distribution?->isFbrEnabled()) {
+            return back()->withErrors(['error' => 'FBR integration is not enabled for this distribution.']);
+        }
+
+        try {
+            $result = $this->fbrService->syncInvoice($invoice);
+            
+            if ($result['success']) {
+                return back()->with('success', 'Invoice synced with FBR successfully.');
+            } else {
+                return back()->withErrors(['error' => 'FBR Sync Failed: ' . $result['message']]);
+            }
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'An error occurred: ' . $e->getMessage()]);
+        }
     }
 }
 

@@ -32,6 +32,20 @@ class Invoice extends Model
         'invoice_date',
         'created_by',
         'notes',
+        // FBR Fields
+        'fbr_invoice_number',
+        'fbr_pos_id',
+        'fbr_qr_code',
+        'fbr_response',
+        'fbr_status',
+        'fbr_synced_at',
+        'fbr_error_message',
+        // Buyer Information
+        'buyer_ntn',
+        'buyer_cnic',
+        'buyer_name',
+        'buyer_phone',
+        'buyer_address',
     ];
 
     protected $casts = [
@@ -42,6 +56,8 @@ class Invoice extends Model
         'total_amount' => 'decimal:2',
         'is_credit' => 'boolean',
         'invoice_date' => 'date',
+        'fbr_response' => 'array',
+        'fbr_synced_at' => 'datetime',
     ];
 
     /**
@@ -158,5 +174,107 @@ class Invoice extends Model
     public function scopeDamage($query)
     {
         return $query->where('invoice_type', 'damage');
+    }
+
+    /**
+     * Scope to pending FBR sync invoices.
+     */
+    public function scopeFbrPending($query)
+    {
+        return $query->where('fbr_status', 'pending');
+    }
+
+    /**
+     * Scope to failed FBR sync invoices.
+     */
+    public function scopeFbrFailed($query)
+    {
+        return $query->where('fbr_status', 'failed');
+    }
+
+    /**
+     * Check if invoice is synced with FBR.
+     */
+    public function isFbrSynced(): bool
+    {
+        return $this->fbr_status === 'synced' && !empty($this->fbr_invoice_number);
+    }
+
+    /**
+     * Check if FBR sync is required for this invoice.
+     */
+    public function requiresFbrSync(): bool
+    {
+        if (!$this->distribution?->isFbrEnabled()) {
+            return false;
+        }
+        
+        return $this->fbr_status !== 'synced' && $this->fbr_status !== 'not_required';
+    }
+
+    /**
+     * Mark invoice as pending FBR sync.
+     */
+    public function markFbrPending(): void
+    {
+        $this->update([
+            'fbr_status' => 'pending',
+            'fbr_error_message' => null,
+        ]);
+    }
+
+    /**
+     * Mark invoice as synced with FBR.
+     */
+    public function markFbrSynced(string $fbrInvoiceNumber, ?string $qrCode = null, ?array $response = null): void
+    {
+        $this->update([
+            'fbr_status' => 'synced',
+            'fbr_invoice_number' => $fbrInvoiceNumber,
+            'fbr_qr_code' => $qrCode,
+            'fbr_response' => $response,
+            'fbr_synced_at' => now(),
+            'fbr_error_message' => null,
+        ]);
+    }
+
+    /**
+     * Mark invoice as failed FBR sync.
+     */
+    public function markFbrFailed(string $errorMessage, ?array $response = null): void
+    {
+        $this->update([
+            'fbr_status' => 'failed',
+            'fbr_error_message' => $errorMessage,
+            'fbr_response' => $response,
+        ]);
+    }
+
+    /**
+     * Get the FBR QR code URL for verification.
+     */
+    public function getFbrVerificationUrl(): ?string
+    {
+        if (empty($this->fbr_invoice_number)) {
+            return null;
+        }
+        
+        return "https://fbr.gov.pk/invoice/{$this->fbr_invoice_number}";
+    }
+
+    /**
+     * Populate buyer information from customer.
+     */
+    public function populateBuyerInfo(): void
+    {
+        if ($this->customer) {
+            $this->update([
+                'buyer_ntn' => $this->customer->ntn ?? null,
+                'buyer_cnic' => $this->customer->cnic ?? null,
+                'buyer_name' => $this->customer->shop_name ?? $this->customer->owner_name ?? null,
+                'buyer_phone' => $this->customer->mobile_number ?? $this->customer->phone ?? null,
+                'buyer_address' => $this->customer->address ?? null,
+            ]);
+        }
     }
 }

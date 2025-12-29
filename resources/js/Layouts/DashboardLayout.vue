@@ -218,6 +218,13 @@ const navigation = [
         show: (props) => !props.currentDistribution?.id,
     },
     {
+        name: 'FBR Settings',
+        href: 'fbr-settings.show',
+        icon: 'settings', 
+        permission: 'users.view', 
+        show: (props) => true,
+    },
+    {
         name: 'Holidays',
         href: 'holidays.index',
         icon: 'calendar',
@@ -357,7 +364,7 @@ const handleClickOutside = (event) => {
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 <template v-for="item in filteredNavigation" :key="item.name">
                     <!-- Single Link -->
-                    <Link v-if="!item.children" :href="route(item.href)" :class="[
+                    <Link v-if="!item.children" :href="item.resolveHref ? route(item.resolveHref($page.props)) : route(item.href)" :class="[
                         'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
                         route().current(item.href)
                             ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
