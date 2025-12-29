@@ -326,6 +326,8 @@ const loadDiscountSchemes = async (productId, quantity) => {
 
 // Apply a discount scheme (amount_less or free_product)
 const applyDiscountScheme = (scheme) => {
+    if (!scheme) return; // Guard against undefined scheme
+    
     newItem.value.discount_scheme_id = scheme.id;
     
     if (scheme.discount_type === 'amount_less' && scheme.amount_less > 0) {
@@ -337,7 +339,8 @@ const applyDiscountScheme = (scheme) => {
         // Free product scheme
         newItem.value.scheme_discount = 0;
         newItem.value.free_product = scheme.free_product;
-        newItem.value.free_pieces = scheme.free_pieces || 0;
+        // Default to 1 if free_pieces is 0 or null
+        newItem.value.free_pieces = scheme.free_pieces > 0 ? scheme.free_pieces : 1;
     }
 };
 
@@ -948,38 +951,48 @@ const submit = () => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                <tr v-for="(item, index) in form.items" :key="index">
+                                <tr v-for="(item, index) in form.items" :key="index" :class="{'bg-emerald-50/60': item.is_free}">
                                     <td class="px-2 py-3">{{ index + 1 }}</td>
                                     <td class="px-2 py-3">
-                                        <div class="font-medium">{{ item.product_name }}</div>
+                                        <div class="font-medium" :class="{'text-emerald-700': item.is_free}">
+                                            {{ item.product_name }}
+                                            <span v-if="item.is_free" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">
+                                                FREE
+                                            </span>
+                                        </div>
                                         <div class="text-xs text-gray-500">{{ item.product_code }}</div>
                                     </td>
                                     <td class="px-2 py-3 text-right">{{ item.cartons }}</td>
                                     <td class="px-2 py-3 text-right">{{ item.pieces }}</td>
                                     <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
-                                    <td class="px-2 py-3 text-right">{{ formatAmount(item.exclusive_price) }}</td>
+                                    <td class="px-2 py-3 text-right">
+                                        <span v-if="item.is_free" class="text-xs font-bold text-emerald-600">FREE</span>
+                                        <span v-else>{{ formatAmount(item.exclusive_price) }}</span>
+                                    </td>
                                     <td class="px-2 py-3 text-right text-gray-600">{{
                                         formatAmount(getItemExclusive(item)) }}</td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemFed(item)) }}
-                                        <div class="text-xs">({{ item.fed_percent }}%)</div>
+                                        <div v-if="!item.is_free" class="text-xs">({{ item.fed_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemSalesTax(item)) }}
-                                        <div class="text-xs">({{ item.sales_tax_percent }}%)</div>
+                                        <div v-if="!item.is_free" class="text-xs">({{ item.sales_tax_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-purple-600">
                                         {{ formatAmount(getItemExtraTax(item)) }}
-                                        <div class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div>
+                                        <div v-if="!item.is_free" class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemAdvTax(item)) }}
-                                        <div class="text-xs">({{ item.adv_tax_percent }}%)</div>
+                                        <div v-if="!item.is_free" class="text-xs">({{ item.adv_tax_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.total_pieces *
                                         item.net_unit_price) }}</td>
-                                    <td class="px-2 py-3 text-right text-red-600">-{{
-                                        formatAmount(getItemDiscount(item)) }}</td>
+                                    <td class="px-2 py-3 text-right text-red-600">
+                                        <span v-if="item.is_free">-</span>
+                                        <span v-else>-{{ formatAmount(getItemDiscount(item)) }}</span>
+                                    </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
                                         {{ formatAmount((item.total_pieces * item.net_unit_price) -
                                         getItemDiscount(item)) }}

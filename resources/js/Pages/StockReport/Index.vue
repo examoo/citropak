@@ -10,39 +10,39 @@ const props = defineProps({
     showDistributionColumn: Boolean,
 });
 
-const date = ref(props.filters.date || new Date().toISOString().split('T')[0]);
+const month = ref(props.filters.month || new Date().toISOString().slice(0, 7));
 const search = ref(props.filters.search || '');
 
 const updateReport = debounce(() => {
-    router.get(route('stock-reports.index'), { date: date.value, search: search.value }, {
+    router.get(route('stock-reports.index'), { month: month.value, search: search.value }, {
         preserveState: true,
         preserveScroll: true,
         replace: true
     });
 }, 300);
 
-watch(date, updateReport);
+watch(month, updateReport);
 watch(search, updateReport);
 
-const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric'
-    });
+const formatMonth = (monthStr) => {
+    if (!monthStr) return '-';
+    const [year, m] = monthStr.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[parseInt(m) - 1]} ${year}`;
 };
 </script>
 
 <template>
-    <Head title="Stock Report" />
+    <Head title="Monthly Stock Report" />
     <DashboardLayout>
         <div class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Stock Report</h1>
-                    <p class="text-gray-500 mt-1">Daily Opening, In, Out, and Closing/Available Stock</p>
+                    <h1 class="text-2xl font-bold text-gray-900">Monthly Stock Report</h1>
+                    <p class="text-gray-500 mt-1">Monthly Opening, In, Out, and Closing/Available Stock</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <input type="date" v-model="date" class="rounded-xl border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm" />
+                    <input type="month" v-model="month" class="rounded-xl border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm" />
                     
                     <div class="relative">
                         <input v-model="search" type="text" placeholder="Search product..." class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 w-64 shadow-sm">
@@ -73,13 +73,13 @@ const formatDate = (dateStr) => {
                                 <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">{{ item.distribution_name }}</span>
                             </td>
                             <td class="px-6 py-4 text-center font-medium text-purple-600">
-                                {{ item.opening || '-' }}
+                                {{ item.opening ?? 0 }}
                             </td>
                             <td class="px-6 py-4 text-center font-medium text-emerald-600">
-                                {{ item.in || '-' }}
+                                {{ item.in ?? 0 }}
                             </td>
                             <td class="px-6 py-4 text-center font-medium text-rose-600">
-                                {{ item.out || '-' }}
+                                {{ item.out ?? 0 }}
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <div v-if="item.is_closed" class="font-bold text-gray-900">

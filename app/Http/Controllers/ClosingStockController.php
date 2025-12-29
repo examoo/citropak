@@ -15,11 +15,13 @@ class ClosingStockController extends Controller
     public function __construct(private ClosingStockService $service) {}
 
     /**
-     * Display a listing of closing stocks.
+     * Display a listing of closing stocks (monthly).
      */
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'status', 'date']);
+        $filters = $request->only(['search', 'status', 'month']);
+        $selectedMonth = $request->get('month', now()->format('Y-m'));
+        
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
 
@@ -55,6 +57,7 @@ class ClosingStockController extends Controller
 
         return Inertia::render('ClosingStocks/Index', [
             'closingStocks' => $this->service->getAll($filters, $distributionId),
+            'selectedMonth' => $selectedMonth,
             'filters' => $filters,
             'availableStocks' => $availableStocks,
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name', 'code']),

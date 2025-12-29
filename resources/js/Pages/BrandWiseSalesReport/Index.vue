@@ -101,6 +101,7 @@ const formatDate = (dateStr) => {
                         <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
                                 <th class="px-4 py-3">Brand Name</th>
+                                <th class="px-4 py-3 text-right">Free Qty</th>
                                 <th class="px-4 py-3 text-right">Total Quantity</th>
                                 <th class="px-4 py-3 text-right">Gross Amount</th>
                                 <th class="px-4 py-3 text-right">Total Discount</th>
@@ -110,6 +111,7 @@ const formatDate = (dateStr) => {
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in reportData" :key="item.brand_id" class="hover:bg-gray-50/50">
                                 <td class="px-4 py-3 font-medium text-gray-700">{{ item.brand_name }}</td>
+                                <td class="px-4 py-3 text-right font-medium text-orange-600">{{ item.free_quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ item.total_quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ formatCurrency(item.total_gross_amount) }}</td>
                                 <td class="px-4 py-3 text-right text-red-600 font-medium">{{ formatCurrency(item.total_discount_amount) }}</td>
@@ -122,6 +124,7 @@ const formatDate = (dateStr) => {
                         <tfoot class="bg-gray-100 font-bold border-t border-gray-200">
                             <tr>
                                 <td class="px-4 py-3 text-right">TOTALS</td>
+                                <td class="px-4 py-3 text-right">{{ totals.free_quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ totals.quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ formatCurrency(totals.gross_amount) }}</td>
                                 <td class="px-4 py-3 text-right text-red-700">{{ formatCurrency(totals.discount_amount) }}</td>

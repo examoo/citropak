@@ -12,12 +12,17 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class StockReportController extends Controller
 {
     public function index(Request $request): Response
     {
-        $date = $request->input('date', now()->format('Y-m-d'));
+        // Support both date and month filter
+        $month = $request->input('month', now()->format('Y-m'));
+        $startDate = Carbon::parse($month . '-01')->startOfMonth();
+        $endDate = Carbon::parse($month . '-01')->endOfMonth();
+        
         $inputDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($inputDistributionId === 'all') $inputDistributionId = null;
 
@@ -38,65 +43,107 @@ class StockReportController extends Controller
 
         foreach ($products as $product) {
             foreach ($distributions as $distribution) {
-                // Determine if there is any activity for this product/distrib pair to avoid clutter?
-                // For now, let's just generate for all active combinations or maybe skip if all zeros?
-                // User requirement implies seeing report for distributions.
-                
                 $distributionId = $distribution->id;
 
-                // Opening Stock
+                // Previous month dates for opening stock calculation
+                $prevMonthEnd = $startDate->copy()->subDay()->endOfDay();
+                $prevMonthStart = $prevMonthEnd->copy()->startOfMonth();
+
+                // Opening Stock: Try multiple sources
+                // 1. First, try explicit OpeningStock record for the month
                 $opening = OpeningStock::where('product_id', $product->id)
-                    ->whereDate('date', $date)
+                    ->whereDate('date', $startDate)
                     ->where('distribution_id', $distributionId)
-                    ->value('quantity') ?? 0;
+                    ->value('quantity');
+                
+                // 2. If no opening stock, try previous month's closing stock
+                if ($opening === null) {
+                    $prevClosing = ClosingStock::where('product_id', $product->id)
+                        ->whereDate('date', $prevMonthEnd)
+                        ->where('distribution_id', $distributionId)
+                        ->value('quantity');
+                    
+                    if ($prevClosing !== null) {
+                        $opening = $prevClosing;
+                    }
+                }
 
-                // Stock In
+                // 3. If still no opening, calculate from current stock minus net movements since month start
+                if ($opening === null) {
+                    $currentStock = Stock::where('product_id', $product->id)
+                        ->where('distribution_id', $distributionId)
+                        ->sum('quantity');
+                    
+                    // Get all movements from month start to now
+                    $totalInSinceStart = StockInItem::where('product_id', $product->id)
+                        ->whereHas('stockIn', function ($q) use ($startDate, $distributionId) {
+                            $q->where('date', '>=', $startDate)
+                              ->where('distribution_id', $distributionId);
+                        })
+                        ->sum('quantity');
+                    
+                    $totalOutSinceStart = StockOutItem::where('product_id', $product->id)
+                        ->whereHas('stockOut', function ($q) use ($startDate, $distributionId) {
+                            $q->where('date', '>=', $startDate)
+                              ->where('distribution_id', $distributionId);
+                        })
+                        ->sum('quantity');
+                    
+                    // Opening = Current - In + Out (reverse the movements)
+                    $opening = $currentStock - $totalInSinceStart + $totalOutSinceStart;
+                }
+
+                $opening = $opening ?? 0;
+
+                // Stock In (for the entire month)
                 $in = StockInItem::where('product_id', $product->id)
-                    ->whereHas('stockIn', function ($q) use ($date, $distributionId) {
-                        $q->whereDate('date', $date)
+                    ->whereHas('stockIn', function ($q) use ($startDate, $endDate, $distributionId) {
+                        $q->whereBetween('date', [$startDate, $endDate])
                           ->where('distribution_id', $distributionId);
                     })
                     ->sum('quantity');
 
-                // Stock Out
+                // Stock Out (for the entire month)
                 $out = StockOutItem::where('product_id', $product->id)
-                    ->whereHas('stockOut', function ($q) use ($date, $distributionId) {
-                        $q->whereDate('date', $date)
+                    ->whereHas('stockOut', function ($q) use ($startDate, $endDate, $distributionId) {
+                        $q->whereBetween('date', [$startDate, $endDate])
                           ->where('distribution_id', $distributionId);
                     })
                     ->sum('quantity');
 
-                // Closing Stock OR Available
+                // Closing Stock (from the last day of the month, or current stock if current month)
                 $closingRaw = ClosingStock::where('product_id', $product->id)
-                    ->whereDate('date', $date)
+                    ->whereDate('date', $endDate)
                     ->where('distribution_id', $distributionId)
                     ->first();
                 
                 $closing = $closingRaw ? $closingRaw->quantity : null;
                 $isClosed = $closingRaw !== null;
                 
+                // Available: If current month and not closed, show current stock
                 $available = null;
-                if (!$isClosed && $date === now()->format('Y-m-d')) {
+                $isCurrentMonth = $month === now()->format('Y-m');
+                if (!$isClosed && $isCurrentMonth) {
                      $available = Stock::where('product_id', $product->id)
                         ->where('distribution_id', $distributionId)
                         ->sum('quantity');
                 }
 
-                // Optimization: Skip completely empty rows if "All" is selected? 
-                // But user might want to see 0s. 
-                // Let's at least skip if Product has NO association with current filter? 
-                // Keeping it simple: Show all.
-                
-                // If everything is 0/null, maybe skip?
-                if ($opening == 0 && $in == 0 && $out == 0 && $closing === null && $available == 0) {
-                   // continue; // Optional: Uncomment to hide empty rows
+                // Calculate closing if not explicitly saved (Opening + In - Out)
+                if ($closing === null && !$isCurrentMonth) {
+                    $closing = $opening + $in - $out;
+                }
+
+                // Skip empty rows
+                if ($opening == 0 && $in == 0 && $out == 0 && $closing === null && ($available ?? 0) == 0) {
+                    continue;
                 }
 
                 $report[] = [
-                    'id' => $product->id . '-' . $distributionId, // Unique Key
+                    'id' => $product->id . '-' . $distributionId,
                     'product_name' => $product->name,
                     'product_code' => $product->dms_code,
-                    'distribution_name' => $distribution->name, // Assuming 'name' exists
+                    'distribution_name' => $distribution->name,
                     'distribution_code' => $distribution->code ?? $distribution->name,
                     'opening' => $opening,
                     'in' => $in,
@@ -111,10 +158,11 @@ class StockReportController extends Controller
         return Inertia::render('StockReport/Index', [
             'report' => $report,
             'filters' => [
-                'date' => $date,
+                'month' => $month,
                 'search' => $filters['search'] ?? ''
             ],
             'showDistributionColumn' => $inputDistributionId === null // True if "All" selected
         ]);
     }
 }
+

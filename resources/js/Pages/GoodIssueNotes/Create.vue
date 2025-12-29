@@ -75,25 +75,31 @@ const fetchPendingItems = async () => {
             const product = props.products.find(p => p.id === parseInt(item.product_id));
             if (!product) return;
 
+            const isFreeItem = item.is_free === 1 || item.is_free === true;
             let remainingQty = parseInt(item.total_qty);
             const stocks = getStockForProduct(product.id);
+            
+            // Get unit price from invoice items (API provides avg)
+            const invoiceUnitPrice = parseFloat(item.avg_unit_price) || 0;
 
             // Logic to auto-select batches
             for (const stock of stocks) {
                 if (remainingQty <= 0) break;
 
                 const takeQty = Math.min(remainingQty, stock.quantity);
+                const unitPrice = isFreeItem ? 0 : invoiceUnitPrice;
 
                 form.items.push({
                     product_id: product.id,
-                    product_name: product.name,
+                    product_name: isFreeItem ? product.name + ' (FREE)' : product.name,
                     product_code: product.dms_code || product.sku,
                     stock_id: stock.id,
                     batch_number: stock.batch_number,
                     available_qty: stock.quantity,
                     quantity: takeQty,
-                    unit_price: parseFloat(stock.unit_price || stock.net_trade_price || 0),
-                    total_price: takeQty * parseFloat(stock.unit_price || stock.net_trade_price || 0)
+                    unit_price: unitPrice,
+                    total_price: takeQty * unitPrice,
+                    is_free: isFreeItem
                 });
 
                 remainingQty -= takeQty;
@@ -101,16 +107,18 @@ const fetchPendingItems = async () => {
 
             // If demand exceeds stock, add a line with no stock (user can handle)
             if (remainingQty > 0) {
+                const unitPrice = isFreeItem ? 0 : invoiceUnitPrice;
                 form.items.push({
                     product_id: product.id,
-                    product_name: product.name,
+                    product_name: isFreeItem ? product.name + ' (FREE)' : product.name,
                     product_code: product.dms_code || product.sku,
                     stock_id: null,
                     batch_number: 'N/A',
                     available_qty: 0,
                     quantity: remainingQty,
-                    unit_price: parseFloat(product.net_trade_price || product.price || 0),
-                    total_price: remainingQty * parseFloat(product.net_trade_price || product.price || 0)
+                    unit_price: unitPrice,
+                    total_price: remainingQty * unitPrice,
+                    is_free: isFreeItem
                 });
             }
         });
@@ -226,18 +234,28 @@ const submit = () => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                <tr v-for="(item, index) in form.items" :key="index">
+                                <tr v-for="(item, index) in form.items" :key="index" :class="{'bg-emerald-50/60': item.is_free}">
                                     <td class="px-4 py-3">{{ index + 1 }}</td>
                                     <td class="px-4 py-3">
-                                        <div class="font-medium">{{ item.product_name }}</div>
+                                        <div class="font-medium" :class="{'text-emerald-700': item.is_free}">
+                                            {{ item.product_name }}
+                                            <span v-if="item.is_free" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">
+                                                FREE
+                                            </span>
+                                        </div>
                                         <div class="text-xs text-gray-500">{{ item.product_code }}</div>
                                     </td>
                                     <td class="px-4 py-3">{{ item.batch_number || '-' }}</td>
                                     <td class="px-4 py-3 text-right">{{ item.available_qty }}</td>
                                     <td class="px-4 py-3 text-right font-medium">{{ item.quantity }}</td>
-                                    <td class="px-4 py-3 text-right">Rs. {{ formatAmount(item.unit_price) }}</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-emerald-600">Rs. {{
-                                        formatAmount(item.total_price) }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <span v-if="item.is_free" class="text-xs font-bold text-emerald-600">FREE</span>
+                                        <span v-else>Rs. {{ formatAmount(item.unit_price) }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-semibold text-emerald-600">
+                                        <span v-if="item.is_free">FREE</span>
+                                        <span v-else>Rs. {{ formatAmount(item.total_price) }}</span>
+                                    </td>
                                     <td class="px-4 py-3 text-center">
                                         <button type="button" @click="removeItem(index)"
                                             class="text-red-600 hover:text-red-800">

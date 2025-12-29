@@ -224,9 +224,11 @@ class GoodIssueNoteController extends Controller
             // ->where('invoices.status', '!=', 'cancelled') // If status exists
             ->select(
                 'invoice_items.product_id', 
-                DB::raw('SUM(invoice_items.total_pieces) as total_qty')
+                'invoice_items.is_free',
+                DB::raw('SUM(invoice_items.total_pieces) as total_qty'),
+                DB::raw('AVG(invoice_items.price) as avg_unit_price')
             )
-            ->groupBy('invoice_items.product_id')
+            ->groupBy('invoice_items.product_id', 'invoice_items.is_free')
             ->get();
 
         return response()->json($items);

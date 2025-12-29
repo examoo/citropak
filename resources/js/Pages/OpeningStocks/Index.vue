@@ -38,7 +38,7 @@ const isEditing = ref(false);
 const editingId = ref(null);
 const search = ref(props.filters?.search || '');
 const statusFilter = ref(props.filters?.status || '');
-const dateFilter = ref(props.filters?.date || '');
+const monthFilter = ref(props.filters?.month || new Date().toISOString().slice(0, 7));
 
 // NEW SIMPLIFIED FORM STRUCTURE
 const form = useForm({
@@ -123,13 +123,13 @@ const applyFilters = debounce(() => {
     router.get(route('opening-stocks.index'), { 
         search: search.value,
         status: statusFilter.value,
-        date: dateFilter.value
+        month: monthFilter.value
     }, {
         preserveState: true, preserveScroll: true, replace: true
     });
 }, 300);
 
-watch([search, statusFilter, dateFilter], applyFilters);
+watch([search, statusFilter, monthFilter], applyFilters);
 
 const openModal = (item = null) => {
     isEditing.value = !!item;
@@ -262,7 +262,7 @@ const convertFromStocks = () => {
                         <option value="draft">Draft</option>
                         <option value="posted">Posted</option>
                     </select>
-                    <input v-model="dateFilter" type="date" class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-sm" placeholder="Filter by date">
+                    <input v-model="monthFilter" type="month" class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-purple-500 focus:ring-purple-500 shadow-sm">
                     <button @click="convertFromStocks" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         Convert Available Stocks

@@ -16,17 +16,20 @@ class OpeningStockController extends Controller
     public function __construct(private OpeningStockService $service) {}
 
     /**
-     * Display a listing of opening stocks with daily summary.
+     * Display a listing of opening stocks with monthly summary.
      */
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'status', 'date']);
-        $selectedDate = $request->get('date', now()->format('Y-m-d'));
+        $filters = $request->only(['search', 'status', 'month']);
+        $selectedMonth = $request->get('month', now()->format('Y-m'));
+        $startDate = \Carbon\Carbon::parse($selectedMonth . '-01')->startOfMonth();
+        $endDate = \Carbon\Carbon::parse($selectedMonth . '-01')->endOfMonth();
+        
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
 
-        // Get stock summary by product
-        $stockSummary = $this->getStockSummary($selectedDate, $distributionId, $filters['search'] ?? null);
+        // Get stock summary by product for the month
+        $stockSummary = $this->getStockSummary($startDate, $endDate, $distributionId, $filters['search'] ?? null);
 
         // Get stocks that don't have opening stock entries yet (for the current distribution)
         $stockQuery = Stock::with(['product', 'distribution'])
@@ -61,7 +64,7 @@ class OpeningStockController extends Controller
         return Inertia::render('OpeningStocks/Index', [
             'openingStocks' => $this->service->getAll($filters, $distributionId),
             'stockSummary' => $stockSummary,
-            'selectedDate' => $selectedDate,
+            'selectedMonth' => $selectedMonth,
             'filters' => $filters,
             'availableStocks' => $availableStocks,
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name', 'code']),
@@ -69,9 +72,9 @@ class OpeningStockController extends Controller
     }
 
     /**
-     * Get stock summary with opening, available, closing for each product.
+     * Get stock summary with opening, available, closing for each product (monthly).
      */
-    private function getStockSummary(string $date, $distributionId = null, $search = null): array
+    private function getStockSummary($startDate, $endDate, $distributionId = null, $search = null): array
     {
         $query = Product::with(['stocks' => function ($q) use ($distributionId) {
             if ($distributionId) {
@@ -90,9 +93,9 @@ class OpeningStockController extends Controller
 
         $summary = [];
         foreach ($products as $product) {
-            // Get opening stock for this date (from opening_stocks table)
+            // Get opening stock for this month (from opening_stocks table at start of month)
             $openingQuery = OpeningStock::where('product_id', $product->id)
-                ->where('date', '<=', $date)
+                ->whereDate('date', '<=', $startDate)
                 ->where('status', 'posted');
             if ($distributionId) {
                 $openingQuery->where('distribution_id', $distributionId);
@@ -102,9 +105,14 @@ class OpeningStockController extends Controller
             // Get available stock (current stock from stocks table)
             $availableStock = $product->stocks->sum('quantity');
 
-            // Get closing stock for this date (we'll use opening + stock-ins on that date as closing)
-            // For now, closing = available stock (can be expanded later with stock-out transactions)
-            $closingStock = $availableStock;
+            // Get closing stock for this month (from closing_stocks table at end of month)
+            $closingQuery = \App\Models\ClosingStock::where('product_id', $product->id)
+                ->whereBetween('date', [$startDate, $endDate])
+                ->where('status', 'posted');
+            if ($distributionId) {
+                $closingQuery->where('distribution_id', $distributionId);
+            }
+            $closingStock = $closingQuery->sum('quantity') ?: $availableStock;
 
             // Only include products with some stock activity
             if ($openingStock > 0 || $availableStock > 0) {
@@ -116,7 +124,7 @@ class OpeningStockController extends Controller
                     'opening_stock' => $openingStock,
                     'available_stock' => $availableStock,
                     'closing_stock' => $closingStock,
-                    'is_closed' => false, // Can be set based on closing date logic
+                    'is_closed' => false,
                 ];
             }
         }

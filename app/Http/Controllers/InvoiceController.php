@@ -180,7 +180,7 @@ class InvoiceController extends Controller
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
                     'discount' => $totalDiscount,
                     'line_total' => $lineTotal,
-                    'is_free' => $itemData['is_free'] ?? false,
+                    'is_free' => !empty($itemData['is_free']) ? 1 : 0,
                 ]);
             }
 
@@ -358,7 +358,7 @@ class InvoiceController extends Controller
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
                     'discount' => $totalDiscount,
                     'line_total' => $lineTotal,
-                    'is_free' => $itemData['is_free'] ?? false,
+                    'is_free' => !empty($itemData['is_free']) ? 1 : 0,
                 ]);
                 
                 $item->save();
@@ -558,12 +558,28 @@ class InvoiceController extends Controller
             })
             ->get()
             ->map(function($scheme) use ($product) {
+                // Determine if this is a free product scheme (amount_less is 0 or null)
+                $isFreeProductScheme = !($scheme->amount_less > 0);
+                
                 // Get free product details if applicable
                 $freeProduct = null;
+                $freePieces = $scheme->pieces ?? 0;
+                
                 if ($scheme->free_product_code) {
                     $freeProduct = Product::where('dms_code', $scheme->free_product_code)
                         ->orWhere('sku', $scheme->free_product_code)
                         ->first(['id', 'dms_code', 'name', 'list_price_before_tax', 'unit_price']);
+                    // Default to 1 piece if pieces not specified for free product scheme
+                    if ($freeProduct && $freePieces == 0) {
+                        $freePieces = 1;
+                    }
+                } elseif ($isFreeProductScheme) {
+                    // If no amount_less and no free_product_code, assume same product free
+                    $freeProduct = $product;
+                    // Default to 1 piece if pieces not specified
+                    if ($freePieces == 0) {
+                        $freePieces = 1;
+                    }
                 }
 
                 return [
@@ -573,9 +589,9 @@ class InvoiceController extends Controller
                     'from_qty' => $scheme->from_qty,
                     'to_qty' => $scheme->to_qty,
                     'discount_type' => $scheme->amount_less > 0 ? 'amount_less' : 'free_product',
-                    'amount_less' => $scheme->amount_less,
-                    'free_pieces' => $scheme->pieces,
-                    'free_product_code' => $scheme->free_product_code,
+                    'amount_less' => $scheme->amount_less ?? 0,
+                    'free_pieces' => $freePieces,
+                    'free_product_code' => $scheme->free_product_code ?: ($freeProduct ? $product->dms_code : null),
                     'free_product' => $freeProduct,
                 ];
             });
@@ -661,7 +677,7 @@ class InvoiceController extends Controller
                 'distribution_id' => $distributionId,
                 'bilty_number' => $invoice->invoice_number,
                 'date' => $invoice->invoice_date, // or $date
-                'status' => 'draft',
+                'status' => 'posted', // Auto-post on invoice creation
                 'gate_pass_number' => null,
                 'vehicle_number' => null,
                 'builty_number_2' => null,
@@ -674,6 +690,9 @@ class InvoiceController extends Controller
             foreach ($stockOutItems as $item) {
                 $stockOut->items()->create($item);
             }
+
+            // Auto-post: deduct stock immediately using the service
+            app(\App\Services\StockOutService::class)->post($stockOut);
         }
     }
 

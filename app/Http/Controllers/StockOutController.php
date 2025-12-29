@@ -81,13 +81,15 @@ class StockOutController extends Controller
             'bilty_number' => $validated['bilty_number'] ?? null,
             'date' => $validated['date'],
             'remarks' => $validated['remarks'] ?? null,
-            'status' => 'draft',
+            'status' => 'posted', // Auto-post on creation
             'created_by' => $request->user()->id,
         ];
 
         try {
-            $this->service->create($data, $validated['items']);
-            return redirect()->back()->with('success', 'Stock Out created successfully.');
+            $stockOut = $this->service->create($data, $validated['items']);
+            // Auto-post: deduct stock immediately
+            $this->service->post($stockOut);
+            return redirect()->back()->with('success', 'Stock Out created and posted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }

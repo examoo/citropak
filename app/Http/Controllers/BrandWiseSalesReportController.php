@@ -29,7 +29,8 @@ class BrandWiseSalesReportController extends Controller
                 DB::raw('SUM(invoice_items.total_pieces) as total_quantity'),
                 DB::raw('SUM(invoice_items.gross_amount) as total_gross_amount'),
                 DB::raw('SUM(invoice_items.discount) as total_discount_amount'),
-                DB::raw('SUM(invoice_items.line_total) as total_net_amount')
+                DB::raw('SUM(invoice_items.line_total) as total_net_amount'),
+                DB::raw('SUM(CASE WHEN invoice_items.is_free = 1 THEN invoice_items.total_pieces ELSE 0 END) as free_quantity')
             )
             ->groupBy('brands.id', 'brands.name');
 
@@ -45,6 +46,7 @@ class BrandWiseSalesReportController extends Controller
                 'total_gross_amount' => (float) $item->total_gross_amount,
                 'total_discount_amount' => (float) $item->total_discount_amount,
                 'total_net_amount' => (float) $item->total_net_amount,
+                'free_quantity' => (int) $item->free_quantity,
             ];
         });
 
@@ -54,6 +56,7 @@ class BrandWiseSalesReportController extends Controller
             'gross_amount' => $reportData->sum('total_gross_amount'),
             'discount_amount' => $reportData->sum('total_discount_amount'),
             'net_amount' => $reportData->sum('total_net_amount'),
+            'free_quantity' => $reportData->sum('free_quantity'),
         ];
 
         return Inertia::render('BrandWiseSalesReport/Index', [
