@@ -15,7 +15,8 @@ const props = defineProps({
     products: Array,
     schemes: Array,
     distributions: Array,
-    nextOrderDate: String
+    nextOrderDate: String,
+    availableStocks: { type: Array, default: () => [] }
 });
 
 const page = usePage();
@@ -47,6 +48,7 @@ const productCode = ref('');
 const selectedProduct = ref(null);
 const newItem = ref({
     product_id: '',
+    stock_id: '',            // Selected batch/stock
     cartons: 0,
     pieces: 0,
     total_pieces: 0,
@@ -62,7 +64,9 @@ const newItem = ref({
     free_product: null,      // Free product from scheme
     free_pieces: 0,          // Free pieces quantity
     manual_discount_percent: 0,  // Manual discount %
-    manual_discount_amount: 0    // Manual discount amount (Rs)
+    manual_discount_amount: 0,   // Manual discount amount (Rs)
+    batch_number: '',        // Selected batch number
+    available_qty: 0         // Available quantity in selected batch
 });
 const productSchemes = ref([]);
 const discountSchemes = ref([]);
@@ -85,6 +89,24 @@ const productOptions = computed(() => {
     return props.products.map(p => ({
         ...p,
         displayLabel: `${p.dms_code || p.sku || ''} - ${p.name}`
+    }));
+});
+
+// Get available batches/stocks for the selected product
+const availableBatches = computed(() => {
+    if (!newItem.value.product_id) return [];
+
+    let stocks = props.availableStocks.filter(s => Number(s.product_id) === Number(newItem.value.product_id));
+
+    // Filter by selected distribution
+    const distId = form.distribution_id || currentDistribution.value?.id;
+    if (distId) {
+        stocks = stocks.filter(s => Number(s.distribution_id) === Number(distId));
+    }
+
+    return stocks.map(s => ({
+        ...s,
+        label: `${s.batch_number ? 'Batch: ' + s.batch_number : 'No Batch'} ${s.location ? '(' + s.location + ')' : ''} - Qty: ${s.quantity}`,
     }));
 });
 
@@ -216,7 +238,14 @@ const searchProductByCode = async () => {
 };
 
 // Watch product selection
-watch(() => newItem.value.product_id, (productId) => {
+watch(() => newItem.value.product_id, (productId, oldProductId) => {
+    // Reset stock selection when product changes
+    if (productId !== oldProductId) {
+        newItem.value.stock_id = '';
+        newItem.value.batch_number = '';
+        newItem.value.available_qty = 0;
+    }
+    
     if (productId) {
         const product = props.products.find(p => p.id === parseInt(productId));
         if (product) {
@@ -244,6 +273,20 @@ watch(() => newItem.value.product_id, (productId) => {
             loadProductSchemes(productId);
             productCode.value = product.dms_code || product.sku || '';
         }
+    }
+});
+
+// Watch stock/batch selection to auto-fill batch details
+watch(() => newItem.value.stock_id, (stockId) => {
+    if (stockId) {
+        const stock = props.availableStocks.find(s => Number(s.id) === Number(stockId));
+        if (stock) {
+            newItem.value.batch_number = stock.batch_number || '';
+            newItem.value.available_qty = stock.quantity || 0;
+        }
+    } else {
+        newItem.value.batch_number = '';
+        newItem.value.available_qty = 0;
     }
 });
 
@@ -351,6 +394,8 @@ const addItem = () => {
         product_name: product?.name,
         product_code: product?.dms_code || product?.sku,
         brand_name: product?.brand?.name,
+        stock_id: newItem.value.stock_id || null,
+        batch_number: newItem.value.batch_number || null,
         cartons: newItem.value.cartons,
         pieces: newItem.value.pieces,
         total_pieces: newItem.value.total_pieces,
@@ -414,6 +459,7 @@ const addItem = () => {
 const resetNewItem = () => {
     newItem.value = {
         product_id: '',
+        stock_id: '',
         cartons: 0,
         pieces: 0,
         total_pieces: 0,
@@ -429,7 +475,9 @@ const resetNewItem = () => {
         free_product: null,
         free_pieces: 0,
         manual_discount_percent: 0,
-        manual_discount_amount: 0
+        manual_discount_amount: 0,
+        batch_number: '',
+        available_qty: 0
     };
     selectedProduct.value = null;
     productCode.value = '';
@@ -710,9 +758,25 @@ const submit = () => {
                         </div>
 
                         <!-- Product Select -->
-                        <div class="col-span-4 lg:col-span-4">
+                        <div class="col-span-4 lg:col-span-3">
                             <SearchableSelect v-model="newItem.product_id" label="Product" :options="productOptions"
                                 option-value="id" option-label="displayLabel" placeholder="Search product..." />
+                        </div>
+
+                        <!-- Batch/Stock Select -->
+                        <div class="col-span-3 lg:col-span-2">
+                            <InputLabel value="Batch / Stock" />
+                            <SearchableSelect v-model="newItem.stock_id" :options="availableBatches"
+                                option-value="id" option-label="label" placeholder="Select Batch"
+                                :disabled="!newItem.product_id" class="mt-1" />
+                            <div v-if="newItem.product_id && availableBatches.length === 0"
+                                class="text-xs text-amber-600 mt-1">
+                                No stock available
+                            </div>
+                            <div v-if="newItem.stock_id && newItem.available_qty > 0"
+                                class="text-xs text-emerald-600 mt-1 font-medium">
+                                Available: {{ newItem.available_qty }} pcs
+                            </div>
                         </div>
 
                         <!-- Cartons -->
@@ -722,7 +786,7 @@ const submit = () => {
                         </div>
 
                         <!-- Pieces -->
-                        <div class="col-span-2 lg:col-span-2">
+                        <div class="col-span-2 lg:col-span-1">
                             <InputLabel value="Pieces" />
                             <TextInput v-model.number="newItem.pieces" type="number" min="0" class="mt-1 w-full text-center font-medium" />
                         </div>

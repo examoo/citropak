@@ -60,6 +60,12 @@ class InvoiceController extends Controller
         $userDistributionId = auth()->user()->distribution_id ?? session('current_distribution_id');
         if($userDistributionId === 'all') $userDistributionId = null;
 
+        // Get available stocks for batch selection
+        $availableStocks = Stock::with('product:id,name,dms_code,sku,pieces_per_packing')
+            ->where('quantity', '>', 0)
+            ->when($userDistributionId, fn($q) => $q->where('distribution_id', $userDistributionId))
+            ->get(['id', 'product_id', 'distribution_id', 'batch_number', 'expiry_date', 'location', 'quantity', 'unit_cost', 'pieces_per_packing']);
+
         return Inertia::render('Invoices/Create', [
             'vans' => Van::active()->with('distribution')->get(),
             'orderBookers' => OrderBooker::with(['distribution', 'van'])->get(),
@@ -67,6 +73,7 @@ class InvoiceController extends Controller
             'schemes' => Scheme::active()->with(['brand', 'product'])->get(),
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
             'nextOrderDate' => $this->getNextOrderDate($userDistributionId),
+            'availableStocks' => $availableStocks,
         ]);
     }
 
@@ -226,10 +233,17 @@ class InvoiceController extends Controller
             'items.scheme'
         ]);
 
+        // Get available stocks for batch selection (filter by invoice's distribution)
+        $availableStocks = Stock::with('product:id,name,dms_code,sku,pieces_per_packing')
+            ->where('quantity', '>', 0)
+            ->where('distribution_id', $invoice->distribution_id)
+            ->get(['id', 'product_id', 'distribution_id', 'batch_number', 'expiry_date', 'location', 'quantity', 'unit_cost', 'pieces_per_packing']);
+
         return Inertia::render('Invoices/Edit', [
             'invoice' => $invoice,
             'products' => Product::active()->with(['brand', 'category', 'packing', 'productType'])->get(),
             'schemes' => Scheme::active()->with(['brand', 'product'])->get(),
+            'availableStocks' => $availableStocks,
         ]);
     }
 
