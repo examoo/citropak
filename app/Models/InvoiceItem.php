@@ -31,6 +31,8 @@ class InvoiceItem extends Model
         'tax_percent',
         'fed_percent',
         'fed_amount',
+        'extra_tax_percent',
+        'extra_tax_amount',
         'line_total',
         // New simplified product fields
         'pieces_per_packing',
@@ -104,6 +106,7 @@ class InvoiceItem extends Model
             $this->scheme_discount = 0;
             $this->tax = 0;
             $this->fed_amount = 0;
+            $this->extra_tax_amount = 0;
             $this->line_total = 0;
             return;
         }
@@ -115,7 +118,8 @@ class InvoiceItem extends Model
         // Formula: (value after discount) * percent / 100
         $this->fed_amount = $afterDiscount * ($this->fed_percent / 100);
         $this->tax = $afterDiscount * ($this->tax_percent / 100);
+        $this->extra_tax_amount = $afterDiscount * ($this->extra_tax_percent / 100);
         
-        $this->line_total = $afterDiscount + $this->tax + $this->fed_amount;
+        $this->line_total = $afterDiscount + $this->tax + $this->fed_amount + $this->extra_tax_amount;
     }
 }

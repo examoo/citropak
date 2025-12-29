@@ -245,7 +245,7 @@ const isTypeModalOpen = ref(false);
 const isPackingModalOpen = ref(false);
 
 const brandForm = useForm({ name: '', status: 'active' });
-const typeForm = useForm({ name: '' });
+const typeForm = useForm({ name: '', extra_tax: 0 });
 
 const submitBrand = () => {
     const newName = brandForm.name;
@@ -272,6 +272,7 @@ const submitType = () => {
         onSuccess: (page) => {
             isTypeModalOpen.value = false;
             typeForm.reset();
+            typeForm.extra_tax = 0;
             const newType = page.props.types?.find(t => t.name === newName);
             if (newType) {
                 form.type_id = newType.id;
@@ -869,6 +870,13 @@ const deleteProduct = (product) => {
                             :class="{ 'border-red-500': typeForm.errors.name }" />
                         <div v-if="typeForm.errors.name" class="text-xs text-red-600 mt-1">{{ typeForm.errors.name }}
                         </div>
+                    </div>
+                    <div>
+                        <InputLabel value="Extra Tax (%)" />
+                        <TextInput v-model="typeForm.extra_tax" type="number" step="0.01" class="mt-1 block w-full"
+                            placeholder="0.00" />
+                        <div v-if="typeForm.errors.extra_tax" class="text-xs text-red-600 mt-1">{{
+                            typeForm.errors.extra_tax }}</div>
                     </div>
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                         <SecondaryButton @click="isTypeModalOpen = false">Cancel</SecondaryButton>

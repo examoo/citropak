@@ -47,6 +47,7 @@ class ProductTypeController extends Controller
         ProductType::create([
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']),
+            'extra_tax' => $request->extra_tax ?? 0,
         ]);
 
         return redirect()->back()->with('success', 'Type created successfully.');
@@ -59,6 +60,7 @@ class ProductTypeController extends Controller
         $productType->update([
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']),
+            'extra_tax' => $request->extra_tax ?? 0,
         ]);
 
         return redirect()->back()->with('success', 'Type updated successfully.');

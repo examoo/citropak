@@ -62,6 +62,7 @@ const getSortIcon = (field) => {
 
 const form = useForm({
     name: '',
+    extra_tax: 0,
 });
 
 const openModal = (type = null) => {
@@ -70,8 +71,10 @@ const openModal = (type = null) => {
     
     if (type) {
         form.name = type.name;
+        form.extra_tax = type.extra_tax;
     } else {
         form.reset();
+        form.extra_tax = 0;
     }
     
     isModalOpen.value = true;
@@ -171,6 +174,7 @@ const deleteType = (type) => {
                                 <th @click="handleSort('slug')" class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Slug {{ getSortIcon('slug') }}
                                 </th>
+                                <th class="px-6 py-4">Extra Tax (%)</th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -181,6 +185,9 @@ const deleteType = (type) => {
                                 </td>
                                 <td class="px-6 py-4 text-gray-500 font-mono text-xs">
                                     {{ type.slug }}
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ type.extra_tax }}%
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -206,7 +213,7 @@ const deleteType = (type) => {
                                 </td>
                             </tr>
                             <tr v-if="types.data.length === 0">
-                                <td colspan="3" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="4" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center gap-3">
                                         <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                                             <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,6 +254,18 @@ const deleteType = (type) => {
                             required
                         />
                         <div v-if="form.errors.name" class="text-sm text-red-600 mt-1">{{ form.errors.name }}</div>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Extra Tax (%)" />
+                        <TextInput 
+                            v-model="form.extra_tax"
+                            type="number"
+                            step="0.01"
+                            class="mt-1 block w-full"
+                            placeholder="0.00"
+                        />
+                        <div v-if="form.errors.extra_tax" class="text-sm text-red-600 mt-1">{{ form.errors.extra_tax }}</div>
                     </div>
 
                     <div class="flex justify-end gap-3 mt-6 pt-4">

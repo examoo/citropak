@@ -53,6 +53,7 @@ const newItem = ref({
     exclusive_price: 0,      // Price before tax (list_price_before_tax)
     fed_percent: 0,          // FED %
     sales_tax_percent: 0,    // Sales Tax %
+    extra_tax_percent: 0,    // Extra Tax % (from product type)
     adv_tax_percent: 0,      // Advance Tax % (from customer)
     net_unit_price: 0,       // Price with taxes
     scheme_id: '',
@@ -166,19 +167,23 @@ const searchCustomerByCode = async () => {
 };
 
 // Helper to calculate net unit price with taxes (matches Product calculation)
-// Formula: Base Price * (1 + FED%) * (1 + Sales Tax%) * (1 + Advance Tax%)
+// Formula: Base Price * (1 + FED%) * (1 + Sales Tax%) * (1 + Advance Tax%) + Extra Tax
 const calculateNetUnitPrice = () => {
     const exclusive = parseFloat(newItem.value.exclusive_price) || 0;
     const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
     const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
+    const extraTax = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
     const advTax = parseFloat(newItem.value.adv_tax_percent) / 100 || 0;
 
-    // Compound calculation (same as Product):
+    // Compound calculation:
     // Step 1: Base Price + FED %
     let netPrice = exclusive * (1 + fed);
-    // Step 2: (Base Price + FED) + Sales Tax %
+    // Step 2: + Sales Tax %
     netPrice = netPrice * (1 + salesTax);
-    // Step 3: Add Advance Tax (customer specific)
+    // Step 3: + Extra Tax % (based on exclusive amount)
+    const extraTaxAmount = exclusive * extraTax;
+    netPrice = netPrice + extraTaxAmount;
+    // Step 4: + Advance Tax (customer specific)
     netPrice = netPrice * (1 + advTax);
 
     newItem.value.net_unit_price = netPrice;
@@ -220,6 +225,9 @@ watch(() => newItem.value.product_id, (productId) => {
             newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || parseFloat(product.unit_price) || 0;
             newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
             newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
+            // Get extra tax from product type
+            console.log('Product selected:', product.id, 'product_type:', product.product_type, 'extra_tax:', product.product_type?.extra_tax);
+            newItem.value.extra_tax_percent = parseFloat(product.product_type?.extra_tax) || 0;
             // Get advance tax from selected customer
             newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
             
@@ -342,6 +350,7 @@ const addItem = () => {
         exclusive_price: newItem.value.exclusive_price,
         fed_percent: newItem.value.fed_percent,
         sales_tax_percent: newItem.value.sales_tax_percent,
+        extra_tax_percent: newItem.value.extra_tax_percent,
         adv_tax_percent: newItem.value.adv_tax_percent,
         net_unit_price: newItem.value.net_unit_price,
         price: newItem.value.net_unit_price, // For backward compatibility
@@ -369,6 +378,7 @@ const addItem = () => {
             exclusive_price: 0,
             fed_percent: 0,
             sales_tax_percent: 0,
+            extra_tax_percent: 0,
             adv_tax_percent: 0,
             net_unit_price: 0,
             price: 0,
@@ -398,6 +408,7 @@ const resetNewItem = () => {
         exclusive_price: 0,
         fed_percent: 0,
         sales_tax_percent: 0,
+        extra_tax_percent: 0,
         adv_tax_percent: selectedCustomer.value?.adv_tax_percent || 0,
         net_unit_price: 0,
         scheme_id: '',
@@ -440,6 +451,11 @@ const getItemSalesTax = (item) => {
     return getItemExclusive(item) * (1 + item.fed_percent / 100) * (item.sales_tax_percent / 100);
 };
 
+// Calculate item Extra Tax amount (based on exclusive)
+const getItemExtraTax = (item) => {
+    return getItemExclusive(item) * ((item.extra_tax_percent || 0) / 100);
+};
+
 // Calculate item Advance Tax amount
 const getItemAdvTax = (item) => {
     return getItemExclusive(item) * (1 + item.fed_percent / 100) * (1 + item.sales_tax_percent / 100) * (item.adv_tax_percent / 100);
@@ -456,6 +472,10 @@ const totalFed = computed(() => {
 
 const totalSalesTax = computed(() => {
     return form.items.reduce((sum, item) => sum + getItemSalesTax(item), 0);
+});
+
+const totalExtraTax = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemExtraTax(item), 0);
 });
 
 const totalAdvTax = computed(() => {
@@ -493,6 +513,8 @@ const handleKeydown = (e) => {
 
 onMounted(() => {
     document.addEventListener('keydown', handleKeydown);
+    // Debug: Log products to check if product_type is included
+    console.log('Products loaded:', props.products?.length, 'First product product_type:', props.products?.[0]?.product_type);
 });
 
 onUnmounted(() => {
@@ -651,6 +673,13 @@ const submit = () => {
                                     {{ selectedCustomer.atl ? 'Yes' : 'No' }}
                                 </span>
                             </div>
+                            <div>
+                                <span class="text-gray-500">S.Tax Status:</span>
+                                <span class="font-medium ml-2"
+                                    :class="selectedCustomer.sales_tax_status === 'active' ? 'text-blue-600' : 'text-red-600'">
+                                    {{ selectedCustomer.sales_tax_status ? selectedCustomer.sales_tax_status.toUpperCase() : 'N/A' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -714,6 +743,13 @@ const submit = () => {
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="S.Tax %" class="text-xs" />
                                 <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                            </div>
+
+                            <!-- Extra Tax % (from Product Type) -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Extra Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.extra_tax_percent" type="number" step="0.01"
                                     class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
                             </div>
 
@@ -827,6 +863,7 @@ const submit = () => {
                                     <th class="px-2 py-3 text-right">Excl. Amt</th>
                                     <th class="px-2 py-3 text-right">FED</th>
                                     <th class="px-2 py-3 text-right">S.Tax</th>
+                                    <th class="px-2 py-3 text-right">Extra Tax</th>
                                     <th class="px-2 py-3 text-right">Adv.Tax</th>
                                     <th class="px-2 py-3 text-right">Gross</th>
                                     <th class="px-2 py-3 text-right">Discount</th>
@@ -855,6 +892,10 @@ const submit = () => {
                                         {{ formatAmount(getItemSalesTax(item)) }}
                                         <div class="text-xs">({{ item.sales_tax_percent }}%)</div>
                                     </td>
+                                    <td class="px-2 py-3 text-right text-purple-600">
+                                        {{ formatAmount(getItemExtraTax(item)) }}
+                                        <div class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div>
+                                    </td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemAdvTax(item)) }}
                                         <div class="text-xs">({{ item.adv_tax_percent }}%)</div>
@@ -878,7 +919,7 @@ const submit = () => {
                                     </td>
                                 </tr>
                                 <tr v-if="form.items.length === 0">
-                                    <td colspan="14" class="px-4 py-8 text-center text-gray-500">
+                                    <td colspan="15" class="px-4 py-8 text-center text-gray-500">
                                         No items added. Use the form above to add products.
                                     </td>
                                 </tr>
@@ -888,7 +929,7 @@ const submit = () => {
 
                     <!-- Invoice Summary -->
                     <div v-if="form.items.length > 0" class="border-t border-gray-200 bg-gray-50 p-4">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                             <div class="bg-white p-3 rounded-lg border">
                                 <div class="text-gray-500 text-xs uppercase">Total Exclusive</div>
                                 <div class="font-bold text-lg">{{ formatAmount(totalExclusive) }}</div>
@@ -900,6 +941,10 @@ const submit = () => {
                             <div class="bg-white p-3 rounded-lg border">
                                 <div class="text-gray-500 text-xs uppercase">Total Sales Tax</div>
                                 <div class="font-bold text-lg">{{ formatAmount(totalSalesTax) }}</div>
+                            </div>
+                            <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                <div class="text-purple-500 text-xs uppercase">Total Extra Tax</div>
+                                <div class="font-bold text-lg text-purple-700">{{ formatAmount(totalExtraTax) }}</div>
                             </div>
                             <div class="bg-white p-3 rounded-lg border">
                                 <div class="text-gray-500 text-xs uppercase">Total Adv. Tax</div>

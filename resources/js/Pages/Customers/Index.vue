@@ -99,6 +99,7 @@ const form = useForm({
     percentage: '0.00',
     cnic: '',
     sales_tax_number: '',
+    sales_tax_status: 'active',
     route: ''
 });
 
@@ -173,6 +174,7 @@ const openModal = (customer = null) => {
         form.percentage = customer.percentage;
         form.cnic = customer.cnic;
         form.sales_tax_number = customer.sales_tax_number;
+        form.sales_tax_status = customer.sales_tax_status || 'active';
         form.route = customer.route || '';
 
         // Smartly find the correct channel ID to select
@@ -195,6 +197,7 @@ const openModal = (customer = null) => {
     } else {
         form.reset();
         form.status = 'active';
+        form.sales_tax_status = 'active';
         form.atl = 'active';
         form.adv_tax_percent = '0.00';
         form.percentage = '0.00';
@@ -572,6 +575,10 @@ const submitImport = () => {
                                     class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Status {{ getSortIcon('status') }}
                                 </th>
+                                <th @click="handleSort('sales_tax_status')"
+                                    class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
+                                    ST Status {{ getSortIcon('sales_tax_status') }}
+                                </th>
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -633,6 +640,14 @@ const submitImport = () => {
                                         customer.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
                                     ]">
                                         {{ customer.status ? customer.status.toUpperCase() : 'N/A' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        customer.sales_tax_status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                                    ]">
+                                        {{ customer.sales_tax_status ? customer.sales_tax_status.toUpperCase() : 'N/A' }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
@@ -912,7 +927,7 @@ const submitImport = () => {
                     </div>
 
                     <!-- Row 8 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <InputLabel value="Percentage" />
                             <TextInput v-model="form.percentage" type="number" step="0.01" class="mt-1 block w-full"
@@ -923,6 +938,14 @@ const submitImport = () => {
                         <div>
                             <InputLabel value="ATL" />
                             <select v-model="form.atl"
+                                class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div>
+                            <InputLabel value="Sales Tax Status" />
+                            <select v-model="form.sales_tax_status"
                                 class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>

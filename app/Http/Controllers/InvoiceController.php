@@ -63,7 +63,7 @@ class InvoiceController extends Controller
         return Inertia::render('Invoices/Create', [
             'vans' => Van::active()->with('distribution')->get(),
             'orderBookers' => OrderBooker::with(['distribution', 'van'])->get(),
-            'products' => Product::active()->with(['brand', 'category', 'packing'])->get(),
+            'products' => Product::active()->with(['brand', 'category', 'packing', 'productType'])->get(),
             'schemes' => Scheme::active()->with(['brand', 'product'])->get(),
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
             'nextOrderDate' => $this->getNextOrderDate($userDistributionId),
@@ -95,6 +95,7 @@ class InvoiceController extends Controller
             'items.*.price' => 'required|numeric|min:0',
             'items.*.fed_percent' => 'nullable|numeric|min:0',
             'items.*.sales_tax_percent' => 'nullable|numeric|min:0', // Frontend sends sales_tax_percent
+            'items.*.extra_tax_percent' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.is_free' => 'nullable|boolean',
@@ -135,6 +136,7 @@ class InvoiceController extends Controller
                     'price' => $itemData['price'],
                     'fed_percent' => $itemData['fed_percent'] ?? 0,
                     'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
+                    'extra_tax_percent' => $itemData['extra_tax_percent'] ?? 0,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
                     'is_free' => $itemData['is_free'] ?? false,
@@ -199,7 +201,7 @@ class InvoiceController extends Controller
 
         return Inertia::render('Invoices/Edit', [
             'invoice' => $invoice,
-            'products' => Product::active()->with(['brand', 'category', 'packing'])->get(),
+            'products' => Product::active()->with(['brand', 'category', 'packing', 'productType'])->get(),
             'schemes' => Scheme::active()->with(['brand', 'product'])->get(),
         ]);
     }
@@ -397,7 +399,7 @@ class InvoiceController extends Controller
     {
         $product = Product::where('dms_code', $code)
             ->orWhere('sku', $code)
-            ->with(['brand', 'category', 'packing'])
+            ->with(['brand', 'category', 'packing', 'productType'])
             ->first();
         
         if (!$product) {
