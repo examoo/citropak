@@ -92,12 +92,20 @@ class InvoiceController extends Controller
             'items.*.cartons' => 'required|integer|min:0',
             'items.*.pieces' => 'required|integer|min:0',
             'items.*.total_pieces' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.exclusive_price' => 'nullable|numeric|min:0',
+            'items.*.net_unit_price' => 'nullable|numeric|min:0',
             'items.*.fed_percent' => 'nullable|numeric|min:0',
-            'items.*.sales_tax_percent' => 'nullable|numeric|min:0', // Frontend sends sales_tax_percent
+            'items.*.fed_amount' => 'nullable|numeric|min:0',
+            'items.*.sales_tax_percent' => 'nullable|numeric|min:0',
+            'items.*.sales_tax_amount' => 'nullable|numeric|min:0',
             'items.*.extra_tax_percent' => 'nullable|numeric|min:0',
+            'items.*.extra_tax_amount' => 'nullable|numeric|min:0',
+            'items.*.adv_tax_percent' => 'nullable|numeric|min:0',
+            'items.*.adv_tax_amount' => 'nullable|numeric|min:0',
+            'items.*.gross_amount' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
+            'items.*.total_discount' => 'nullable|numeric|min:0',
             'items.*.is_free' => 'nullable|boolean',
         ]);
 
@@ -123,28 +131,46 @@ class InvoiceController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // Create items
+            // Create items - store all values from frontend
             foreach ($validated['items'] as $itemData) {
-                $item = new InvoiceItem([
+                $exclusivePrice = $itemData['exclusive_price'] ?? 0;
+                $totalPieces = $itemData['total_pieces'];
+                $exclusiveAmount = $exclusivePrice * $totalPieces;
+                
+                $fedAmount = $itemData['fed_amount'] ?? 0;
+                $salesTaxAmount = $itemData['sales_tax_amount'] ?? 0;
+                $extraTaxAmount = $itemData['extra_tax_amount'] ?? 0;
+                $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
+                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount + $advTaxAmount);
+                $totalDiscount = $itemData['total_discount'] ?? ($itemData['scheme_discount'] ?? 0);
+                $lineTotal = $grossAmount - $totalDiscount;
+                
+                $item = InvoiceItem::create([
                     'distribution_id' => $distId,
                     'invoice_id' => $invoice->id,
                     'product_id' => $itemData['product_id'],
                     'cartons' => $itemData['cartons'],
                     'pieces' => $itemData['pieces'],
-                    'total_pieces' => $itemData['total_pieces'],
-                    'quantity' => $itemData['total_pieces'],
-                    'price' => $itemData['price'],
+                    'total_pieces' => $totalPieces,
+                    'quantity' => $totalPieces,
+                    'price' => $itemData['net_unit_price'] ?? $exclusivePrice,
+                    'list_price_before_tax' => $exclusivePrice,
+                    'exclusive_amount' => $exclusiveAmount,
                     'fed_percent' => $itemData['fed_percent'] ?? 0,
+                    'fed_amount' => $fedAmount,
                     'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
+                    'tax' => $salesTaxAmount,
                     'extra_tax_percent' => $itemData['extra_tax_percent'] ?? 0,
+                    'extra_tax_amount' => $extraTaxAmount,
+                    'adv_tax_percent' => $itemData['adv_tax_percent'] ?? 0,
+                    'adv_tax_amount' => $advTaxAmount,
+                    'gross_amount' => $grossAmount,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
                     'scheme_discount' => $itemData['scheme_discount'] ?? 0,
+                    'discount' => $totalDiscount,
+                    'line_total' => $lineTotal,
                     'is_free' => $itemData['is_free'] ?? false,
                 ]);
-                
-                // Calculate taxes based on stored percentages
-                $item->calculateAmounts($isDamage);
-                $item->save();
             }
 
             // Recalculate totals
@@ -176,6 +202,7 @@ class InvoiceController extends Controller
             'createdBy',
             'items.product.brand', 
             'items.product.packing',
+            'items.product.productType',
             'items.scheme'
         ]);
 

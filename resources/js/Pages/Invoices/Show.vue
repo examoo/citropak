@@ -18,22 +18,34 @@ const formatAmount = (amount) => {
 // Format date
 const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-PK', {
+    return new Date(date).toLocaleDateString('en-GB', {
         year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+        month: '2-digit',
+        day: '2-digit'
+    }).replace(/\//g, '-');
 };
 
-// Type badge classes
-const getTypeClass = (type) => {
-    switch(type) {
-        case 'sale': return 'bg-green-100 text-green-800 border-green-300';
-        case 'damage': return 'bg-red-100 text-red-800 border-red-300';
-        case 'shelf_rent': return 'bg-blue-100 text-blue-800 border-blue-300';
-        default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-};
+// Get item values directly from database - NO calculations, show as stored
+const getItemRate = (item) => parseFloat(item.list_price_before_tax) || 0;
+const getItemExclusive = (item) => parseFloat(item.exclusive_amount) || (item.total_pieces * getItemRate(item));
+const getItemFed = (item) => parseFloat(item.fed_amount) || 0;
+const getItemSalesTax = (item) => parseFloat(item.tax) || 0;
+const getItemExtraTax = (item) => parseFloat(item.extra_tax_amount) || 0;
+const getItemAdvTax = (item) => parseFloat(item.adv_tax_amount) || 0;
+const getItemGross = (item) => parseFloat(item.gross_amount) || parseFloat(item.line_total) || 0;
+const getItemNet = (item) => parseFloat(item.line_total) || 0;
+
+// Totals
+const totalQty = computed(() => props.invoice.items?.reduce((sum, item) => sum + (item.total_pieces || 0), 0) || 0);
+const totalExclusive = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemExclusive(item), 0) || 0);
+const totalFed = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemFed(item), 0) || 0);
+const totalSalesTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemSalesTax(item), 0) || 0);
+const totalExtraTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemExtraTax(item), 0) || 0);
+const totalAdvTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.adv_tax_amount || 0), 0) || 0);
+const totalGross = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemGross(item), 0) || 0);
+const totalTradeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.discount || 0), 0) || 0);
+const totalSchemeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.scheme_discount || 0), 0) || 0);
+const totalNet = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemNet(item), 0) || 0);
 
 const printInvoice = () => {
     window.print();
@@ -44,8 +56,8 @@ const printInvoice = () => {
     <Head :title="`Invoice: ${invoice.invoice_number}`" />
 
     <DashboardLayout>
-        <div class="space-y-6 max-w-5xl">
-            <!-- Header -->
+        <div class="space-y-6 max-w-6xl">
+            <!-- Header (hidden in print) -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 print:hidden">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">{{ invoice.invoice_number }}</h1>
@@ -58,119 +70,129 @@ const printInvoice = () => {
                 </div>
             </div>
 
-            <!-- Short Bill -->
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-0 print:p-4">
-                <!-- Header -->
-                <div class="text-center border-b pb-6 mb-6">
-                    <h1 class="text-2xl font-bold uppercase">SALES INVOICE</h1>
-                    <div class="text-xl font-semibold text-emerald-600 mt-2">{{ invoice.invoice_number }}</div>
-                    <span class="inline-block mt-2 px-3 py-1 border rounded-full text-sm font-medium uppercase" :class="getTypeClass(invoice.invoice_type)">
-                        {{ invoice.invoice_type.replace('_', ' ') }}
-                    </span>
+            <!-- Invoice Print Format -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-0 print:p-2 print:rounded-none">
+                
+                <!-- Title -->
+                <div class="text-center border-b border-gray-400 pb-4 mb-4">
+                    <h1 class="text-xl font-bold uppercase tracking-wide">FED & SALE TAX INVOICE</h1>
                 </div>
 
-                <!-- Customer & Invoice Info -->
-                <div class="grid grid-cols-2 gap-8 mb-6">
-                    <div class="space-y-2">
-                        <h3 class="font-bold text-gray-900">Customer</h3>
-                        <div class="text-sm space-y-1">
-                            <div><span class="text-gray-500">Code:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
-                            <div><span class="text-gray-500">Shop:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
-                            <div><span class="text-gray-500">Address:</span> {{ invoice.customer?.address }}</div>
-                            <div><span class="text-gray-500">Phone:</span> {{ invoice.customer?.phone }}</div>
-                            <div v-if="invoice.customer?.ntn_number"><span class="text-gray-500">NTN:</span> {{ invoice.customer?.ntn_number }}</div>
-                        </div>
+                <!-- Company & Customer Info -->
+                <div class="grid grid-cols-2 gap-6 mb-4 text-xs">
+                    <!-- Left: Customer Info -->
+                    <div class="space-y-1">
+                        <div class="font-bold text-sm">Customer Detail:</div>
+                        <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
+                        <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
+                        <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
+                        <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
+                        <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
+                        <div><span class="text-gray-600">S.Tax ATL:</span> <span :class="invoice.customer?.sales_tax_status === 'active' ? 'text-green-600' : 'text-red-600'">{{ invoice.customer?.sales_tax_status?.toUpperCase() || 'INACTIVE' }}</span></div>
+                        <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
                     </div>
-                    <div class="space-y-2 text-right">
-                        <h3 class="font-bold text-gray-900">Invoice Info</h3>
-                        <div class="text-sm space-y-1">
-                            <div><span class="text-gray-500">Date:</span> <span class="font-medium">{{ formatDate(invoice.invoice_date) }}</span></div>
-                            <div><span class="text-gray-500">VAN:</span> {{ invoice.van?.code }}</div>
-                            <div><span class="text-gray-500">Order Booker:</span> {{ invoice.order_booker?.name }}</div>
-                            <div><span class="text-gray-500">Tax Type:</span> <span class="uppercase">{{ invoice.tax_type }}</span></div>
-                            <div><span class="text-gray-500">Payment:</span> {{ invoice.is_credit ? 'Credit' : 'Cash' }}</div>
-                        </div>
+
+                    <!-- Right: Distribution/Company Info -->
+                    <div class="text-right space-y-1">
+                        <div class="font-bold text-sm">CITROPAK LTD</div>
+                        <div>15-6 New Civil Line Sargodha</div>
+                        <div>NTN No: 0683798-7</div>
+                        <div>Contact#: 0301-8441306</div>
+                        <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
+                        <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}</div>
+                        <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
                     </div>
                 </div>
 
                 <!-- Items Table -->
-                <table class="w-full text-sm border-collapse border border-gray-300 mb-6">
+                <table class="w-full text-[10px] border-collapse border border-black mb-4">
                     <thead>
                         <tr class="bg-gray-100">
-                            <th class="border border-gray-300 px-2 py-2 text-left">#</th>
-                            <th class="border border-gray-300 px-2 py-2 text-left">Product</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Ctns</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Pcs</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Total</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Price</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Discount</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Tax</th>
-                            <th class="border border-gray-300 px-2 py-2 text-right">Amount</th>
+                            <th class="border border-black px-1 py-1 text-center">Sr.No</th>
+                            <th class="border border-black px-1 py-1 text-center">Product<br/>Code</th>
+                            <th class="border border-black px-1 py-1 text-left">Item Name</th>
+                            <th class="border border-black px-1 py-1 text-center">Issued<br/>Qty</th>
+                            <th class="border border-black px-1 py-1 text-right">Rate</th>
+                            <th class="border border-black px-1 py-1 text-right">Total<br/>Excl.Value</th>
+                            <th class="border border-black px-1 py-1 text-right">FED</th>
+                            <th class="border border-black px-1 py-1 text-right">Sale Tax<br/>{{ invoice.items?.[0]?.tax_percent || 18 }}%</th>
+                            <th class="border border-black px-1 py-1 text-right">Extra<br/>Tax</th>
+                            <th class="border border-black px-1 py-1 text-right">Adv<br/>Tax</th>
+                            <th class="border border-black px-1 py-1 text-right">Gross<br/>Value</th>
+                            <th class="border border-black px-1 py-1 text-right">Trade<br/>Discount</th>
+                            <th class="border border-black px-1 py-1 text-right">Scheme<br/>Discount</th>
+                            <th class="border border-black px-1 py-1 text-right">Net Sale<br/>Value</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in invoice.items" :key="item.id"
-                            :class="item.price == 0 ? 'bg-green-50' : ''">
-                            <td class="border border-gray-300 px-2 py-2">{{ index + 1 }}</td>
-                            <td class="border border-gray-300 px-2 py-2">
-                                <div class="font-medium">
-                                    {{ item.product?.name }}
-                                    <span v-if="item.price == 0" class="ml-2 px-2 py-0.5 text-xs bg-green-500 text-white rounded-full">FREE</span>
-                                </div>
-                                <div class="text-xs text-gray-500">{{ item.product?.dms_code }}</div>
-                            </td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ item.cartons }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ item.pieces }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-medium">{{ item.total_pieces }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ item.price == 0 ? 'FREE' : formatAmount(item.price) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right text-red-600">-{{ formatAmount(item.scheme_discount) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right">{{ formatAmount(parseFloat(item.tax || 0) + parseFloat(item.fed_amount || 0)) }}</td>
-                            <td class="border border-gray-300 px-2 py-2 text-right font-semibold">{{ item.price == 0 ? '-' : formatAmount(item.line_total) }}</td>
+                        <tr v-for="(item, index) in invoice.items" :key="item.id">
+                            <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
+                            <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
+                            <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
+                            <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemAdvTax(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.discount || 0) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.scheme_discount || 0) }}</td>
+                            <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                         </tr>
                     </tbody>
+                    <tfoot>
+                        <tr class="bg-gray-100 font-bold">
+                            <td class="border border-black px-1 py-1 text-right" colspan="3">Total</td>
+                            <td class="border border-black px-1 py-1 text-center">{{ totalQty }}</td>
+                            <td class="border border-black px-1 py-1"></td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExclusive) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalFed) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalSalesTax) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExtraTax) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalAdvTax) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalGross) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalSchemeDiscount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalNet) }}</td>
+                        </tr>
+                    </tfoot>
                 </table>
 
-                <!-- Totals -->
-                <div class="flex justify-end">
-                    <div class="w-64 space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Subtotal:</span>
-                            <span>Rs. {{ formatAmount(invoice.subtotal) }}</span>
-                        </div>
-                        <div class="flex justify-between text-red-600">
-                            <span>Discount:</span>
-                            <span>-Rs. {{ formatAmount(invoice.discount_amount) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Sales Tax:</span>
-                            <span>Rs. {{ formatAmount(invoice.tax_amount) }}</span>
-                        </div>
-                        <div v-if="invoice.fed_amount > 0" class="flex justify-between">
-                            <span class="text-gray-500">FED:</span>
-                            <span>Rs. {{ formatAmount(invoice.fed_amount) }}</span>
-                        </div>
-                        <div class="flex justify-between font-bold text-lg border-t pt-2">
-                            <span>Total:</span>
-                            <span class="text-emerald-600">Rs. {{ formatAmount(invoice.total_amount) }}</span>
-                        </div>
+                <!-- Footer Section -->
+                <div class="grid grid-cols-2 gap-6 text-xs">
+                    <!-- Left: Checked By -->
+                    <div>
+                        <div class="font-semibold underline">Checked By O.B.: {{ invoice.order_booker?.name }}</div>
+                    </div>
+
+                    <!-- Right: Summary Box -->
+                    <div class="border border-black">
+                        <table class="w-full text-xs">
+                            <tr class="border-b border-black">
+                                <td class="px-2 py-1">Net Invoice Value Inclusive Sales Tax:</td>
+                                <td class="px-2 py-1 text-right font-medium">{{ formatAmount(totalNet) }}</td>
+                            </tr>
+                            <tr class="border-b border-black">
+                                <td class="px-2 py-1">Total Discount:</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(totalTradeDiscount + totalSchemeDiscount) }}</td>
+                            </tr>
+                            <tr class="border-b border-black">
+                                <td class="px-2 py-1">Advance Tax:</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(totalAdvTax) }}</td>
+                            </tr>
+                            <tr class="font-bold">
+                                <td class="px-2 py-1">Total Invoice Value:</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(totalNet) }}</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Signatures -->
-                <div class="grid grid-cols-3 gap-8 mt-12 pt-8 border-t">
-                    <div class="text-center">
-                        <div class="border-t border-gray-400 pt-2 mt-12">Prepared By</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="border-t border-gray-400 pt-2 mt-12">Checked By</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="border-t border-gray-400 pt-2 mt-12">Customer Signature</div>
-                    </div>
-                </div>
-
-                <div class="mt-6 text-xs text-gray-400 text-right print:mt-4">
-                    Printed on: {{ new Date().toLocaleString() }}
+                <!-- Urdu Note (optional) -->
+                <div class="mt-4 text-[9px] text-gray-600 font-urdu text-right" dir="rtl">
+                    نوٹ: اپنا مال موقع پر چیک کر کے پورا کر لیں ۔ رقم کی ادائیگی نقد یا ادھار بل وصول کر کے کریں ۔ کمپنی نمائندے سے بل کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
                 </div>
             </div>
         </div>
@@ -179,10 +201,14 @@ const printInvoice = () => {
 
 <style scoped>
 @media print {
-    @page { size: A4 portrait; margin: 10mm; }
+    @page { size: A4 landscape; margin: 5mm; }
     :deep(aside), :deep(nav), :deep(header) { display: none !important; }
     :deep(main) { margin: 0 !important; padding: 0 !important; width: 100% !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     table, th, td { border-color: #000 !important; }
+}
+
+.font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
 }
 </style>

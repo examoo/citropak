@@ -339,6 +339,13 @@ const addItem = () => {
     const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
 
+    // Calculate all amounts for storage
+    const exclusiveAmount = newItem.value.exclusive_price * newItem.value.total_pieces;
+    const fedAmount = exclusiveAmount * (newItem.value.fed_percent / 100);
+    const salesTaxAmount = (exclusiveAmount + fedAmount) * (newItem.value.sales_tax_percent / 100);
+    const extraTaxAmount = exclusiveAmount * ((newItem.value.extra_tax_percent || 0) / 100);
+    const advTaxAmount = (exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount) * (newItem.value.adv_tax_percent / 100);
+
     form.items.push({
         product_id: newItem.value.product_id,
         product_name: product?.name,
@@ -349,9 +356,14 @@ const addItem = () => {
         total_pieces: newItem.value.total_pieces,
         exclusive_price: newItem.value.exclusive_price,
         fed_percent: newItem.value.fed_percent,
+        fed_amount: fedAmount,
         sales_tax_percent: newItem.value.sales_tax_percent,
+        sales_tax_amount: salesTaxAmount,
         extra_tax_percent: newItem.value.extra_tax_percent,
+        extra_tax_amount: extraTaxAmount,
         adv_tax_percent: newItem.value.adv_tax_percent,
+        adv_tax_amount: advTaxAmount,
+        gross_amount: grossAmount,
         net_unit_price: newItem.value.net_unit_price,
         price: newItem.value.net_unit_price, // For backward compatibility
         scheme_id: newItem.value.scheme_id || null,

@@ -33,6 +33,10 @@ class InvoiceItem extends Model
         'fed_amount',
         'extra_tax_percent',
         'extra_tax_amount',
+        'adv_tax_percent',
+        'adv_tax_amount',
+        'exclusive_amount',
+        'gross_amount',
         'line_total',
         // New simplified product fields
         'pieces_per_packing',
