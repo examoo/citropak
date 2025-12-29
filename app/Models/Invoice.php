@@ -145,7 +145,7 @@ class Invoice extends Model
     public function recalculateTotals(): void
     {
         $this->subtotal = $this->items->sum('line_total');
-        $this->discount_amount = $this->items->sum('scheme_discount');
+        $this->discount_amount = $this->items->sum('discount');
         $this->tax_amount = $this->items->sum('tax');
         $this->fed_amount = $this->items->sum('fed_amount');
         $this->total_amount = $this->subtotal - $this->discount_amount + $this->tax_amount + $this->fed_amount;

@@ -188,6 +188,8 @@ const navigation = [
             { name: 'Daily Sales Report', href: 'daily-sales-reports.index', permission: 'reports.view' },
             { name: 'Sale Tax Invoices Monthly Report', href: 'sale-tax-invoices-reports.index', permission: 'reports.view' },
             { name: 'Day Closing', href: 'day-closing.index', permission: 'reports.view' },
+            { name: 'Customer Discount Report', href: 'customer-wise-discount-reports.index', permission: 'reports.view' },
+            { name: 'Brand Wise Sales Report', href: 'brand-wise-sales-reports.index', permission: 'reports.view' },
         ]
     },
     {
@@ -224,6 +226,7 @@ const navigation = [
         permission: 'users.view', 
         show: (props) => true,
     },
+
     {
         name: 'Holidays',
         href: 'holidays.index',
