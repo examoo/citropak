@@ -12,6 +12,16 @@ import Pagination from '@/Components/Pagination.vue';
 import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
 
+// Format date to "24 Dec 2024" format
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+};
+
 const props = defineProps({
     schemes: Object,
     filters: Object,
@@ -166,7 +176,7 @@ const deleteItem = (item) => {
                                 {{ item.scheme_type === 'product' ? (item.product?.name || '-') : (item.brand?.name || '-') }}
                             </td>
                             <td class="px-6 py-4 text-gray-500 text-xs">
-                                {{ item.start_date }} to {{ item.end_date }}
+                                {{ formatDate(item.start_date) }} to {{ formatDate(item.end_date) }}
                             </td>
                             <td class="px-6 py-4 font-semibold text-amber-600">{{ item.amount_less }}</td>
                             <td class="px-6 py-4">
