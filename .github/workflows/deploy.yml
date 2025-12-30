@@ -73,8 +73,15 @@ jobs:
 
 
 
-      # Upload zip to Server via FTP
-      - name: Upload zip to Server via FTP
+      # Zip vendor folder for faster upload
+      - name: Zip vendor folder
+        run: |
+          echo "📦 Zipping vendor folder..."
+          zip -rq vendor.zip vendor/
+          echo "✅ vendor.zip created ($(du -h vendor.zip | cut -f1))"
+
+      # Upload to Server via FTP (excluding vendor folder, will upload zip separately)
+      - name: Upload to Server via FTP
         if: success()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -90,12 +97,13 @@ jobs:
             **/tests/**
             **/.github/**
 
-      # Call extract.php to run migrations and seeders
+      # Call extract.php to unzip vendor and run setup
       - name: Run Post-Deploy Setup
         if: success()
         run: |
-          echo "🔄 Calling extract.php to run migrations and seeders..."
-          curl -s "https://staging.citropakdms.com/extract.php?key=citropak_extract_2024"
+          echo "🔄 Calling extract.php to unzip vendor and clear caches..."
+          response=$(curl -s "https://staging.citropakdms.com/extract.php?key=citropak_extract_2024")
+          echo "$response"
           echo "✅ Post-deploy setup completed!"
             
       - name: Deployment Success

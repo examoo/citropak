@@ -37,24 +37,15 @@ Route::get('/clear-cache', function () {
     \Artisan::call('route:clear');
     $output[] = 'Route cache cleared';
     
-    // Set HOME for composer (needed on some servers)
-    $basePath = base_path();
-    $homeDir = $basePath;
-    
-    // Run composer install
-    $composerInstall = shell_exec("cd {$basePath} && HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer composer install --no-interaction 2>&1");
-    $output[] = 'Composer install executed';
-    $output[] = $composerInstall;
-    
-    // Run composer dump-autoload
-    $composerOutput = shell_exec("cd {$basePath} && HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer composer dump-autoload 2>&1");
-    $output[] = 'Composer dump-autoload executed';
-    $output[] = $composerOutput;
+    // Optimize (clears and rebuilds class autoloader)
+    \Artisan::call('optimize:clear');
+    $output[] = 'Optimize cleared';
     
     return response()->json([
         'status' => 'success',
-        'message' => 'Cache cleared and autoloader refreshed',
-        'details' => $output
+        'message' => 'All caches cleared successfully',
+        'details' => $output,
+        'note' => 'For composer operations, use extract.php or SSH'
     ]);
 });
 
