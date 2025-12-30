@@ -20,6 +20,11 @@ echo "<pre>";
 // Step 1: Run Composer Install
 echo "📦 Running Composer Install...\n";
 chdir($basePath);
+
+// Set HOME for Hostinger (required for composer to work)
+putenv("HOME=" . $basePath);
+putenv("COMPOSER_HOME=" . $basePath . "/.composer");
+
 // Put the site down if needed, or just install
 // Note: Ensure `composer` is in the path or use full path (e.g. /usr/bin/composer or /usr/local/bin/composer)
 // check if composer exists
@@ -30,7 +35,7 @@ if(empty($composerCheck)){
    $composerCmd = 'composer';
 }
 
-$composerOutput = shell_exec("$composerCmd install --no-dev --optimize-autoloader 2>&1");
+$composerOutput = shell_exec("HOME={$basePath} COMPOSER_HOME={$basePath}/.composer $composerCmd install --no-dev --optimize-autoloader 2>&1");
 echo $composerOutput . "\n";
 echo $composerOutput . "\n";
 echo "✅ Composer dependencies installed.\n\n";
