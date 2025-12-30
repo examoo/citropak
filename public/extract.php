@@ -119,6 +119,7 @@ try {
         'cache:clear' => 'Clearing application cache',
         'view:clear' => 'Clearing view cache',
         'route:clear' => 'Clearing route cache',
+        'migrate --force' => 'Running migrations',
     ];
 
     foreach ($commands as $cmd => $desc) {
