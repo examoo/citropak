@@ -17,6 +17,15 @@ $zipFile = $basePath . 'vendor.zip';
 
 echo "<pre>";
 
+// PHP Version Check
+echo "🔍 PHP Version Check\n";
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+echo "PHP Version: " . PHP_VERSION . "\n";
+echo "PHP Binary: " . PHP_BINARY . "\n";
+echo "PHP OS: " . PHP_OS . "\n";
+echo "PHP 64-bit: " . (PHP_INT_SIZE === 8 ? 'Yes' : 'No') . "\n";
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
 // Step 1: Run Composer Install
 echo "📦 Running Composer Install...\n";
 chdir($basePath);
