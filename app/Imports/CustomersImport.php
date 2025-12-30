@@ -108,13 +108,14 @@ class CustomersImport implements ToModel, WithHeadingRow
             'phone'             => $this->getValue($row, 'telephone') ?? $this->getValue($row, 'phone'),
             'ntn_number'        => $this->getValue($row, 'ntnnumber') ?? $this->getValue($row, 'ntn'),
             'cnic'              => $this->getValue($row, 'cnic'),
-            'sales_tax_number'  => $this->getValue($row, 'saletaxstatus') ?? $this->getValue($row, 'sales_tax'), 
+            'sales_tax_number'  => $this->getValue($row, 'sales_tax_number') ?? $this->getValue($row, 'sales_tax'), 
+            'sales_tax_status'  => $this->getValue($row, 'st_status') ?? $this->getValue($row, 'saletaxstatus'), 
             'distribution_id'   => $distributionId,
             'day'               => $this->getValue($row, 'day'),
             'status'            => 'active',
-            'atl'               => $this->getValue($row, 'atl') ?? 'active',
+            'atl'               => $this->getValue($row, 'atl_status') ?? $this->getValue($row, 'atl') ?? 'active',
             'adv_tax_percent'   => floatval($this->getValue($row, 'adv_tax') ?? 0),
-            'percentage'        => floatval($this->getValue($row, 'percentage') ?? 0),
+            'percentage'        => floatval($this->getValue($row, 'percentage') ?? $this->getValue($row, 'pecentage') ?? 0),
         ]);
     }
 

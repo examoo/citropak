@@ -30,9 +30,9 @@ class CustomersTemplateExport implements FromCollection, WithHeadings
             'Channel',
             'NTNNumber',
             'CNIC',
-            'FBR Cat', // From image
-            'SaleTaxStatus',
-            'ATL',
+            'FilerType', // Replacing ambiguous second "Categories"
+            'ST Status',
+            'ATL Status',
             'Distribution',
             'Adv_Tax',
             'Day',
