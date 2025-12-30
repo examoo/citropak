@@ -37,13 +37,17 @@ Route::get('/clear-cache', function () {
     \Artisan::call('route:clear');
     $output[] = 'Route cache cleared';
     
+    // Set HOME for composer (needed on some servers)
+    $basePath = base_path();
+    $homeDir = $basePath;
+    
     // Run composer install
-    $composerInstall = shell_exec('cd ' . base_path() . ' && composer install --no-interaction 2>&1');
+    $composerInstall = shell_exec("cd {$basePath} && HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer composer install --no-interaction 2>&1");
     $output[] = 'Composer install executed';
     $output[] = $composerInstall;
     
     // Run composer dump-autoload
-    $composerOutput = shell_exec('cd ' . base_path() . ' && composer dump-autoload 2>&1');
+    $composerOutput = shell_exec("cd {$basePath} && HOME={$homeDir} COMPOSER_HOME={$homeDir}/.composer composer dump-autoload 2>&1");
     $output[] = 'Composer dump-autoload executed';
     $output[] = $composerOutput;
     
