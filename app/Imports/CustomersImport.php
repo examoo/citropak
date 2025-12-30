@@ -7,7 +7,6 @@ use App\Models\CustomerAttribute;
 use App\Models\Van;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Illuminate\Support\Str;
 
 class CustomersImport implements ToModel, WithHeadingRow
 {
@@ -53,8 +52,8 @@ class CustomersImport implements ToModel, WithHeadingRow
         $vanName = $this->getValue($row, 'van');
         if ($vanName) {
             Van::firstOrCreate(
-                ['name' => $vanName, 'distribution_id' => $distributionId],
-                ['status' => 'active', 'code' => Str::upper(Str::slug($vanName))]
+                ['code' => $vanName, 'distribution_id' => $distributionId],
+                ['status' => 'active']
             );
         }
 
