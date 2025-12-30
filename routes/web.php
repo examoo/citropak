@@ -17,6 +17,43 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Maintenance route to clear cache and refresh autoloader
+Route::get('/clear-cache', function () {
+    $output = [];
+    
+    // Clear configuration cache
+    \Artisan::call('config:clear');
+    $output[] = 'Config cache cleared';
+    
+    // Clear application cache
+    \Artisan::call('cache:clear');
+    $output[] = 'Application cache cleared';
+    
+    // Clear view cache
+    \Artisan::call('view:clear');
+    $output[] = 'View cache cleared';
+    
+    // Clear route cache
+    \Artisan::call('route:clear');
+    $output[] = 'Route cache cleared';
+    
+    // Run composer install
+    $composerInstall = shell_exec('cd ' . base_path() . ' && composer install --no-interaction 2>&1');
+    $output[] = 'Composer install executed';
+    $output[] = $composerInstall;
+    
+    // Run composer dump-autoload
+    $composerOutput = shell_exec('cd ' . base_path() . ' && composer dump-autoload 2>&1');
+    $output[] = 'Composer dump-autoload executed';
+    $output[] = $composerOutput;
+    
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Cache cleared and autoloader refreshed',
+        'details' => $output
+    ]);
+});
+
 Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('dashboard');
 
