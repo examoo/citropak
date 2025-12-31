@@ -441,9 +441,11 @@ const addItem = () => {
     const extraTaxAmount = exclusiveAmount * ((newItem.value.extra_tax_percent || 0) / 100);
     const advTaxAmount = (exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount) * (newItem.value.adv_tax_percent / 100);
     
-    // Gross amount = Exclusive + FED + Sales Tax only
-    // Gross amount = Exclusive + FED + Sales Tax only
-    const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount;
+    // Gross amount = Exclusive + FED + Sales Tax + Extra Tax
+    const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount;
+    
+    // Update unit price based on gross amount
+    newItem.value.net_unit_price = grossAmount / newItem.value.total_pieces;
 
     // Calculate trade discount amount (Gross Amount × Retail Margin %)
     const tradeDiscountAmount = grossAmount * (newItem.value.trade_discount_percent / 100);
@@ -609,8 +611,8 @@ const totalAdvTax = computed(() => {
 
 const totalGrossAmount = computed(() => {
     return form.items.reduce((sum, item) => {
-        // Gross = Exclusive + FED + Sales Tax (no Adv Tax)
-        return sum + getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item);
+        // Gross = Exclusive + FED + Sales Tax + Extra Tax (no Adv Tax)
+        return sum + getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item) + getItemExtraTax(item);
     }, 0);
 });
 

@@ -190,7 +190,7 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.discount || 0) + (item.scheme_discount || 0)) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
                             <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                         </tr>
                     </tbody>
@@ -205,7 +205,7 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExtraTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalGross) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalRetailMargin) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount + totalSchemeDiscount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalNet) }}</td>
                         </tr>
                     </tfoot>
@@ -235,7 +235,7 @@ const resyncFbr = () => {
                             </tr>
                             <tr class="font-bold">
                                 <td class="px-2 py-1">Total Invoice Value:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(totalNet) }}</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(totalNet + totalAdvTax) }}</td>
                             </tr>
                         </table>
                     </div>

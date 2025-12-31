@@ -116,7 +116,10 @@ class InvoiceController extends Controller
             'items.*.gross_amount' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
+            'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.total_discount' => 'nullable|numeric|min:0',
+            'items.*.trade_discount_percent' => 'nullable|numeric|min:0',
+            'items.*.trade_discount_amount' => 'nullable|numeric|min:0',
             'items.*.is_free' => 'nullable|boolean',
         ]);
 
@@ -152,7 +155,7 @@ class InvoiceController extends Controller
                 $salesTaxAmount = $itemData['sales_tax_amount'] ?? 0;
                 $extraTaxAmount = $itemData['extra_tax_amount'] ?? 0;
                 $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
-                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount);
+                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount);
                 
                 // Scheme + Manual discounts go in discount field
                 $schemeDiscount = $itemData['scheme_discount'] ?? 0;
@@ -307,7 +310,10 @@ class InvoiceController extends Controller
             'items.*.gross_amount' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
+            'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.total_discount' => 'nullable|numeric|min:0',
+            'items.*.trade_discount_percent' => 'nullable|numeric|min:0',
+            'items.*.trade_discount_amount' => 'nullable|numeric|min:0',
             'items.*.is_free' => 'nullable|boolean',
         ]);
 
@@ -338,7 +344,7 @@ class InvoiceController extends Controller
                 $salesTaxAmount = $itemData['sales_tax_amount'] ?? 0;
                 $extraTaxAmount = $itemData['extra_tax_amount'] ?? 0;
                 $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
-                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount);
+                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount);
                 
                 // Scheme + Manual discounts go in discount field
                 $schemeDiscount = $itemData['scheme_discount'] ?? 0;
