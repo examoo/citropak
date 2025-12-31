@@ -45,6 +45,7 @@ class CustomerRequest extends FormRequest
             'atl' => 'nullable|in:active,inactive',
             'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
             'percentage' => 'nullable|numeric|min:0|max:100',
+            'sales_tax_status' => 'nullable|in:active,inactive',
         ];
     }
 }

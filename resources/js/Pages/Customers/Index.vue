@@ -742,6 +742,7 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.van" class="text-xs text-red-600 mt-1">{{ form.errors.van }}</div>
                         </div>
                     </div>
 
@@ -755,8 +756,8 @@ const submitImport = () => {
                             }}</div>
                         </div>
                         <div>
-                            <InputLabel value="Address" />
                             <TextInput v-model="form.address" type="text" class="mt-1 block w-full" />
+                            <div v-if="form.errors.address" class="text-xs text-red-600 mt-1">{{ form.errors.address }}</div>
                         </div>
                     </div>
 
@@ -780,6 +781,7 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.sub_address" class="text-xs text-red-600 mt-1">{{ form.errors.sub_address }}</div>
                         </div>
                         <div>
                             <InputLabel value="Route" />
@@ -799,10 +801,12 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.route" class="text-xs text-red-600 mt-1">{{ form.errors.route }}</div>
                         </div>
                         <div>
                             <InputLabel value="Telephone" />
                             <TextInput v-model="form.phone" type="text" class="mt-1 block w-full" />
+                            <div v-if="form.errors.phone" class="text-xs text-red-600 mt-1">{{ form.errors.phone }}</div>
                         </div>
                     </div>
 
@@ -826,6 +830,7 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.category" class="text-xs text-red-600 mt-1">{{ form.errors.category }}</div>
                         </div>
                         <div>
                             <InputLabel value="Channel" />
@@ -846,6 +851,7 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.channel" class="text-xs text-red-600 mt-1">{{ form.errors.channel }}</div>
                         </div>
                     </div>
 
@@ -871,6 +877,7 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
+                            <div v-if="form.errors.sub_distribution" class="text-xs text-red-600 mt-1">{{ form.errors.sub_distribution }}</div>
                         </div>
                         <div>
                             <InputLabel value="Day" />
@@ -942,6 +949,7 @@ const submitImport = () => {
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                            <div v-if="form.errors.atl" class="text-xs text-red-600 mt-1">{{ form.errors.atl }}</div>
                         </div>
                         <div>
                             <InputLabel value="Sales Tax Status" />
@@ -950,6 +958,7 @@ const submitImport = () => {
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                            <div v-if="form.errors.sales_tax_status" class="text-xs text-red-600 mt-1">{{ form.errors.sales_tax_status }}</div>
                         </div>
                         <div>
                             <InputLabel value="Status" />
@@ -958,6 +967,7 @@ const submitImport = () => {
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                            <div v-if="form.errors.status" class="text-xs text-red-600 mt-1">{{ form.errors.status }}</div>
                         </div>
                     </div>
 
