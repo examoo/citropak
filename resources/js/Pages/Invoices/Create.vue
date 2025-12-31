@@ -439,8 +439,7 @@ const addItem = () => {
     const fedAmount = exclusiveAmount * (newItem.value.fed_percent / 100);
     const salesTaxAmount = (exclusiveAmount + fedAmount) * (newItem.value.sales_tax_percent / 100);
     const extraTaxAmount = exclusiveAmount * ((newItem.value.extra_tax_percent || 0) / 100);
-    const advTaxAmount = (exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount) * (newItem.value.adv_tax_percent / 100);
-    
+
     // Gross amount = Exclusive + FED + Sales Tax + Extra Tax
     const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount;
     
@@ -453,6 +452,11 @@ const addItem = () => {
     // Calculate total discount (scheme + manual)
     const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
+    const totalDiscountAmount = (newItem.value.scheme_discount || 0) + totalManualDiscount;
+
+    // Calculate Adv Tax on Net Amount (Gross - Trade Discount - Total Discount)
+    const netAmountForTax = grossAmount - tradeDiscountAmount - totalDiscountAmount;
+    const advTaxAmount = netAmountForTax * (newItem.value.adv_tax_percent / 100);
 
     form.items.push({
         product_id: newItem.value.product_id,
@@ -583,9 +587,14 @@ const getItemExtraTax = (item) => {
     return getItemExclusive(item) * ((item.extra_tax_percent || 0) / 100);
 };
 
-// Calculate item Advance Tax amount
+// Calculate item Advance Tax amount (on Net Amount after discounts)
 const getItemAdvTax = (item) => {
-    return getItemExclusive(item) * (1 + item.fed_percent / 100) * (1 + item.sales_tax_percent / 100) * (item.adv_tax_percent / 100);
+    // Gross = Exclusive + FED + Sales Tax + Extra Tax
+    const gross = getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item) + getItemExtraTax(item);
+    const discount = getItemDiscount(item) + (parseFloat(item.trade_discount_amount) || 0);
+    const netAmount = gross - discount;
+    
+    return netAmount * (item.adv_tax_percent / 100);
 };
 
 // Invoice summary totals
