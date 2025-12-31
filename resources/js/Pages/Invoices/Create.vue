@@ -446,8 +446,10 @@ const addItem = () => {
     // Update unit price based on gross amount
     newItem.value.net_unit_price = grossAmount / newItem.value.total_pieces;
 
-    // Calculate trade discount amount (Gross Amount × Retail Margin %)
-    const tradeDiscountAmount = grossAmount * (newItem.value.trade_discount_percent / 100);
+    // Calculate trade discount amount (Gross Amount is inclusive of Margin, so we reverse calculate)
+    // Formula: Gross / (1 + Rate%) * Rate%
+    // Example: 1100 / 1.1 * 0.1 = 100
+    const tradeDiscountAmount = (grossAmount / (1 + newItem.value.trade_discount_percent / 100)) * (newItem.value.trade_discount_percent / 100);
 
     // Calculate total discount (scheme + manual)
     const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
