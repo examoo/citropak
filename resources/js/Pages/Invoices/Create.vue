@@ -1143,8 +1143,7 @@ const submit = () => {
                                         {{ formatAmount(getItemAdvTax(item)) }}
                                         <div v-if="!item.is_free" class="text-xs">({{ item.adv_tax_percent }}%)</div>
                                     </td>
-                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.total_pieces *
-                                        item.net_unit_price) }}</td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}</td>
                                     <td class="px-2 py-3 text-right text-amber-600">
                                         <span v-if="item.is_free">-</span>
                                         <span v-else>{{ formatAmount(item.trade_discount_amount || 0) }}</span>
