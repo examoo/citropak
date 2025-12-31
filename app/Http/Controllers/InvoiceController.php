@@ -530,6 +530,8 @@ class InvoiceController extends Controller
 
     /**
      * Get discount schemes for a product based on quantity.
+     * Supports tiered discounts: if qty exceeds the range, discount is multiplied.
+     * E.g., scheme 1-10 with qty=15 gets 2x discount.
      */
     public function getDiscountSchemes(Request $request, $productId)
     {
@@ -541,6 +543,7 @@ class InvoiceController extends Controller
         }
 
         // Get applicable discount schemes for this product or its brand
+        // We now include schemes where from_qty <= quantity (no upper bound check here)
         $schemes = DiscountScheme::active()
             ->where(function($q) use ($product) {
                 $q->where(function($inner) use ($product) {
@@ -552,35 +555,49 @@ class InvoiceController extends Controller
                 });
             })
             ->where('from_qty', '<=', $quantity > 0 ? $quantity : 1)
-            ->where(function($q) use ($quantity) {
-                $q->whereNull('to_qty')
-                  ->orWhere('to_qty', '>=', $quantity > 0 ? $quantity : 1);
-            })
             ->get()
-            ->map(function($scheme) use ($product) {
+            ->map(function($scheme) use ($product, $quantity) {
+                // Calculate multiplier for tiered discount
+                $fromQty = (int) $scheme->from_qty;
+                $toQty = $scheme->to_qty ? (int) $scheme->to_qty : null;
+                $multiplier = 1;
+
+                if ($toQty !== null && $toQty >= $fromQty) {
+                    // Range size (e.g., 1-10 = 10 items)
+                    $rangeSize = $toQty - $fromQty + 1;
+                    // Calculate how many times the range fits
+                    // E.g., qty=15, from=1, to=10, range=10: (15-1)/10 = 1.4 -> floor = 1, +1 = 2
+                    $multiplier = (int) floor(($quantity - $fromQty) / $rangeSize) + 1;
+                    if ($multiplier < 1) $multiplier = 1;
+                }
+
                 // Determine if this is a free product scheme (amount_less is 0 or null)
                 $isFreeProductScheme = !($scheme->amount_less > 0);
                 
                 // Get free product details if applicable
                 $freeProduct = null;
-                $freePieces = $scheme->pieces ?? 0;
+                $baseFreePieces = $scheme->pieces ?? 0;
                 
                 if ($scheme->free_product_code) {
                     $freeProduct = Product::where('dms_code', $scheme->free_product_code)
                         ->orWhere('sku', $scheme->free_product_code)
                         ->first(['id', 'dms_code', 'name', 'list_price_before_tax', 'unit_price']);
                     // Default to 1 piece if pieces not specified for free product scheme
-                    if ($freeProduct && $freePieces == 0) {
-                        $freePieces = 1;
+                    if ($freeProduct && $baseFreePieces == 0) {
+                        $baseFreePieces = 1;
                     }
                 } elseif ($isFreeProductScheme) {
                     // If no amount_less and no free_product_code, assume same product free
                     $freeProduct = $product;
                     // Default to 1 piece if pieces not specified
-                    if ($freePieces == 0) {
-                        $freePieces = 1;
+                    if ($baseFreePieces == 0) {
+                        $baseFreePieces = 1;
                     }
                 }
+
+                // Apply multiplier to discount values
+                $amountLess = ($scheme->amount_less ?? 0) * $multiplier;
+                $freePieces = $baseFreePieces * $multiplier;
 
                 return [
                     'id' => $scheme->id,
@@ -589,10 +606,11 @@ class InvoiceController extends Controller
                     'from_qty' => $scheme->from_qty,
                     'to_qty' => $scheme->to_qty,
                     'discount_type' => $scheme->amount_less > 0 ? 'amount_less' : 'free_product',
-                    'amount_less' => $scheme->amount_less ?? 0,
+                    'amount_less' => $amountLess,
                     'free_pieces' => $freePieces,
                     'free_product_code' => $scheme->free_product_code ?: ($freeProduct ? $product->dms_code : null),
                     'free_product' => $freeProduct,
+                    'multiplier' => $multiplier, // Include multiplier for frontend display
                 ];
             });
         

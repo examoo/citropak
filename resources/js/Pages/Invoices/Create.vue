@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     vans: Array,
@@ -272,6 +273,25 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             
             loadProductSchemes(productId);
             productCode.value = product.dms_code || product.sku || '';
+            
+            // FIFO: Auto-select the first (oldest) available batch
+            const distId = form.distribution_id || currentDistribution.value?.id;
+            let stocks = props.availableStocks.filter(s => Number(s.product_id) === Number(productId));
+            if (distId) {
+                stocks = stocks.filter(s => Number(s.distribution_id) === Number(distId));
+            }
+            if (stocks.length > 0) {
+                // First stock in the array is the oldest (FIFO)
+                newItem.value.stock_id = stocks[0].id;
+            } else {
+                // Show alert when no stock is available for selected product
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Not Available',
+                    text: `No stock available for "${product.name}".`,
+                    confirmButtonColor: '#059669'
+                });
+            }
         }
     }
 });
@@ -356,6 +376,12 @@ watch([() => newItem.value.cartons, () => newItem.value.pieces], () => {
     }
 });
 
+// Check if quantity exceeds available stock (for inline warning)
+const isStockExceeded = computed(() => {
+    if (!newItem.value.stock_id || newItem.value.available_qty <= 0) return false;
+    return newItem.value.total_pieces > newItem.value.available_qty;
+});
+
 // Watch scheme selection -> Apply discount
 watch(() => newItem.value.scheme_id, (schemeId) => {
     if (schemeId) {
@@ -378,6 +404,31 @@ const addItem = () => {
     if (!newItem.value.product_id || newItem.value.total_pieces <= 0) return;
 
     const product = props.products.find(p => p.id === parseInt(newItem.value.product_id));
+
+    // Stock validation
+    const hasNoBatches = availableBatches.value.length === 0;
+    if (hasNoBatches) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Stock Not Available',
+            text: `No stock available for ${product?.name || 'this product'}.`,
+            confirmButtonColor: '#059669'
+        });
+        return;
+    }
+
+    // Check if quantity exceeds available stock
+    if (newItem.value.stock_id && newItem.value.available_qty > 0) {
+        if (newItem.value.total_pieces > newItem.value.available_qty) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Insufficient Stock',
+                text: `Requested quantity (${newItem.value.total_pieces}) exceeds available stock (${newItem.value.available_qty}).`,
+                confirmButtonColor: '#059669'
+            });
+            return;
+        }
+    }
     const scheme = productSchemes.value.find(s => s.id === parseInt(newItem.value.scheme_id));
 
     // Calculate total discount (scheme + manual)
@@ -756,8 +807,18 @@ const submit = () => {
                         <!-- Product Code -->
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Product Code" />
-                            <TextInput v-model="productCode" placeholder="Enter code" class="mt-1 w-full"
-                                @keyup.enter="searchProductByCode" />
+                            <div class="flex items-stretch mt-1">
+                                <TextInput v-model="productCode" placeholder="Enter code" 
+                                    class="flex-1 !rounded-r-none !border-r-0 min-w-0"
+                                    @keyup.enter="searchProductByCode" />
+                                <button type="button" @click="searchProductByCode"
+                                    class="px-3 flex items-center justify-center bg-emerald-600 text-white rounded-r-md hover:bg-emerald-700 border border-emerald-600 shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Product Select -->
@@ -769,13 +830,16 @@ const submit = () => {
                         <!-- Batch/Stock Select -->
                         <div class="col-span-3 lg:col-span-2">
                             <InputLabel value="Batch / Stock" />
-                            <SearchableSelect v-model="newItem.stock_id" :options="availableBatches"
-                                option-value="id" option-label="label" placeholder="Select Batch"
-                                :disabled="!newItem.product_id" class="mt-1" />
-                            <div v-if="newItem.product_id && availableBatches.length === 0"
-                                class="text-xs text-amber-600 mt-1">
-                                No stock available
-                            </div>
+                            <template v-if="newItem.product_id && availableBatches.length === 0">
+                                <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md text-gray-500 text-sm font-medium">
+                                    Batch N/A
+                                </div>
+                            </template>
+                            <template v-else>
+                                <SearchableSelect v-model="newItem.stock_id" :options="availableBatches"
+                                    option-value="id" option-label="label" placeholder="Select Batch"
+                                    :disabled="!newItem.product_id" class="mt-1" />
+                            </template>
                             <div v-if="newItem.stock_id && newItem.available_qty > 0"
                                 class="text-xs text-emerald-600 mt-1 font-medium">
                                 Available: {{ newItem.available_qty }} pcs
@@ -797,7 +861,12 @@ const submit = () => {
                         <!-- Total Pieces (readonly) -->
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Total Pcs" />
-                            <TextInput :value="newItem.total_pieces" type="number" class="mt-1 w-full bg-emerald-50 text-emerald-700 text-center font-bold" readonly />
+                            <TextInput :value="newItem.total_pieces" type="number" 
+                                :class="['mt-1 w-full text-center font-bold', isStockExceeded ? 'bg-red-50 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700']" 
+                                readonly />
+                            <div v-if="isStockExceeded" class="text-xs text-red-600 mt-1 font-medium">
+                                Exceeds available ({{ newItem.available_qty }})
+                            </div>
                         </div>
                     </div>
 
