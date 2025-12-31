@@ -45,6 +45,12 @@ const totalAdvTax = computed(() => props.invoice.items?.reduce((sum, item) => su
 const totalGross = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemGross(item), 0) || 0);
 const totalTradeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.discount || 0), 0) || 0);
 const totalSchemeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.scheme_discount || 0), 0) || 0);
+const totalRetailMargin = computed(() => props.invoice.items?.reduce((sum, item) => {
+    const rate = parseFloat(item.list_price_before_tax) || 0;
+    const qty = item.total_pieces || 0;
+    const marginPercent = parseFloat(item.product?.retail_margin) || 0;
+    return sum + (rate * qty * marginPercent / 100);
+}, 0) || 0);
 const totalNet = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemNet(item), 0) || 0);
 
 const printInvoice = () => {
@@ -164,7 +170,6 @@ const resyncFbr = () => {
                             <th class="border border-black px-1 py-1 text-right">FED</th>
                             <th class="border border-black px-1 py-1 text-right">Sale Tax<br/>{{ invoice.items?.[0]?.tax_percent || 18 }}%</th>
                             <th class="border border-black px-1 py-1 text-right">Extra<br/>Tax</th>
-                            <th class="border border-black px-1 py-1 text-right">Adv<br/>Tax</th>
                             <th class="border border-black px-1 py-1 text-right">Gross<br/>Value</th>
                             <th class="border border-black px-1 py-1 text-right">Trade<br/>Discount</th>
                             <th class="border border-black px-1 py-1 text-right">Scheme<br/>Discount</th>
@@ -182,10 +187,9 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemAdvTax(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.discount || 0) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.scheme_discount || 0) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount((parseFloat(item.list_price_before_tax) || 0) * (item.total_pieces || 0) * (parseFloat(item.product?.retail_margin) || 0) / 100) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.discount || 0) + (item.scheme_discount || 0)) }}</td>
                             <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                         </tr>
                     </tbody>
@@ -198,10 +202,9 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalFed) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalSalesTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExtraTax) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalAdvTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalGross) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalSchemeDiscount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalRetailMargin) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount + totalSchemeDiscount) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalNet) }}</td>
                         </tr>
                     </tfoot>
