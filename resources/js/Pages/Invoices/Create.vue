@@ -541,7 +541,34 @@ const addItem = () => {
     });
 
     // If there's a free product, add it as a separate item with 0 price
+    // If there's a free product, add it as a separate item with 0 price
     if (newItem.value.free_product && newItem.value.free_pieces > 0) {
+        // Determine tax/price for free product
+        // If it's the same product, reuse current item's rates
+        const isSameProduct = newItem.value.free_product.id === newItem.value.product_id;
+        
+        const freeExclusivePrice = parseFloat(newItem.value.free_product.list_price_before_tax) || 0;
+        const freeFedPercent = isSameProduct ? newItem.value.fed_percent : (parseFloat(newItem.value.free_product.fed_percent) || 0);
+        const freeSalesTaxPercent = isSameProduct ? newItem.value.sales_tax_percent : (parseFloat(newItem.value.free_product.fed_sales_tax) || 0);
+        const freeExtraTaxPercent = isSameProduct ? newItem.value.extra_tax_percent : (parseFloat(newItem.value.free_product.product_type?.extra_tax) || 0);
+        const freeAdvTaxPercent = isSameProduct ? newItem.value.adv_tax_percent : (parseFloat(selectedCustomer.value?.adv_tax_percent) || 0);
+
+        // Calculate amounts for free item
+        const freeTotalPieces = newItem.value.free_pieces;
+        const freeExclusiveAmount = freeExclusivePrice * freeTotalPieces;
+        const freeFedAmount = freeExclusiveAmount * (freeFedPercent / 100);
+        const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (freeSalesTaxPercent / 100);
+        const freeExtraTaxAmount = freeExclusiveAmount * (freeExtraTaxPercent / 100);
+        
+        // Net Unit Price for Free Item (Excl + FED + ST)
+        const freeNetUnitPrice = freeExclusivePrice * (1 + freeFedPercent/100) * (1 + freeSalesTaxPercent/100);
+
+        // Gross = Excl + FED + ST + Extra
+        const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
+        
+        // Trade Discount = Gross Amount (to make it free - user requested strict "trade discount show gross value")
+        const freeTradeDiscountAmount = freeGrossAmount;
+
         form.items.push({
             product_id: newItem.value.free_product.id,
             product_name: newItem.value.free_product.name + ' (FREE)',
@@ -550,13 +577,18 @@ const addItem = () => {
             cartons: 0,
             pieces: newItem.value.free_pieces,
             total_pieces: newItem.value.free_pieces,
-            exclusive_price: 0,
-            fed_percent: 0,
-            sales_tax_percent: 0,
-            extra_tax_percent: 0,
-            adv_tax_percent: 0,
-            net_unit_price: 0,
-            price: 0,
+            exclusive_price: freeExclusivePrice,
+            fed_percent: freeFedPercent,
+            fed_amount: freeFedAmount,
+            sales_tax_percent: freeSalesTaxPercent,
+            sales_tax_amount: freeSalesTaxAmount,
+            extra_tax_percent: freeExtraTaxPercent,
+            extra_tax_amount: freeExtraTaxAmount,
+            adv_tax_percent: freeAdvTaxPercent,
+            adv_tax_amount: 0, // Adv Tax is 0 because taxable amount after discount is 0
+            gross_amount: freeGrossAmount,
+            net_unit_price: freeNetUnitPrice,
+            price: freeNetUnitPrice,
             scheme_id: null,
             scheme_name: 'FREE',
             scheme_discount: 0,
@@ -566,6 +598,8 @@ const addItem = () => {
             manual_discount_percent: 0,
             manual_discount_amount: 0,
             total_discount: 0,
+            trade_discount_amount: freeTradeDiscountAmount,
+            line_total: 0,
             is_free: true // Mark as free item
         });
     }
@@ -1122,35 +1156,33 @@ const submit = () => {
                                     <td class="px-2 py-3 text-right">{{ item.pieces }}</td>
                                     <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
                                     <td class="px-2 py-3 text-right">
-                                        <span v-if="item.is_free" class="text-xs font-bold text-emerald-600">FREE</span>
-                                        <span v-else>{{ formatAmount(item.exclusive_price) }}</span>
+                                        {{ formatAmount(item.exclusive_price) }}
+                                        <span v-if="item.is_free" class="ml-1 text-[10px] font-bold text-emerald-600">(FREE)</span>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-600">{{
                                         formatAmount(getItemExclusive(item)) }}</td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemFed(item)) }}
-                                        <div v-if="!item.is_free" class="text-xs">({{ item.fed_percent }}%)</div>
+                                        <div class="text-xs">({{ item.fed_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemSalesTax(item)) }}
-                                        <div v-if="!item.is_free" class="text-xs">({{ item.sales_tax_percent }}%)</div>
+                                        <div class="text-xs">({{ item.sales_tax_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-purple-600">
                                         {{ formatAmount(getItemExtraTax(item)) }}
-                                        <div v-if="!item.is_free" class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div>
+                                        <div class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-500">
                                         {{ formatAmount(getItemAdvTax(item)) }}
-                                        <div v-if="!item.is_free" class="text-xs">({{ item.adv_tax_percent }}%)</div>
+                                        <div class="text-xs">({{ item.adv_tax_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}</td>
                                     <td class="px-2 py-3 text-right text-amber-600">
-                                        <span v-if="item.is_free">-</span>
-                                        <span v-else>{{ formatAmount(item.trade_discount_amount || 0) }}</span>
+                                        {{ formatAmount(item.trade_discount_amount || 0) }}
                                     </td>
                                     <td class="px-2 py-3 text-right text-red-600">
-                                        <span v-if="item.is_free">-</span>
-                                        <span v-else>-{{ formatAmount(getItemDiscount(item)) }}</span>
+                                        -{{ formatAmount(getItemDiscount(item)) }}
                                     </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
                                         {{ formatAmount(item.gross_amount - getItemDiscount(item) - (item.trade_discount_amount || 0)) }}

@@ -73,6 +73,7 @@ const form = useForm({
         scheme_discount: parseFloat(item.scheme_discount) || 0,
         discount: parseFloat(item.discount) || 0,
         total_discount: parseFloat(item.discount) || 0,
+        trade_discount_amount: parseFloat(item.retail_margin) || 0,
         is_free: item.is_free || false
     }))
 });
@@ -270,7 +271,8 @@ const addItem = () => {
         scheme_id: newItem.value.scheme_id || null,
         scheme_name: scheme?.product?.name || scheme?.brand?.name || null,
         scheme_discount: newItem.value.scheme_discount,
-        total_discount: newItem.value.scheme_discount + totalManualDiscount
+        total_discount: newItem.value.scheme_discount + totalManualDiscount,
+        trade_discount_amount: 0 // Default to 0 for new items in Edit for now, as full calculation isn't ported
     });
 
     resetNewItem();
@@ -302,7 +304,8 @@ const totalExtraTax = computed(() => form.items.reduce((sum, item) => sum + getI
 const totalAdvTax = computed(() => form.items.reduce((sum, item) => sum + getItemAdvTax(item), 0));
 const totalGrossAmount = computed(() => form.items.reduce((sum, item) => sum + (item.gross_amount || (item.total_pieces * item.net_unit_price)), 0));
 const totalDiscount = computed(() => form.items.reduce((sum, item) => sum + (item.total_discount || item.scheme_discount || 0), 0));
-const grandTotal = computed(() => totalGrossAmount.value - totalDiscount.value);
+const totalTradeDiscount = computed(() => form.items.reduce((sum, item) => sum + (item.trade_discount_amount || 0), 0));
+const grandTotal = computed(() => totalGrossAmount.value - totalDiscount.value - totalTradeDiscount.value + totalAdvTax.value);
 
 // F2 save
 const handleKeydown = (e) => {
@@ -547,6 +550,7 @@ const submit = () => {
                                     <th class="px-2 py-3 text-right">Extra Tax</th>
                                     <th class="px-2 py-3 text-right">Adv.Tax</th>
                                     <th class="px-2 py-3 text-right">Gross</th>
+                                    <th class="px-2 py-3 text-right">Trade Disc.</th>
                                     <th class="px-2 py-3 text-right">Discount</th>
                                     <th class="px-2 py-3 text-right">Net</th>
                                     <th class="px-2 py-3"></th>
@@ -581,9 +585,12 @@ const submit = () => {
                                         <div class="text-[9px]">({{ item.adv_tax_percent }}%)</div>
                                     </td>
                                     <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount || (item.total_pieces * item.net_unit_price)) }}</td>
+                                    <td class="px-2 py-3 text-right text-amber-600">
+                                        {{ formatAmount(item.trade_discount_amount || 0) }}
+                                    </td>
                                     <td class="px-2 py-3 text-right text-red-600">-{{ formatAmount(item.total_discount || item.scheme_discount) }}</td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
-                                        {{ formatAmount((item.gross_amount || (item.total_pieces * item.net_unit_price)) - (item.total_discount || item.scheme_discount || 0)) }}
+                                        {{ formatAmount((item.gross_amount || (item.total_pieces * item.net_unit_price)) - (item.total_discount || item.scheme_discount || 0) - (item.trade_discount_amount || 0)) }}
                                     </td>
                                     <td class="px-2 py-3">
                                         <button type="button" @click="removeItem(index)"
@@ -636,6 +643,10 @@ const submit = () => {
                             <div class="bg-white p-3 rounded-lg border border-red-200">
                                 <div class="text-red-500 text-xs uppercase">Total Discount</div>
                                 <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div>
+                            </div>
+                            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                <div class="text-amber-600 text-xs uppercase">Total Trade Discount</div>
+                                <div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}</div>
                             </div>
                             <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
                                 <div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div>

@@ -40,19 +40,44 @@ const getItemGross = (item) => {
 const getItemNet = (item) => parseFloat(item.line_total) || 0;
 
 // Totals
-const totalQty = computed(() => props.invoice.items?.reduce((sum, item) => sum + (item.total_pieces || 0), 0) || 0);
-const totalExclusive = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemExclusive(item), 0) || 0);
-const totalFed = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemFed(item), 0) || 0);
-const totalSalesTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemSalesTax(item), 0) || 0);
-const totalExtraTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemExtraTax(item), 0) || 0);
-const totalAdvTax = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.adv_tax_amount || 0), 0) || 0);
-const totalGross = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemGross(item), 0) || 0);
-const totalTradeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.discount || 0), 0) || 0);
-const totalSchemeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.scheme_discount || 0), 0) || 0);
-const totalRetailMargin = computed(() => props.invoice.items?.reduce((sum, item) => {
-    return sum + (parseFloat(item.retail_margin) || 0);
-}, 0) || 0);
-const totalNet = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemNet(item), 0) || 0);
+// Split Items
+const regularItems = computed(() => props.invoice.items?.filter(item => !item.is_free) || []);
+const freeItems = computed(() => props.invoice.items?.filter(item => item.is_free) || []);
+
+// Helper for summing
+const sumItems = (items, valueFn) => items.reduce((sum, item) => sum + valueFn(item), 0);
+
+// Regular Totals
+const regularTotalQty = computed(() => sumItems(regularItems.value, i => i.total_pieces || 0));
+const regularTotalExclusive = computed(() => sumItems(regularItems.value, getItemExclusive));
+const regularTotalFed = computed(() => sumItems(regularItems.value, getItemFed));
+const regularTotalSalesTax = computed(() => sumItems(regularItems.value, getItemSalesTax));
+const regularTotalExtraTax = computed(() => sumItems(regularItems.value, getItemExtraTax));
+const regularTotalAdvTax = computed(() => sumItems(regularItems.value, i => parseFloat(i.adv_tax_amount || 0)));
+const regularTotalGross = computed(() => sumItems(regularItems.value, getItemGross));
+const regularTotalTradeDiscount = computed(() => sumItems(regularItems.value, i => parseFloat(i.retail_margin || 0))); // retail_margin is trade discount amount
+const regularTotalSchemeDiscount = computed(() => sumItems(regularItems.value, i => parseFloat(i.discount || 0))); // discount field holds scheme+manual
+const regularTotalNet = computed(() => sumItems(regularItems.value, getItemNet));
+
+// Grand Totals (All Items)
+const totalQty = computed(() => sumItems(props.invoice.items || [], i => i.total_pieces || 0));
+const totalExclusive = computed(() => sumItems(props.invoice.items || [], getItemExclusive));
+const totalFed = computed(() => sumItems(props.invoice.items || [], getItemFed));
+const totalSalesTax = computed(() => sumItems(props.invoice.items || [], getItemSalesTax));
+const totalExtraTax = computed(() => sumItems(props.invoice.items || [], getItemExtraTax));
+const totalAdvTax = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.adv_tax_amount || 0)));
+const totalGross = computed(() => sumItems(props.invoice.items || [], getItemGross));
+const totalRetailMargin = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.retail_margin || 0)));
+const totalTradeDiscount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.discount || 0))); // Note: In original code 'totalTradeDiscount' summed 'discount' col ??
+// Re-checking original variable names mapping:
+// Original: totalTradeDiscount sum(item.discount).
+// Original: totalRetailMargin sum(item.retail_margin).
+// The user image headers are "Trade Discount" (retail margin usually) and "Scheme Discount" (discount usually).
+// In database: retail_margin = Trade Discount Amount. discount = Scheme/Manual Discount.
+// So:
+const grandTotalTradeDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.retail_margin || 0))); // This is "Trade Discount" column sum
+const grandTotalSchemeDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.discount || 0))); // This is "Scheme Discount" column sum
+const grandTotalNet = computed(() => sumItems(props.invoice.items || [], getItemNet));
 
 const printInvoice = () => {
     window.print();
@@ -178,7 +203,8 @@ const resyncFbr = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in invoice.items" :key="item.id">
+                        <!-- Regular Items -->
+                        <tr v-for="(item, index) in regularItems" :key="'reg-'+item.id">
                             <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
                             <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
                             <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
@@ -193,10 +219,49 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
                             <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                         </tr>
+
+                        <!-- Regular Total Row -->
+                        <tr class="bg-amber-500 font-bold print:bg-amber-500 print:text-black">
+                             <td class="border border-black px-1 py-1 text-center" colspan="3">TOTAL</td>
+                             <td class="border border-black px-1 py-1 text-center">{{ regularTotalQty }}</td>
+                             <td class="border border-black px-1 py-1"></td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExclusive) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalFed) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalSalesTax) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExtraTax) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalGross) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalTradeDiscount) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalSchemeDiscount) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalNet) }}</td>
+                        </tr>
+
+                        <!-- Free Scheme Section -->
+                        <template v-if="freeItems.length > 0">
+                            <tr>
+                                <td colspan="13" class="border border-black px-1 py-1 text-center font-bold bg-white">
+                                    Free Piece Scheme:_
+                                </td>
+                            </tr>
+                            <tr v-for="(item, index) in freeItems" :key="'free-'+item.id">
+                                <td class="border border-black px-1 py-1 text-center">{{ regularItems.length + index + 1 }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
+                                <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
+                                <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
+                            </tr>
+                        </template>
                     </tbody>
                     <tfoot>
-                        <tr class="bg-gray-100 font-bold">
-                            <td class="border border-black px-1 py-1 text-right" colspan="3">Total</td>
+                        <tr class="bg-amber-500 font-bold print:bg-amber-500 print:text-black">
+                            <td class="border border-black px-1 py-1 text-right" colspan="3">TOTAL WITH FREE SCHEME</td>
                             <td class="border border-black px-1 py-1 text-center">{{ totalQty }}</td>
                             <td class="border border-black px-1 py-1"></td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExclusive) }}</td>
@@ -205,8 +270,8 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExtraTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalGross) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalRetailMargin) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalTradeDiscount) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalNet) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(grandTotalSchemeDiscountAmount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(grandTotalNet) }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -223,11 +288,11 @@ const resyncFbr = () => {
                         <table class="w-full text-xs">
                             <tr class="border-b border-black">
                                 <td class="px-2 py-1">Net Invoice Value Inclusive Sales Tax:</td>
-                                <td class="px-2 py-1 text-right font-medium">{{ formatAmount(totalNet) }}</td>
+                                <td class="px-2 py-1 text-right font-medium">{{ formatAmount(grandTotalNet) }}</td>
                             </tr>
                             <tr class="border-b border-black">
                                 <td class="px-2 py-1">Total Discount:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(totalTradeDiscount + totalSchemeDiscount) }}</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(grandTotalTradeDiscountAmount + grandTotalSchemeDiscountAmount) }}</td>
                             </tr>
                             <tr class="border-b border-black">
                                 <td class="px-2 py-1">Advance Tax:</td>
@@ -235,7 +300,7 @@ const resyncFbr = () => {
                             </tr>
                             <tr class="font-bold">
                                 <td class="px-2 py-1">Total Invoice Value:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(totalNet + totalAdvTax) }}</td>
+                                <td class="px-2 py-1 text-right">{{ formatAmount(grandTotalNet + totalAdvTax) }}</td>
                             </tr>
                         </table>
                     </div>

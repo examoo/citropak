@@ -45,12 +45,7 @@ class ChannelController extends Controller
         $targetDist = ($userDist && $userDist !== 'all') ? $userDist : $request->input('distribution_id');
 
         $validated = $request->validate([
-            'name' => [
-                'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('channels')->where(function ($query) use ($targetDist) {
-                    return $query->where('distribution_id', $targetDist);
-                }),
-            ],
+            'name' => ['required', 'string', 'max:255'],
             'status' => 'required|in:active,inactive',
             'atl' => 'boolean',
             'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
@@ -74,12 +69,7 @@ class ChannelController extends Controller
         $targetDist = $channel->distribution_id;
 
         $validated = $request->validate([
-            'name' => [
-                'required', 'string', 'max:255',
-                \Illuminate\Validation\Rule::unique('channels')->where(function ($query) use ($targetDist) {
-                    return $query->where('distribution_id', $targetDist);
-                })->ignore($channel->id),
-            ],
+            'name' => ['required', 'string', 'max:255'],
             'status' => 'required|in:active,inactive',
             'atl' => 'boolean',
             'adv_tax_percent' => 'nullable|numeric|min:0|max:100',
