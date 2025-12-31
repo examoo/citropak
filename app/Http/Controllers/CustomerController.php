@@ -50,7 +50,7 @@ class CustomerController extends Controller
         
         $this->service->update($id, $validated);
 
-        return redirect()->back()->with('success', 'Customer updated successfully.');
+        return to_route('customers.index', $request->query())->with('success', 'Customer updated successfully.');
     }
 
     /**
