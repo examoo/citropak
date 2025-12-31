@@ -108,6 +108,11 @@ watch(() => form.packing_id, (newPackingId) => {
 // Helper to parse number safely with high precision
 const num = (val) => parseFloat(val) || 0;
 
+// Helper to round to specific digits but avoid forced trailing zeros
+const toPrecision = (val, digits = 5) => {
+    return parseFloat(parseFloat(val).toFixed(digits));
+};
+
 // Flag to prevent infinite loops during calculations
 let isCalculating = false;
 
@@ -153,9 +158,9 @@ const calculateForward = () => {
     const invoicePrice = tpRate / (1 + distMargin);
 
     // Update all calculated fields
-    form.tp_rate = tpRate.toFixed(4);
-    form.invoice_price = invoicePrice.toFixed(4);
-    form.unit_price = unitPrice.toFixed(4);
+    form.tp_rate = toPrecision(tpRate);
+    form.invoice_price = toPrecision(invoicePrice);
+    form.unit_price = toPrecision(unitPrice);
 
     isCalculating = false;
 };
@@ -183,9 +188,9 @@ const calculateReverse = () => {
     const invoicePrice = tpRate / (1 + distMargin);
 
     // Update all calculated fields
-    form.list_price_before_tax = basePrice.toFixed(4);
-    form.tp_rate = tpRate.toFixed(4);
-    form.invoice_price = invoicePrice.toFixed(4);
+    form.list_price_before_tax = toPrecision(basePrice);
+    form.tp_rate = toPrecision(tpRate);
+    form.invoice_price = toPrecision(invoicePrice);
 
     isCalculating = false;
 };
@@ -718,21 +723,21 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Exclusive Value (Base Price)" />
-                            <TextInput v-model="form.list_price_before_tax" type="number" step="0.0001"
+                            <TextInput v-model="form.list_price_before_tax" type="number" step="0.00001"
                                 class="mt-1 block w-full" required />
                             <div v-if="form.errors.list_price_before_tax" class="text-xs text-red-600 mt-1">{{
                                 form.errors.list_price_before_tax }}</div>
                         </div>
                         <div>
                             <InputLabel value="Retail Margin %" />
-                            <TextInput v-model="form.retail_margin" type="number" step="0.0001"
+                            <TextInput v-model="form.retail_margin" type="number" step="0.00001"
                                 class="mt-1 block w-full" placeholder="e.g. 11.8970" />
                             <div v-if="form.errors.retail_margin" class="text-xs text-red-600 mt-1">{{
                                 form.errors.retail_margin }}</div>
                         </div>
                         <div>
                             <InputLabel value="T.P Rate (Calculated)" />
-                            <TextInput v-model="form.tp_rate" type="number" step="0.0001"
+                            <TextInput v-model="form.tp_rate" type="number" step="0.00001"
                                 class="mt-1 block w-full bg-gray-50" readonly />
                         </div>
                     </div>
@@ -741,14 +746,14 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel value="Distribution Margin %" />
-                            <TextInput v-model="form.distribution_margin" type="number" step="0.0001"
+                            <TextInput v-model="form.distribution_margin" type="number" step="0.00001"
                                 class="mt-1 block w-full" placeholder="e.g. 5.1000" />
                             <div v-if="form.errors.distribution_margin" class="text-xs text-red-600 mt-1">{{
                                 form.errors.distribution_margin }}</div>
                         </div>
                         <div>
                             <InputLabel value="Invoice Price (Calculated)" />
-                            <TextInput v-model="form.invoice_price" type="number" step="0.0001"
+                            <TextInput v-model="form.invoice_price" type="number" step="0.00001"
                                 class="mt-1 block w-full bg-gray-50" readonly />
                         </div>
                     </div>
@@ -757,21 +762,21 @@ const deleteProduct = (product) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Sale Tax %" />
-                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.0001"
+                            <TextInput v-model="form.fed_sales_tax" type="number" step="0.00001"
                                 class="mt-1 block w-full" placeholder="e.g. 18.0000" />
                             <div v-if="form.errors.fed_sales_tax" class="text-xs text-red-600 mt-1">{{
                                 form.errors.fed_sales_tax }}</div>
                         </div>
                         <div>
                             <InputLabel value="FED %" />
-                            <TextInput v-model="form.fed_percent" type="number" step="0.0001" class="mt-1 block w-full"
+                            <TextInput v-model="form.fed_percent" type="number" step="0.00001" class="mt-1 block w-full"
                                 placeholder="e.g. 20.0000" />
                             <div v-if="form.errors.fed_percent" class="text-xs text-red-600 mt-1">{{
                                 form.errors.fed_percent }}</div>
                         </div>
                         <div>
                             <InputLabel value="Unit Price (Final)" />
-                            <TextInput v-model="form.unit_price" type="number" step="0.0001"
+                            <TextInput v-model="form.unit_price" type="number" step="0.00001"
                                 class="mt-1 block w-full bg-emerald-50 font-bold text-emerald-700"
                                 @input="onUnitPriceInput" placeholder="Auto-calculated or enter manually" />
                             <div v-if="form.errors.unit_price" class="text-xs text-red-600 mt-1">{{

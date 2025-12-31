@@ -68,7 +68,8 @@ const newItem = ref({
     manual_discount_amount: 0,   // Manual discount amount (Rs)
     batch_number: '',        // Selected batch number
     available_qty: 0,        // Available quantity in selected batch
-    trade_discount_percent: 0 // Trade discount (retail margin) from product
+    trade_discount_percent: 0, // Trade discount (retail margin) from product
+    is_net_fixed: false      // Flag to keep Net Price fixed during tax changes
 });
 const productSchemes = ref([]);
 const discountSchemes = ref([]);
@@ -204,13 +205,44 @@ const calculateNetUnitPrice = () => {
     let netPrice = exclusive * (1 + fed);
     // Step 2: + Sales Tax %
     netPrice = netPrice * (1 + salesTax);
-    // Step 3: + Extra Tax % (based on exclusive amount)
-    const extraTaxAmount = exclusive * extraTax;
-    netPrice = netPrice + extraTaxAmount;
-    // Step 4: + Advance Tax (customer specific)
-    netPrice = netPrice * (1 + advTax);
+    
+    // Extra Tax and Advance Tax are NOT included in Net Unit Price
+    // They are calculated separately on the total
 
     newItem.value.net_unit_price = netPrice;
+};
+
+// Calculate exclusive price from net price (Reverse Calculation)
+const calculateReversePrice = () => {
+    const netPrice = parseFloat(newItem.value.net_unit_price) || 0;
+    const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
+    const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
+    
+    // Formula: Net = Exclusive * (1 + FED) * (1 + SalesTax)
+    // Exclusive = Net / ((1 + FED) * (1 + SalesTax))
+
+    const divisor = (1 + fed) * (1 + salesTax);
+    
+    if (divisor === 0) {
+        newItem.value.exclusive_price = 0;
+    } else {
+        newItem.value.exclusive_price = netPrice / divisor;
+    }
+};
+
+// Handle tax/margin changes
+const handleTaxChange = () => {
+    if (newItem.value.is_net_fixed) {
+        calculateReversePrice();
+    } else {
+        calculateNetUnitPrice();
+    }
+};
+
+// Handle manual exclusive price edit
+const onExclusivePriceInput = () => {
+    newItem.value.is_net_fixed = false;
+    calculateNetUnitPrice();
 };
 
 // Search product by code
@@ -268,10 +300,20 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             calculateNetUnitPrice();
             
             // If product has pre-calculated unit_price and exclusive is 0, use it directly
-            if (newItem.value.exclusive_price === 0 && product.unit_price && parseFloat(product.unit_price) > 0) {
+            if (product.unit_price && parseFloat(product.unit_price) > 0) {
                 newItem.value.net_unit_price = parseFloat(product.unit_price);
+                newItem.value.is_net_fixed = true; // Fix the net price
                 // Reverse-calculate exclusive price from unit price (approximate)
-                newItem.value.exclusive_price = parseFloat(product.unit_price);
+                calculateReversePrice();
+            } else if (newItem.value.exclusive_price === 0 && product.unit_price && parseFloat(product.unit_price) > 0) {
+                // Fallback (logic overlap slightly with above, but explicit)
+                newItem.value.net_unit_price = parseFloat(product.unit_price);
+                newItem.value.is_net_fixed = true;
+                newItem.value.exclusive_price = parseFloat(product.unit_price); // Temp placeholder before calc? No, calcReverse will fix it.
+                calculateReversePrice();
+            } else {
+                newItem.value.is_net_fixed = false; // Standard forward calc
+                calculateNetUnitPrice();
             }
             
             loadProductSchemes(productId);
@@ -317,7 +359,10 @@ watch(() => newItem.value.stock_id, (stockId) => {
 watch(() => selectedCustomer.value, (customer) => {
     if (customer && newItem.value.product_id) {
         newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
-        calculateNetUnitPrice();
+    if (customer && newItem.value.product_id) {
+        newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
+        handleTaxChange(); // Use smart handler to preserve net or forward calc
+    }
     }
 });
 
@@ -443,8 +488,8 @@ const addItem = () => {
     // Gross amount = Exclusive + FED + Sales Tax + Extra Tax
     const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount;
     
-    // Update unit price based on gross amount
-    newItem.value.net_unit_price = grossAmount / newItem.value.total_pieces;
+    // DO NOT update unit price based on gross amount
+    // newItem.value.net_unit_price = grossAmount / newItem.value.total_pieces;
 
     // Calculate trade discount amount (Gross Amount is inclusive of Margin, so we reverse calculate)
     // Formula: Gross / (1 + Rate%) * Rate%
@@ -550,7 +595,10 @@ const resetNewItem = () => {
         manual_discount_percent: 0,
         manual_discount_amount: 0,
         batch_number: '',
-        available_qty: 0
+        manual_discount_amount: 0,
+        batch_number: '',
+        available_qty: 0,
+        is_net_fixed: false
     };
     selectedProduct.value = null;
     productCode.value = '';
@@ -643,8 +691,8 @@ const grandTotal = computed(() => {
 // Format amount
 const formatAmount = (amount) => {
     return new Intl.NumberFormat('en-PK', {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 5
     }).format(amount || 0);
 };
 
@@ -907,49 +955,49 @@ const submit = () => {
                             <!-- Exclusive Price -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Excl. Price" class="text-xs" />
-                                <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.01"
-                                    class="mt-1 w-full text-sm text-center" />
+                                <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="onExclusivePriceInput" />
                             </div>
 
                             <!-- FED % -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="FED %" class="text-xs" />
-                                <TextInput v-model.number="newItem.fed_percent" type="number" step="0.01"
-                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                                <TextInput v-model.number="newItem.fed_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
                             </div>
 
                             <!-- Sales Tax % -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="S.Tax %" class="text-xs" />
-                                <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.01"
-                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                                <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
                             </div>
 
                             <!-- Extra Tax % (from Product Type) -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Extra Tax %" class="text-xs" />
-                                <TextInput v-model.number="newItem.extra_tax_percent" type="number" step="0.01"
-                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                                <TextInput v-model.number="newItem.extra_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
                             </div>
 
                             <!-- Advance Tax % -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Adv.Tax %" class="text-xs" />
-                                <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.01"
-                                    class="mt-1 w-full text-sm text-center" @input="calculateNetUnitPrice" />
+                                <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
                             </div>
 
                             <!-- Net Unit Price -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
-                                <TextInput :value="newItem.net_unit_price.toFixed(2)" type="text"
+                                <TextInput :model-value="formatAmount(newItem.net_unit_price)" type="text"
                                     class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center" readonly />
                             </div>
 
                             <!-- Trade Discount (Retail Margin) -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Trade Disc. %" class="text-xs" />
-                                <TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.01"
+                                <TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.00001"
                                     class="mt-1 w-full text-sm text-center bg-amber-50 text-amber-700" readonly />
                             </div>
 
@@ -970,14 +1018,14 @@ const submit = () => {
                             <!-- Manual Discount % -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. %" class="text-xs" />
-                                <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.01"
+                                <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.00001"
                                     min="0" max="100" class="mt-1 w-full text-sm text-center" placeholder="0" />
                             </div>
 
                             <!-- Manual Discount Amount -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. Rs" class="text-xs" />
-                                <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.01" min="0"
+                                <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.00001" min="0"
                                     class="mt-1 w-full text-sm text-center" placeholder="0" />
                             </div>
 
