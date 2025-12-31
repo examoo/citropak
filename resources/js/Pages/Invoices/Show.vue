@@ -32,7 +32,11 @@ const getItemFed = (item) => parseFloat(item.fed_amount) || 0;
 const getItemSalesTax = (item) => parseFloat(item.tax) || 0;
 const getItemExtraTax = (item) => parseFloat(item.extra_tax_amount) || 0;
 const getItemAdvTax = (item) => parseFloat(item.adv_tax_amount) || 0;
-const getItemGross = (item) => parseFloat(item.gross_amount) || parseFloat(item.line_total) || 0;
+const getItemGross = (item) => {
+    // Gross = Exclusive + FED + Sales Tax (no Adv Tax)
+    if (item.gross_amount) return parseFloat(item.gross_amount);
+    return getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item);
+};
 const getItemNet = (item) => parseFloat(item.line_total) || 0;
 
 // Totals
@@ -46,10 +50,7 @@ const totalGross = computed(() => props.invoice.items?.reduce((sum, item) => sum
 const totalTradeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.discount || 0), 0) || 0);
 const totalSchemeDiscount = computed(() => props.invoice.items?.reduce((sum, item) => sum + parseFloat(item.scheme_discount || 0), 0) || 0);
 const totalRetailMargin = computed(() => props.invoice.items?.reduce((sum, item) => {
-    const rate = parseFloat(item.list_price_before_tax) || 0;
-    const qty = item.total_pieces || 0;
-    const marginPercent = parseFloat(item.product?.retail_margin) || 0;
-    return sum + (rate * qty * marginPercent / 100);
+    return sum + (parseFloat(item.retail_margin) || 0);
 }, 0) || 0);
 const totalNet = computed(() => props.invoice.items?.reduce((sum, item) => sum + getItemNet(item), 0) || 0);
 
@@ -188,7 +189,7 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount((parseFloat(item.list_price_before_tax) || 0) * (item.total_pieces || 0) * (parseFloat(item.product?.retail_margin) || 0) / 100) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.discount || 0) + (item.scheme_discount || 0)) }}</td>
                             <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                         </tr>

@@ -51,7 +51,7 @@ class ProductService
      */
     public function create(array $data): Product
     {
-        return Product::create($data);
+        return Product::create($this->roundNumericFields($data));
     }
 
     /**
@@ -68,7 +68,7 @@ class ProductService
     public function update(int $id, array $data): bool
     {
         $product = Product::findOrFail($id);
-        return $product->update($data);
+        return $product->update($this->roundNumericFields($data));
     }
 
     /**
@@ -78,5 +78,30 @@ class ProductService
     {
         $product = Product::findOrFail($id);
         return $product->delete();
+    }
+
+    /**
+     * Round numeric fields to 4 decimal places
+     */
+    private function roundNumericFields(array $data): array
+    {
+        $numericFields = [
+            'list_price_before_tax',
+            'retail_margin',
+            'tp_rate',
+            'distribution_margin',
+            'invoice_price',
+            'fed_sales_tax',
+            'fed_percent',
+            'unit_price',
+        ];
+
+        foreach ($numericFields as $field) {
+            if (isset($data[$field]) && is_numeric($data[$field])) {
+                $data[$field] = round((float) $data[$field], 4);
+            }
+        }
+
+        return $data;
     }
 }

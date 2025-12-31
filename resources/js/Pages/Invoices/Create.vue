@@ -67,7 +67,8 @@ const newItem = ref({
     manual_discount_percent: 0,  // Manual discount %
     manual_discount_amount: 0,   // Manual discount amount (Rs)
     batch_number: '',        // Selected batch number
-    available_qty: 0         // Available quantity in selected batch
+    available_qty: 0,        // Available quantity in selected batch
+    trade_discount_percent: 0 // Trade discount (retail margin) from product
 });
 const productSchemes = ref([]);
 const discountSchemes = ref([]);
@@ -256,8 +257,10 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
             newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
             // Get extra tax from product type
-            console.log('Product selected:', product.id, 'product_type:', product.product_type, 'extra_tax:', product.product_type?.extra_tax);
+            console.log('Product selected:', product.id, 'product_type:', product.product_type, 'extra_tax:', product.product_type?.extra_tax, 'retail_margin:', product.retail_margin);
             newItem.value.extra_tax_percent = parseFloat(product.product_type?.extra_tax) || 0;
+            // Get trade discount (retail margin) from product
+            newItem.value.trade_discount_percent = parseFloat(product.retail_margin) || 0;
             // Get advance tax from selected customer
             newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
             
@@ -431,17 +434,23 @@ const addItem = () => {
     }
     const scheme = productSchemes.value.find(s => s.id === parseInt(newItem.value.scheme_id));
 
-    // Calculate total discount (scheme + manual)
-    const grossAmount = newItem.value.total_pieces * newItem.value.net_unit_price;
-    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
-    const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
-
     // Calculate all amounts for storage
     const exclusiveAmount = newItem.value.exclusive_price * newItem.value.total_pieces;
     const fedAmount = exclusiveAmount * (newItem.value.fed_percent / 100);
     const salesTaxAmount = (exclusiveAmount + fedAmount) * (newItem.value.sales_tax_percent / 100);
     const extraTaxAmount = exclusiveAmount * ((newItem.value.extra_tax_percent || 0) / 100);
     const advTaxAmount = (exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount) * (newItem.value.adv_tax_percent / 100);
+    
+    // Gross amount = Exclusive + FED + Sales Tax only
+    // Gross amount = Exclusive + FED + Sales Tax only
+    const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount;
+
+    // Calculate trade discount amount (Gross Amount × Retail Margin %)
+    const tradeDiscountAmount = grossAmount * (newItem.value.trade_discount_percent / 100);
+
+    // Calculate total discount (scheme + manual)
+    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
+    const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
 
     form.items.push({
         product_id: newItem.value.product_id,
@@ -473,7 +482,9 @@ const addItem = () => {
         free_pieces: newItem.value.free_pieces,
         manual_discount_percent: newItem.value.manual_discount_percent,
         manual_discount_amount: newItem.value.manual_discount_amount,
-        total_discount: newItem.value.scheme_discount + totalManualDiscount
+        total_discount: newItem.value.scheme_discount + totalManualDiscount,
+        trade_discount_percent: newItem.value.trade_discount_percent,
+        trade_discount_amount: tradeDiscountAmount
     });
 
     // If there's a free product, add it as a separate item with 0 price
@@ -597,23 +608,30 @@ const totalAdvTax = computed(() => {
 });
 
 const totalGrossAmount = computed(() => {
-    return form.items.reduce((sum, item) => sum + (item.total_pieces * item.net_unit_price), 0);
+    return form.items.reduce((sum, item) => {
+        // Gross = Exclusive + FED + Sales Tax (no Adv Tax)
+        return sum + getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item);
+    }, 0);
 });
 
 const totalDiscount = computed(() => {
     return form.items.reduce((sum, item) => sum + getItemDiscount(item), 0);
 });
 
+const totalTradeDiscount = computed(() => {
+    return form.items.reduce((sum, item) => sum + (item.trade_discount_amount || 0), 0);
+});
+
 // Calculate totals
 const grandTotal = computed(() => {
-    return totalGrossAmount.value - totalDiscount.value;
+    return totalGrossAmount.value - totalDiscount.value - totalTradeDiscount.value + totalAdvTax.value;
 });
 
 // Format amount
 const formatAmount = (amount) => {
     return new Intl.NumberFormat('en-PK', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
     }).format(amount || 0);
 };
 
@@ -915,6 +933,13 @@ const submit = () => {
                                     class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center" readonly />
                             </div>
 
+                            <!-- Trade Discount (Retail Margin) -->
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Trade Disc. %" class="text-xs" />
+                                <TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.01"
+                                    class="mt-1 w-full text-sm text-center bg-amber-50 text-amber-700" readonly />
+                            </div>
+
                             <!-- Discount Scheme Dropdown -->
                             <div class="col-span-3 lg:col-span-2">
                                 <InputLabel value="Scheme" class="text-xs" />
@@ -1014,6 +1039,7 @@ const submit = () => {
                                     <th class="px-2 py-3 text-right">Extra Tax</th>
                                     <th class="px-2 py-3 text-right">Adv.Tax</th>
                                     <th class="px-2 py-3 text-right">Gross</th>
+                                    <th class="px-2 py-3 text-right">Trade Disc.</th>
                                     <th class="px-2 py-3 text-right">Discount</th>
                                     <th class="px-2 py-3 text-right">Net</th>
                                     <th class="px-2 py-3"></th>
@@ -1058,13 +1084,16 @@ const submit = () => {
                                     </td>
                                     <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.total_pieces *
                                         item.net_unit_price) }}</td>
+                                    <td class="px-2 py-3 text-right text-amber-600">
+                                        <span v-if="item.is_free">-</span>
+                                        <span v-else>{{ formatAmount(item.trade_discount_amount || 0) }}</span>
+                                    </td>
                                     <td class="px-2 py-3 text-right text-red-600">
                                         <span v-if="item.is_free">-</span>
                                         <span v-else>-{{ formatAmount(getItemDiscount(item)) }}</span>
                                     </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
-                                        {{ formatAmount((item.total_pieces * item.net_unit_price) -
-                                        getItemDiscount(item)) }}
+                                        {{ formatAmount(item.gross_amount - getItemDiscount(item) - (item.trade_discount_amount || 0)) }}
                                     </td>
                                     <td class="px-2 py-3">
                                         <button type="button" @click="removeItem(index)"
@@ -1109,7 +1138,7 @@ const submit = () => {
                                 <div class="font-bold text-lg">{{ formatAmount(totalAdvTax) }}</div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-4 mt-4 text-sm">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
                             <div class="bg-white p-3 rounded-lg border">
                                 <div class="text-gray-500 text-xs uppercase">Gross Amount</div>
                                 <div class="font-bold text-lg">{{ formatAmount(totalGrossAmount) }}</div>
@@ -1117,6 +1146,10 @@ const submit = () => {
                             <div class="bg-white p-3 rounded-lg border border-red-200">
                                 <div class="text-red-500 text-xs uppercase">Total Discount</div>
                                 <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div>
+                            </div>
+                            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                <div class="text-amber-600 text-xs uppercase">Total Trade Discount</div>
+                                <div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}</div>
                             </div>
                             <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
                                 <div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div>

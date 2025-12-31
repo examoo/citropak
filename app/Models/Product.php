@@ -40,6 +40,17 @@ class Product extends Model
         'uom_code',           // Unit of Measure Code
     ];
 
+    protected $casts = [
+        'list_price_before_tax' => 'decimal:4',
+        'retail_margin' => 'decimal:4',
+        'tp_rate' => 'decimal:4',
+        'distribution_margin' => 'decimal:4',
+        'invoice_price' => 'decimal:4',
+        'fed_sales_tax' => 'decimal:4',
+        'fed_percent' => 'decimal:4',
+        'unit_price' => 'decimal:4',
+    ];
+
     /**
      * Get the brand for this product.
      */

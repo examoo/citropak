@@ -152,9 +152,18 @@ class InvoiceController extends Controller
                 $salesTaxAmount = $itemData['sales_tax_amount'] ?? 0;
                 $extraTaxAmount = $itemData['extra_tax_amount'] ?? 0;
                 $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
-                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount + $advTaxAmount);
-                $totalDiscount = $itemData['total_discount'] ?? ($itemData['scheme_discount'] ?? 0);
-                $lineTotal = $grossAmount - $totalDiscount;
+                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount);
+                
+                // Scheme + Manual discounts go in discount field
+                $schemeDiscount = $itemData['scheme_discount'] ?? 0;
+                $totalDiscount = $itemData['total_discount'] ?? $schemeDiscount;
+                
+                // Trade discount (retail margin) goes separately
+                $tradeDiscountPercent = $itemData['trade_discount_percent'] ?? 0;
+                $tradeDiscountAmount = $itemData['trade_discount_amount'] ?? ($grossAmount * $tradeDiscountPercent / 100);
+                
+                // Line total = Gross - Discount - Trade Discount
+                $lineTotal = $grossAmount - $totalDiscount - $tradeDiscountAmount;
                 
                 $item = InvoiceItem::create([
                     'distribution_id' => $distId,
@@ -177,8 +186,9 @@ class InvoiceController extends Controller
                     'adv_tax_amount' => $advTaxAmount,
                     'gross_amount' => $grossAmount,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
-                    'scheme_discount' => $itemData['scheme_discount'] ?? 0,
-                    'discount' => $totalDiscount,
+                    'scheme_discount' => $schemeDiscount,
+                    'discount' => $totalDiscount, // Scheme + Manual discounts only
+                    'retail_margin' => $tradeDiscountAmount, // Trade discount AMOUNT
                     'line_total' => $lineTotal,
                     'is_free' => !empty($itemData['is_free']) ? 1 : 0,
                 ]);
@@ -328,9 +338,18 @@ class InvoiceController extends Controller
                 $salesTaxAmount = $itemData['sales_tax_amount'] ?? 0;
                 $extraTaxAmount = $itemData['extra_tax_amount'] ?? 0;
                 $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
-                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount + $advTaxAmount);
-                $totalDiscount = $itemData['total_discount'] ?? ($itemData['scheme_discount'] ?? 0);
-                $lineTotal = $grossAmount - $totalDiscount;
+                $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount);
+                
+                // Scheme + Manual discounts go in discount field
+                $schemeDiscount = $itemData['scheme_discount'] ?? 0;
+                $totalDiscount = $itemData['total_discount'] ?? $schemeDiscount;
+                
+                // Trade discount (retail margin) goes separately
+                $tradeDiscountPercent = $itemData['trade_discount_percent'] ?? 0;
+                $tradeDiscountAmount = $itemData['trade_discount_amount'] ?? ($grossAmount * $tradeDiscountPercent / 100);
+                
+                // Line total = Gross - Discount - Trade Discount
+                $lineTotal = $grossAmount - $totalDiscount - $tradeDiscountAmount;
 
                 $item = isset($itemData['id']) 
                     ? InvoiceItem::find($itemData['id'])
@@ -355,8 +374,9 @@ class InvoiceController extends Controller
                     'adv_tax_amount' => $advTaxAmount,
                     'gross_amount' => $grossAmount,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
-                    'scheme_discount' => $itemData['scheme_discount'] ?? 0,
-                    'discount' => $totalDiscount,
+                    'scheme_discount' => $schemeDiscount,
+                    'discount' => $totalDiscount, // Scheme + Manual discounts only
+                    'retail_margin' => $tradeDiscountAmount, // Trade discount AMOUNT
                     'line_total' => $lineTotal,
                     'is_free' => !empty($itemData['is_free']) ? 1 : 0,
                 ]);

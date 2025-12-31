@@ -155,7 +155,7 @@ const calculateForward = () => {
     // Update all calculated fields
     form.tp_rate = tpRate.toFixed(4);
     form.invoice_price = invoicePrice.toFixed(4);
-    form.unit_price = unitPrice.toFixed(2);
+    form.unit_price = unitPrice.toFixed(4);
 
     isCalculating = false;
 };
