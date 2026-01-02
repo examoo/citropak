@@ -198,46 +198,53 @@ const calculateReverse = () => {
 // Track which field was last edited for calculation direction
 const lastEditedField = ref('exclusive'); // 'exclusive' or 'unit'
 
-// Watch Exclusive Value (List Price) changes - Forward calculation
-watch(
-    () => form.list_price_before_tax,
-    () => {
-        if (!isCalculating) {
-            lastEditedField.value = 'exclusive';
-            calculateForward();
-        }
-    }
-);
+// ============================================================================
+// AUTO-CALCULATION WATCHERS - TEMPORARILY DISABLED
+// Uncomment these watchers to re-enable automatic price calculations
+// ============================================================================
 
-// Watch Unit Price changes - Reverse calculation
-watch(
-    () => form.unit_price,
-    () => {
-        if (!isCalculating && lastEditedField.value === 'unit') {
-            calculateReverse();
-        }
-    }
-);
+// // Watch Exclusive Value (List Price) changes - Forward calculation
+// watch(
+//     () => form.list_price_before_tax,
+//     () => {
+//         if (!isCalculating) {
+//             lastEditedField.value = 'exclusive';
+//             calculateForward();
+//         }
+//     }
+// );
 
-// Watch margin/tax changes - recalculate based on last edited field
-watch(
-    () => [
-        form.retail_margin,
-        form.distribution_margin,
-        form.fed_sales_tax,
-        form.fed_percent,
-    ],
-    () => {
-        if (!isCalculating) {
-            if (lastEditedField.value === 'unit') {
-                calculateReverse();
-            } else {
-                calculateForward();
-            }
-        }
-    },
-    { deep: true }
-);
+// // Watch Unit Price changes - Reverse calculation
+// watch(
+//     () => form.unit_price,
+//     () => {
+//         if (!isCalculating && lastEditedField.value === 'unit') {
+//             calculateReverse();
+//         }
+//     }
+// );
+
+// // Watch margin/tax changes - recalculate based on last edited field
+// watch(
+//     () => [
+//         form.retail_margin,
+//         form.distribution_margin,
+//         form.fed_sales_tax,
+//         form.fed_percent,
+//     ],
+//     () => {
+//         if (!isCalculating) {
+//             if (lastEditedField.value === 'unit') {
+//                 calculateReverse();
+//             } else {
+//                 calculateForward();
+//             }
+//         }
+//     },
+//     { deep: true }
+// );
+
+// ============================================================================
 
 // Handler for Unit Price manual input
 const onUnitPriceInput = () => {
@@ -736,9 +743,9 @@ const deleteProduct = (product) => {
                                 form.errors.retail_margin }}</div>
                         </div>
                         <div>
-                            <InputLabel value="T.P Rate (Calculated)" />
+                            <InputLabel value="T.P Rate" />
                             <TextInput v-model="form.tp_rate" type="number" step="0.00001"
-                                class="mt-1 block w-full bg-gray-50" readonly />
+                                class="mt-1 block w-full" />
                         </div>
                     </div>
 
@@ -752,9 +759,9 @@ const deleteProduct = (product) => {
                                 form.errors.distribution_margin }}</div>
                         </div>
                         <div>
-                            <InputLabel value="Invoice Price (Calculated)" />
+                            <InputLabel value="Invoice Price" />
                             <TextInput v-model="form.invoice_price" type="number" step="0.00001"
-                                class="mt-1 block w-full bg-gray-50" readonly />
+                                class="mt-1 block w-full" />
                         </div>
                     </div>
 
