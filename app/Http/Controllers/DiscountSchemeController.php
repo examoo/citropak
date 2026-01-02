@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\DiscountScheme;
 use App\Models\Distribution;
 use App\Models\Product;
+use App\Models\SubDistribution;
 use App\Services\DiscountSchemeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,10 +26,15 @@ class DiscountSchemeController extends Controller
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
 
+        $subDistributions = SubDistribution::when($distributionId, function($q) use ($distributionId) {
+            $q->forDistribution($distributionId);
+        })->active()->get(['id', 'name', 'distribution_id']);
+
         return Inertia::render('DiscountSchemes/Index', [
             'schemes' => $this->service->getAll($filters, $distributionId),
             'filters' => $filters,
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name', 'code']),
+            'subDistributions' => $subDistributions,
             'products' => Product::all(['id', 'name', 'dms_code']),
             'brands' => Brand::where('status', 'active')->get(['id', 'name']),
         ]);
@@ -41,14 +47,21 @@ class DiscountSchemeController extends Controller
     {
         $data = $request->validated();
         
-        // Clear irrelevant field based on scheme type
-        if ($data['scheme_type'] === 'product') {
-            $data['brand_id'] = null;
-        } else {
-            $data['product_id'] = null;
-        }
+        // Extract product_ids and brand_ids for syncing
+        $productIds = $data['product_ids'] ?? [];
+        $brandIds = $data['brand_ids'] ?? [];
+        unset($data['product_ids'], $data['brand_ids']);
 
-        $this->service->create($data);
+        $scheme = $this->service->create($data);
+        
+        // Sync products/brands based on scheme type
+        if ($data['scheme_type'] === 'product') {
+            $scheme->products()->sync($productIds);
+            $scheme->brands()->sync([]);
+        } else {
+            $scheme->brands()->sync($brandIds);
+            $scheme->products()->sync([]);
+        }
 
         return redirect()->back()->with('success', 'Discount Scheme created successfully.');
     }
@@ -60,14 +73,21 @@ class DiscountSchemeController extends Controller
     {
         $data = $request->validated();
         
-        // Clear irrelevant field based on scheme type
-        if ($data['scheme_type'] === 'product') {
-            $data['brand_id'] = null;
-        } else {
-            $data['product_id'] = null;
-        }
+        // Extract product_ids and brand_ids for syncing
+        $productIds = $data['product_ids'] ?? [];
+        $brandIds = $data['brand_ids'] ?? [];
+        unset($data['product_ids'], $data['brand_ids']);
 
         $this->service->update($discountScheme, $data);
+        
+        // Sync products/brands based on scheme type
+        if ($data['scheme_type'] === 'product') {
+            $discountScheme->products()->sync($productIds);
+            $discountScheme->brands()->sync([]);
+        } else {
+            $discountScheme->brands()->sync($brandIds);
+            $discountScheme->products()->sync([]);
+        }
 
         return redirect()->back()->with('success', 'Discount Scheme updated successfully.');
     }

@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class DiscountScheme extends Model
 {
     protected $fillable = [
         'name',
         'distribution_id',
+        'sub_distribution_id',
         'start_date',
         'end_date',
         'scheme_type',
@@ -38,7 +40,15 @@ class DiscountScheme extends Model
     }
 
     /**
-     * Get the product for this scheme.
+     * Get the sub distribution for this scheme.
+     */
+    public function subDistribution(): BelongsTo
+    {
+        return $this->belongsTo(SubDistribution::class);
+    }
+
+    /**
+     * Get the single product (legacy/backward compatibility).
      */
     public function product(): BelongsTo
     {
@@ -46,11 +56,29 @@ class DiscountScheme extends Model
     }
 
     /**
-     * Get the brand for this scheme.
+     * Get the single brand (legacy/backward compatibility).
      */
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    /**
+     * Get all products for this scheme (many-to-many).
+     */
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'discount_scheme_products')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all brands for this scheme (many-to-many).
+     */
+    public function brands(): BelongsToMany
+    {
+        return $this->belongsToMany(Brand::class, 'discount_scheme_brands')
+            ->withTimestamps();
     }
 
     /**

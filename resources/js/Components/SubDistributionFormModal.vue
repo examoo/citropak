@@ -105,17 +105,19 @@ const submit = () => {
             </h2>
 
             <form @submit.prevent="submit" class="space-y-4">
-                <!-- Distribution Select (Only if Global View and Creating) -->
-                <div v-if="!currentDistribution?.id && !isEditing">
-                    <SearchableSelect 
-                        v-model="form.distribution_id"
-                        label="Distribution (Optional)"
-                        :options="distributions"
-                        option-value="id"
-                        option-label="value"
-                        placeholder="Global (All Distributions)"
-                        :error="form.errors.distribution_id"
-                    />
+                <!-- Distribution Select (Global View) -->
+                <div v-if="!currentDistribution?.id">
+                    <InputLabel value="Distribution (Optional)" />
+                    <select 
+                        v-model="form.distribution_id" 
+                        class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        :disabled="isEditing"
+                    >
+                        <option value="">Global (All Distributions)</option>
+                        <option v-for="dist in distributions" :key="dist.id" :value="dist.id">{{ dist.name }} ({{ dist.code }})</option>
+                    </select>
+                    <p v-if="isEditing" class="text-xs text-gray-500 mt-1">Distribution cannot be changed after creation.</p>
+                    <div v-if="form.errors.distribution_id" class="text-xs text-red-600 mt-1">{{ form.errors.distribution_id }}</div>
                 </div>
 
                 <div>

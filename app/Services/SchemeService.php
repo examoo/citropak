@@ -8,7 +8,7 @@ class SchemeService
 {
     public function getAll($filters = [])
     {
-        $query = Scheme::with(['brand', 'product']);
+        $query = Scheme::with(['brand', 'product', 'subDistribution']);
 
         if (!empty($filters['scheme_type'])) {
             $query->where('scheme_type', $filters['scheme_type']);

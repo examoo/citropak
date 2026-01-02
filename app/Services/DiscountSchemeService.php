@@ -11,7 +11,7 @@ class DiscountSchemeService
      */
     public function getAll(array $filters = [], $distributionId = null)
     {
-        $query = DiscountScheme::with(['distribution', 'product', 'brand']);
+        $query = DiscountScheme::with(['distribution', 'subDistribution', 'product', 'brand', 'products', 'brands']);
 
         // Filter by distribution
         if ($distributionId) {

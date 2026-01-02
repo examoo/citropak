@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 import Pagination from '@/Components/Pagination.vue';
 import { ref } from 'vue';
 
-const props = defineProps({ schemes: Object, brands: Array, filters: Object });
+const props = defineProps({ schemes: Object, brands: Array, subDistributions: Array, filters: Object });
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
@@ -18,6 +18,7 @@ const editingId = ref(null);
 
 const form = useForm({
     scheme_type: 'brand',
+    sub_distribution_id: '',
     brand_id: '',
     product_id: '',
     discount_type: 'percentage',
@@ -30,6 +31,7 @@ const openModal = (item = null) => {
     editingId.value = item?.id;
     if (item) {
         form.scheme_type = item.scheme_type;
+        form.sub_distribution_id = item.sub_distribution_id || '';
         form.brand_id = item.brand_id || '';
         form.product_id = item.product_id || '';
         form.discount_type = item.discount_type;
@@ -73,10 +75,11 @@ const deleteItem = (item) => {
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <table class="w-full text-left text-sm text-gray-600">
-                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500"><tr><th class="px-6 py-4">Type</th><th class="px-6 py-4">Brand/Product</th><th class="px-6 py-4">Discount</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Actions</th></tr></thead>
+                    <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500"><tr><th class="px-6 py-4">Type</th><th class="px-6 py-4">Sub Distribution</th><th class="px-6 py-4">Brand/Product</th><th class="px-6 py-4">Discount</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Actions</th></tr></thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="item in schemes.data" :key="item.id" class="hover:bg-gray-50/50">
                             <td class="px-6 py-4"><span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md text-xs font-semibold">{{ item.scheme_type.toUpperCase() }}</span></td>
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ item.sub_distribution?.name || 'All' }}</td>
                             <td class="px-6 py-4 font-medium text-gray-900">{{ item.brand?.name || item.product?.name || '-' }}</td>
                             <td class="px-6 py-4">{{ item.discount_value }}{{ item.discount_type === 'percentage' ? '%' : ' Rs' }}</td>
                             <td class="px-6 py-4"><span :class="['px-2 py-1 rounded-full text-xs font-medium', item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700']">{{ item.is_active ? 'ACTIVE' : 'INACTIVE' }}</span></td>
@@ -87,7 +90,7 @@ const deleteItem = (item) => {
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="schemes.data.length === 0"><td colspan="5" class="px-6 py-12 text-center text-gray-500">No schemes found.</td></tr>
+                        <tr v-if="schemes.data.length === 0"><td colspan="6" class="px-6 py-12 text-center text-gray-500">No schemes found.</td></tr>
                     </tbody>
                 </table>
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50"><Pagination :links="schemes.links" /></div>
@@ -99,6 +102,15 @@ const deleteItem = (item) => {
                 <form @submit.prevent="submit" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div><InputLabel value="Scheme Type" /><select v-model="form.scheme_type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option value="brand">Brand</option><option value="product">Product</option></select></div>
+                        <div>
+                            <InputLabel value="Sub Distribution" />
+                            <select v-model="form.sub_distribution_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <option value="">All Sub Distributions</option>
+                                <option v-for="sd in subDistributions" :key="sd.id" :value="sd.id">{{ sd.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div v-if="form.scheme_type === 'brand'"><InputLabel value="Brand" /><select v-model="form.brand_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option value="">Select Brand</option><option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option></select></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">

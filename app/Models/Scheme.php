@@ -17,6 +17,7 @@ class Scheme extends Model
 
     protected $fillable = [
         'distribution_id',
+        'sub_distribution_id',
         'scheme_type',
         'brand_id',
         'product_id',
@@ -29,6 +30,14 @@ class Scheme extends Model
         'is_active' => 'boolean',
         'discount_value' => 'decimal:2',
     ];
+
+    /**
+     * Get the sub distribution this scheme belongs to (if any).
+     */
+    public function subDistribution(): BelongsTo
+    {
+        return $this->belongsTo(SubDistribution::class);
+    }
 
     /**
      * Get the brand (if scheme_type = brand).

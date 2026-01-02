@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\SchemeService;
 use App\Services\BrandService;
+use App\Models\SubDistribution;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,9 +17,15 @@ class SchemeController extends Controller
 
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $subDistributions = SubDistribution::forDistribution($user->distribution_id)
+            ->active()
+            ->get(['id', 'name']);
+
         return Inertia::render('Schemes/Index', [
             'schemes' => $this->service->getAll($request->only(['scheme_type', 'is_active'])),
             'brands' => $this->brandService->getActive(),
+            'subDistributions' => $subDistributions,
             'filters' => $request->only(['scheme_type', 'is_active'])
         ]);
     }
@@ -27,6 +34,7 @@ class SchemeController extends Controller
     {
         $validated = $request->validate([
             'scheme_type' => 'required|in:brand,product',
+            'sub_distribution_id' => 'nullable|exists:sub_distributions,id',
             'brand_id' => 'nullable|exists:brands,id',
             'product_id' => 'nullable|exists:products,id',
             'discount_type' => 'required|in:percentage,fixed',
@@ -44,6 +52,7 @@ class SchemeController extends Controller
     {
         $validated = $request->validate([
             'scheme_type' => 'required|in:brand,product',
+            'sub_distribution_id' => 'nullable|exists:sub_distributions,id',
             'brand_id' => 'nullable|exists:brands,id',
             'product_id' => 'nullable|exists:products,id',
             'discount_type' => 'required|in:percentage,fixed',

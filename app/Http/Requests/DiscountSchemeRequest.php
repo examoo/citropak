@@ -22,11 +22,14 @@ class DiscountSchemeRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'distribution_id' => 'nullable|exists:distributions,id',
+            'sub_distribution_id' => 'nullable|exists:sub_distributions,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'scheme_type' => 'required|in:product,brand',
-            'product_id' => 'nullable|required_if:scheme_type,product|exists:products,id',
-            'brand_id' => 'nullable|required_if:scheme_type,brand|exists:brands,id',
+            'product_ids' => 'nullable|array|required_if:scheme_type,product',
+            'product_ids.*' => 'exists:products,id',
+            'brand_ids' => 'nullable|array|required_if:scheme_type,brand',
+            'brand_ids.*' => 'exists:brands,id',
             'from_qty' => 'required|integer|min:1',
             'to_qty' => 'nullable|integer|gte:from_qty',
             'pieces' => 'nullable|integer|min:0',
@@ -45,8 +48,9 @@ class DiscountSchemeRequest extends FormRequest
             'name.required' => 'Scheme name is required.',
             'start_date.required' => 'Start date is required.',
             'end_date.after_or_equal' => 'End date must be after or equal to start date.',
-            'product_id.required_if' => 'Product is required when scheme type is Product.',
-            'brand_id.required_if' => 'Brand is required when scheme type is Brand.',
+            'product_ids.required_if' => 'At least one product is required when scheme type is Product.',
+            'brand_ids.required_if' => 'At least one brand is required when scheme type is Brand.',
         ];
     }
 }
+
