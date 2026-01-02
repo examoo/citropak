@@ -78,6 +78,7 @@ class InvoiceController extends Controller
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
             'nextOrderDate' => $this->getNextOrderDate($userDistributionId),
             'availableStocks' => $availableStocks,
+            'prefill' => request()->only(['distribution_id', 'van_id', 'order_booker_id']),
         ]);
     }
 

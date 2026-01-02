@@ -17,7 +17,8 @@ const props = defineProps({
     schemes: Array,
     distributions: Array,
     nextOrderDate: String,
-    availableStocks: { type: Array, default: () => [] }
+    availableStocks: { type: Array, default: () => [] },
+    prefill: { type: Object, default: () => ({}) }
 });
 
 const page = usePage();
@@ -25,15 +26,15 @@ const currentDistribution = computed(() => page.props.currentDistribution);
 
 // Form state
 const form = useForm({
-    van_id: '',
-    order_booker_id: '',
+    van_id: props.prefill?.van_id || '',
+    order_booker_id: props.prefill?.order_booker_id || '',
     customer_id: '',
     invoice_type: 'sale',
     tax_type: 'food',
     invoice_date: props.nextOrderDate || new Date().toISOString().split('T')[0],
     is_credit: false,
     notes: '',
-    distribution_id: currentDistribution.value?.id || '',
+    distribution_id: props.prefill?.distribution_id || currentDistribution.value?.id || '',
     items: []
 });
 
@@ -113,40 +114,65 @@ const availableBatches = computed(() => {
     }));
 });
 
-// Watch VAN change -> Auto-select Order Booker + Load Customers
-watch(() => form.van_id, async (vanId) => {
-    form.customer_id = '';
-    selectedCustomer.value = null;
-    filteredCustomers.value = [];
+// Load Van Details (Bookers + Customers)
+const loadVanDetails = async (vanId, preserveSelection = false) => {
+    if (!vanId) {
+        filteredBookers.value = [];
+        filteredCustomers.value = [];
+        return;
+    }
 
-    if (vanId) {
-        try {
-            // Get order bookers for van and auto-select if only one
-            const bookersResponse = await axios.get(route('api.bookers-by-van', vanId));
-            filteredBookers.value = bookersResponse.data;
+    try {
+        // Get order bookers for van
+        const bookersResponse = await axios.get(route('api.bookers-by-van', vanId));
+        filteredBookers.value = bookersResponse.data;
 
-            // Auto-select order booker if only one exists
-            if (bookersResponse.data.length === 1) {
-                form.order_booker_id = bookersResponse.data[0].id;
+        // Handle auto-selection or preservation
+        if (preserveSelection && form.order_booker_id) {
+            // Check if prefilled booker is valid for this van
+            const isValid = filteredBookers.value.some(b => b.id == form.order_booker_id);
+            if (!isValid) {
+                form.order_booker_id = '';
+            }
+        } else {
+            // Auto-select if only one
+            if (filteredBookers.value.length === 1) {
+                form.order_booker_id = filteredBookers.value[0].id;
             } else {
                 form.order_booker_id = '';
             }
-
-            // Load customers by van code
-            const van = props.vans.find(v => v.id === parseInt(vanId));
-            if (van) {
-                const customersResponse = await axios.get(route('api.customers-by-van', van.code), {
-                    params: { day: orderDay.value || undefined }
-                });
-                filteredCustomers.value = customersResponse.data;
-            }
-        } catch (e) {
-            filteredBookers.value = [];
-            filteredCustomers.value = [];
         }
-    } else {
+
+        // Load customers by van code
+        const van = props.vans.find(v => v.id === parseInt(vanId));
+        if (van) {
+            const customersResponse = await axios.get(route('api.customers-by-van', van.code), {
+                params: { day: orderDay.value || undefined }
+            });
+            filteredCustomers.value = customersResponse.data;
+        }
+    } catch (e) {
         filteredBookers.value = [];
         filteredCustomers.value = [];
+    }
+};
+
+// Watch VAN change
+watch(() => form.van_id, (newValue, oldValue) => {
+    // If van changed (not just initialized), clear downstream selections
+    if (newValue !== oldValue) {
+        form.customer_id = '';
+        selectedCustomer.value = null;
+        filteredCustomers.value = [];
+        loadVanDetails(newValue, false);
+    }
+});
+
+// Initialize on mount if van is prefilled
+onMounted(() => {
+    document.addEventListener('keydown', handleKeydown);
+    if (form.van_id) {
+        loadVanDetails(form.van_id, true);
     }
 });
 
@@ -749,9 +775,25 @@ onUnmounted(() => {
 });
 
 // Submit form
-const submit = () => {
+const submit = (andPrint = false) => {
     if (form.items.length === 0) return;
-    form.post(route('invoices.store'));
+    
+    if (andPrint) {
+        // Save & Print: Let controller redirect to show page (default behavior)
+        form.post(route('invoices.store'));
+    } else {
+        // Save Only: Redirect to Create page with preselected values
+        form.post(route('invoices.store'), {
+            onSuccess: () => {
+                // Redirect to create page with current selection to speed up next entry
+                window.location.href = route('invoices.create', {
+                    distribution_id: form.distribution_id,
+                    van_id: form.van_id,
+                    order_booker_id: form.order_booker_id
+                });
+            }
+        });
+    }
 };
 </script>
 
@@ -1257,10 +1299,20 @@ const submit = () => {
                     <Link :href="route('invoices.index')">
                         <SecondaryButton type="button">Cancel</SecondaryButton>
                     </Link>
-                    <PrimaryButton :disabled="form.processing || form.items.length === 0"
-                        class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">
-                        {{ form.processing ? 'Saving...' : 'Save Invoice (F2)' }}
-                    </PrimaryButton>
+                    <button type="button" 
+                        @click="submit(false)"
+                        :disabled="form.processing || form.items.length === 0"
+                        class="inline-flex items-center px-5 py-2.5 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        {{ form.processing ? 'Saving...' : 'Save' }}
+                    </button>
+                    <button type="button"
+                        @click="submit(true)"
+                        :disabled="form.processing || form.items.length === 0"
+                        class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-medium hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/30 transition-all">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        {{ form.processing ? 'Saving...' : 'Save & Print' }}
+                    </button>
                 </div>
             </form>
         </div>
