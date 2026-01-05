@@ -3,6 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
+import QrcodeVue from 'qrcode.vue';
 
 const props = defineProps({
     invoices: Array,
@@ -101,6 +102,16 @@ const getInvoiceTotals = (invoice) => {
         totalAdvTax: sumItems(items, i => parseFloat(i.adv_tax_amount || 0)),
         totalNet: sumItems(items, getItemNet),
     };
+};
+
+// Generate QR Data string
+const getQrData = (invoice) => {
+    const totals = getInvoiceTotals(invoice);
+    const totalAmount = totals.totalNet + totals.totalAdvTax;
+    const customerName = invoice.customer?.shop_name || 'Unknown';
+    const invoiceNum = invoice.invoice_number;
+    
+    return `Customer: ${customerName} | Inv: ${invoiceNum} | Amt: ${totalAmount.toFixed(2)}`;
 };
 
 // Print all invoices
@@ -217,21 +228,33 @@ const grandTotals = computed(() => {
                 <!-- Company & Customer Info -->
                 <div class="grid grid-cols-2 gap-6 mb-4 text-xs">
                     <!-- Left: Customer Info -->
-                    <div class="space-y-1">
-                        <div class="font-bold text-sm">Customer Detail:</div>
-                        <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
-                        <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
-                        <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
-                        <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
-                        <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
-                        <div><span class="text-gray-600">S.Tax ATL:</span> <span :class="invoice.customer?.sales_tax_status === 'active' ? 'text-green-600' : 'text-red-600'">{{ invoice.customer?.sales_tax_status?.toUpperCase() || 'INACTIVE' }}</span></div>
-                        <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
+                    <div>
+                        <!-- Customer Info QR -->
+                        <div class="mb-2">
+                            <div class="flex flex-col items-center w-fit">
+                                <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
+                                    <QrcodeVue :value="getQrData(invoice)" :size="60" level="L" render-as="svg" />
+                                </div>
+                                <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
+                            </div>
+                        </div>
+
+                        <div class="font-bold text-sm mb-1">Customer Detail:</div>
+
+                        <div class="space-y-1">
+                            <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
+                            <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
+                            <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
+                            <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
+                            <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
+                            <div><span class="text-gray-600">S.Tax ATL:</span> <span :class="invoice.customer?.sales_tax_status === 'active' ? 'text-green-600' : 'text-red-600'">{{ invoice.customer?.sales_tax_status?.toUpperCase() || 'INACTIVE' }}</span></div>
+                            <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
+                        </div>
                     </div>
 
-                    <!-- Right: Distribution/Company Info -->
+                    <!-- Right: Distribution/Company Info & FBR QR -->
                     <div class="text-right space-y-1">
                         <div class="flex justify-end gap-4">
-                            <!-- FBR QR Code Display -->
                             <div v-if="invoice.fbr_qr_code" class="flex flex-col items-center">
                                 <div class="w-16 h-16 bg-white p-1 border border-gray-200">
                                     <img :src="`data:image/png;base64,${invoice.fbr_qr_code}`" alt="FBR QR" class="w-full h-full object-contain" v-if="invoice.fbr_qr_code.length > 200" />
@@ -242,6 +265,8 @@ const grandTotals = computed(() => {
                                 <div class="text-[8px] font-bold mt-0.5">FBR Invoice</div>
                                 <div class="text-[8px] font-mono">{{ invoice.fbr_invoice_number }}</div>
                             </div>
+
+                            <!-- Removed Customer QR from here -->
 
                             <div class="text-right space-y-1">
                                 <div class="font-bold text-sm">{{ invoice.distribution?.name || 'CITROPAK LTD' }}</div>

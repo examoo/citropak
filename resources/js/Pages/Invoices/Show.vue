@@ -3,6 +3,8 @@ import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import QrcodeVue from 'qrcode.vue';
+
 const props = defineProps({
     invoice: Object
 });
@@ -14,6 +16,18 @@ const formatAmount = (amount) => {
         maximumFractionDigits: 2 
     }).format(amount || 0);
 };
+
+// ... existing code ...
+
+// Customer QR Data
+const customerQrData = computed(() => {
+    const customerName = props.invoice.customer?.shop_name || 'Unknown';
+    const invoiceNum = props.invoice.invoice_number;
+    const totalAmount = grandTotalNet.value + totalAdvTax.value;
+    return `Customer: ${customerName} | Inv: ${invoiceNum} | Amt: ${totalAmount.toFixed(2)}`;
+});
+
+// ... existing code ...
 
 // Format date
 const formatDate = (date) => {
@@ -140,25 +154,36 @@ const resyncFbr = () => {
                 <!-- Company & Customer Info -->
                 <div class="grid grid-cols-2 gap-6 mb-4 text-xs">
                     <!-- Left: Customer Info -->
-                    <div class="space-y-1">
-                        <div class="font-bold text-sm">Customer Detail:</div>
-                        <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
-                        <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
-                        <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
-                        <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
-                        <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
-                        <div><span class="text-gray-600">S.Tax ATL:</span> <span :class="invoice.customer?.sales_tax_status === 'active' ? 'text-green-600' : 'text-red-600'">{{ invoice.customer?.sales_tax_status?.toUpperCase() || 'INACTIVE' }}</span></div>
-                        <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
+                    <div>
+                        <!-- Customer Info QR -->
+                        <div class="mb-2">
+                            <div class="flex flex-col items-center w-fit">
+                                <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
+                                    <QrcodeVue :value="customerQrData" :size="60" level="L" render-as="svg" />
+                                </div>
+                                <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
+                            </div>
+                        </div>
+
+                        <div class="font-bold text-sm mb-1">Customer Detail:</div>
+
+                        <div class="space-y-1">
+                            <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
+                            <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
+                            <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
+                            <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
+                            <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
+                            <div><span class="text-gray-600">S.Tax ATL:</span> <span :class="invoice.customer?.sales_tax_status === 'active' ? 'text-green-600' : 'text-red-600'">{{ invoice.customer?.sales_tax_status?.toUpperCase() || 'INACTIVE' }}</span></div>
+                            <div><span class="text-gray-600">Business Category:</span> {{ invoice.customer?.category || 'Retail' }}</div>
+                        </div>
                     </div>
 
                     <!-- Right: Distribution/Company Info & FBR QR -->
                     <div class="text-right space-y-1">
                         <div class="flex justify-end gap-4">
-                            <!-- FBR QR Code Display -->
                             <div v-if="invoice.fbr_qr_code" class="flex flex-col items-center">
                                 <div class="w-16 h-16 bg-white p-1 border border-gray-200">
                                     <img :src="`data:image/png;base64,${invoice.fbr_qr_code}`" alt="FBR QR" class="w-full h-full object-contain" v-if="invoice.fbr_qr_code.length > 200" />
-                                    <!-- Fallback for text-based QR code content -->
                                     <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 text-[8px] text-center overflow-hidden">
                                         FBR QR
                                     </div>
@@ -166,6 +191,8 @@ const resyncFbr = () => {
                                 <div class="text-[8px] font-bold mt-0.5">FBR Invoice</div>
                                 <div class="text-[8px] font-mono">{{ invoice.fbr_invoice_number }}</div>
                             </div>
+                            
+                            <!-- Removed Customer QR from here -->
 
                             <div class="text-right space-y-1">
                                 <div class="font-bold text-sm">{{ invoice.distribution?.name || 'CITROPAK LTD' }}</div>
