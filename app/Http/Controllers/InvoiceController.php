@@ -57,6 +57,42 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Display Van Invoice page - print all invoices for a van on a specific date.
+     */
+    public function vanInvoice(Request $request)
+    {
+        $vanId = $request->query('van_id');
+        $date = $request->query('date', now()->toDateString());
+        
+        $invoices = [];
+        if ($vanId) {
+            $invoices = Invoice::with([
+                'van', 
+                'orderBooker', 
+                'customer', 
+                'distribution',
+                'items.product.brand', 
+                'items.product.packing',
+                'items.product.productType',
+                'items.scheme'
+            ])
+            ->where('van_id', $vanId)
+            ->whereDate('invoice_date', $date)
+            ->orderBy('invoice_number')
+            ->get();
+        }
+
+        return Inertia::render('VanInvoice/Index', [
+            'invoices' => $invoices,
+            'vans' => Van::active()->with('distribution')->get(),
+            'filters' => [
+                'van_id' => $vanId,
+                'date' => $date,
+            ],
+        ]);
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()

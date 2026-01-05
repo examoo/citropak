@@ -171,6 +171,7 @@ const navigation = [
         children: [
             { name: 'Good Issue Notes', href: 'good-issue-notes.index', icon: 'truck', permission: 'invoices.view' },
             { name: 'Invoices', href: 'invoices.index', icon: 'invoice', permission: 'invoices.view' },
+            { name: 'Van Invoices', href: 'van-invoices.index', icon: 'truck', permission: 'invoices.view' },
             { name: 'Sales Account', href: 'sales-accounts.index', icon: 'clipboard', permission: 'invoices.view' },
         ]
     },

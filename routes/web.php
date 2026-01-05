@@ -99,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
     
     // Good Issue Notes
     // Invoices
+    Route::get('van-invoices', [\App\Http\Controllers\InvoiceController::class, 'vanInvoice'])->name('van-invoices.index');
     Route::post('invoices/{invoice}/mark-credit', [\App\Http\Controllers\InvoiceController::class, 'markAsCredit'])->name('invoices.mark-credit');
     Route::post('invoices/{invoice}/resync-fbr', [\App\Http\Controllers\InvoiceController::class, 'resyncFbr'])->name('invoices.resync-fbr');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
