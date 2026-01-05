@@ -244,10 +244,11 @@ const grandTotals = computed(() => {
                             </div>
 
                             <div class="text-right space-y-1">
-                                <div class="font-bold text-sm">CITROPAK LTD</div>
-                                <div>15-6 New Civil Line Sargodha</div>
-                                <div>NTN No: 0683798-7</div>
-                                <div>Contact#: 0301-8441306</div>
+                                <div class="font-bold text-sm">{{ invoice.distribution?.name || 'CITROPAK LTD' }}</div>
+                                <div>{{ invoice.distribution?.address || invoice.distribution?.business_address || '' }}</div>
+                                <div v-if="invoice.distribution?.ntn_number">NTN No: {{ invoice.distribution.ntn_number }}</div>
+                                <div v-if="invoice.distribution?.stn_number">STN No: {{ invoice.distribution.stn_number }}</div>
+                                <div v-if="invoice.distribution?.phone_number">Contact#: {{ invoice.distribution.phone_number }}</div>
                                 <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
                                 <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}</div>
                                 <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
