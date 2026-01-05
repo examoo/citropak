@@ -23,7 +23,13 @@ class DistributionController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:10|unique:distributions,code',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
+            'address' => 'nullable|string|max:500',
+            'phone_number' => 'nullable|string|max:20',
+            'ntn_number' => 'nullable|string|max:50',
+            'stn_number' => 'nullable|string|max:50',
+            'sales_tax_status' => 'nullable|in:active,inactive',
+            'filer_status' => 'nullable|in:filer,non_filer',
         ]);
 
         $this->service->create($validated);
@@ -37,7 +43,13 @@ class DistributionController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:10|unique:distributions,code,' . $id,
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
+            'address' => 'nullable|string|max:500',
+            'phone_number' => 'nullable|string|max:20',
+            'ntn_number' => 'nullable|string|max:50',
+            'stn_number' => 'nullable|string|max:50',
+            'sales_tax_status' => 'nullable|in:active,inactive',
+            'filer_status' => 'nullable|in:filer,non_filer',
         ]);
 
         $this->service->update($id, $validated);

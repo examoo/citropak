@@ -24,13 +24,20 @@ class Distribution extends Model
         'name',
         'code',
         'status',
+        // New fields
+        'address',
+        'phone_number',
         // FBR Business Details
         'ntn_number',
         'strn_number',
+        'stn_number',
         'business_name',
         'business_address',
         'business_phone',
         'business_email',
+        // Tax details
+        'sales_tax_status',
+        'filer_status',
         // FBR API Settings
         'pos_id',
         'fbr_username',

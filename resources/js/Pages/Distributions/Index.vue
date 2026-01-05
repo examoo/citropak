@@ -24,7 +24,13 @@ const search = ref(props.filters?.search || '');
 const form = useForm({
     name: '',
     code: '',
-    status: 'active'
+    status: 'active',
+    address: '',
+    phone_number: '',
+    ntn_number: '',
+    stn_number: '',
+    sales_tax_status: 'active',
+    filer_status: 'filer'
 });
 
 // Search Watcher
@@ -44,9 +50,17 @@ const openModal = (item = null) => {
         form.name = item.name;
         form.code = item.code;
         form.status = item.status;
+        form.address = item.address || '';
+        form.phone_number = item.phone_number || '';
+        form.ntn_number = item.ntn_number || '';
+        form.stn_number = item.stn_number || '';
+        form.sales_tax_status = item.sales_tax_status || 'active';
+        form.filer_status = item.filer_status || 'filer';
     } else {
         form.reset();
         form.status = 'active';
+        form.sales_tax_status = 'active';
+        form.filer_status = 'filer';
     }
     
     isModalOpen.value = true;
@@ -155,22 +169,48 @@ const deleteItem = (item) => {
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
-                                <th class="px-6 py-4">Name</th>
-                                <th class="px-6 py-4">Code</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4">Created At</th>
-                                <th class="px-6 py-4 text-right">Actions</th>
+                                <th class="px-4 py-4">Name</th>
+                                <th class="px-4 py-4">Code</th>
+                                <th class="px-4 py-4">Phone</th>
+                                <th class="px-4 py-4">NTN</th>
+                                <th class="px-4 py-4">STN</th>
+                                <th class="px-4 py-4">Sales Tax</th>
+                                <th class="px-4 py-4">Filer</th>
+                                <th class="px-4 py-4">Status</th>
+                                <th class="px-4 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in distributions.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 font-medium text-gray-900">{{ item.name }}</td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 py-4">
+                                    <div class="font-medium text-gray-900">{{ item.name }}</div>
+                                    <div class="text-xs text-gray-500" v-if="item.address">{{ item.address }}</div>
+                                </td>
+                                <td class="px-4 py-4">
                                     <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md text-xs font-semibold">
                                         {{ item.code }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-4 py-4 text-gray-500">{{ item.phone_number || '-' }}</td>
+                                <td class="px-4 py-4 text-gray-500">{{ item.ntn_number || '-' }}</td>
+                                <td class="px-4 py-4 text-gray-500">{{ item.stn_number || '-' }}</td>
+                                <td class="px-4 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        item.sales_tax_status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
+                                    ]">
+                                        {{ (item.sales_tax_status || 'active').toUpperCase() }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium',
+                                        item.filer_status === 'filer' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                                    ]">
+                                        {{ (item.filer_status || 'filer').replace('_', '-').toUpperCase() }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4">
                                     <span :class="[
                                         'px-2 py-1 rounded-full text-xs font-medium',
                                         item.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
@@ -178,7 +218,6 @@ const deleteItem = (item) => {
                                         {{ item.status.toUpperCase() }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-gray-500">{{ new Date(item.created_at).toLocaleDateString() }}</td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <button 
@@ -199,7 +238,7 @@ const deleteItem = (item) => {
                                 </td>
                             </tr>
                             <tr v-if="distributions.data.length === 0">
-                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">No distributions found.</td>
+                                <td colspan="9" class="px-6 py-12 text-center text-gray-500">No distributions found.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -253,6 +292,74 @@ const deleteItem = (item) => {
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
+                    </div>
+
+                    <div class="border-t pt-4 mt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Contact Information</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <InputLabel value="Address" />
+                                <TextInput 
+                                    v-model="form.address" 
+                                    type="text" 
+                                    class="mt-1 block w-full" 
+                                    placeholder="Business address"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Phone Number" />
+                                <TextInput 
+                                    v-model="form.phone_number" 
+                                    type="text" 
+                                    class="mt-1 block w-full" 
+                                    placeholder="e.g. 0301-1234567"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Tax Information</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel value="NTN Number" />
+                                <TextInput 
+                                    v-model="form.ntn_number" 
+                                    type="text" 
+                                    class="mt-1 block w-full" 
+                                    placeholder="e.g. 1234567-8"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="STN Number" />
+                                <TextInput 
+                                    v-model="form.stn_number" 
+                                    type="text" 
+                                    class="mt-1 block w-full" 
+                                    placeholder="Sales Tax Number"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Sales Tax Status" />
+                                <select 
+                                    v-model="form.sales_tax_status" 
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                            <div>
+                                <InputLabel value="Filer Status" />
+                                <select 
+                                    v-model="form.filer_status" 
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                >
+                                    <option value="filer">Filer</option>
+                                    <option value="non_filer">Non-Filer</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
