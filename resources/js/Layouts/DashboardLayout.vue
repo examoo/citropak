@@ -134,6 +134,15 @@ const navigation = [
         ]
     },
     {
+        name: 'Asset Management',
+        icon: 'box', // Using box icon as placeholder or maybe 'server'?
+        permission: 'chillers.view', // Assuming if they can view chillers, they see the group. Or use a generic one.
+        children: [
+            { name: 'Chillers', href: 'chillers.index', permission: 'chillers.view', icon: 'server' },
+            { name: 'Shelves', href: 'shelves.index', permission: 'shelves.view', icon: 'menu' },
+        ]
+    },
+    {
         name: 'Product Management',
         icon: 'box',
         permission: 'products.view',
@@ -560,6 +569,18 @@ const handleClickOutside = (event) => {
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <!-- Server Icon (Chiller) -->
+                                <svg v-else-if="child.icon === 'server'" class="w-4 h-4 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                </svg>
+                                <!-- Menu Icon (Shelf) -->
+                                <svg v-else-if="child.icon === 'menu'" class="w-4 h-4 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
                                 <!-- Default Dot for other children -->
                                 <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover:bg-slate-400">

@@ -24,6 +24,8 @@ class RolePermissionSeeder extends Seeder
         'order_bookers',
         'vans',
         'distributions',
+        'chillers',
+        'shelves',
     ];
 
     /**
@@ -89,6 +91,14 @@ class RolePermissionSeeder extends Seeder
                 'roles.create',
                 'roles.edit',
                 'roles.delete',
+                'chillers.view',
+                'chillers.create',
+                'chillers.edit',
+                'chillers.delete',
+                'shelves.view',
+                'shelves.create',
+                'shelves.edit',
+                'shelves.delete',
             ])->get()
         );
 

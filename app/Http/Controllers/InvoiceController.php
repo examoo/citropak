@@ -446,7 +446,21 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
-        $invoice->delete();
+        DB::transaction(function () use ($invoice) {
+            // 1. Find associated StockOut
+            $stockOut = \App\Models\StockOut::where('bilty_number', $invoice->invoice_number)
+                ->where('distribution_id', $invoice->distribution_id) // Ensure correct distribution scope
+                ->first();
+
+            // 2. Reverse StockOut if exists
+            if ($stockOut) {
+                $this->stockOutService->reverseAndDelete($stockOut);
+            }
+
+            // 3. Delete Invoice
+            $invoice->delete();
+        });
+
         return redirect()->route('invoices.index')
             ->with('success', 'Invoice deleted successfully.');
     }

@@ -129,4 +129,50 @@ class StockOutService
         }
         return $stockOut->delete();
     }
+    /**
+     * Reverse and delete a stock out.
+     */
+    public function reverseAndDelete(StockOut $stockOut)
+    {
+        return DB::transaction(function () use ($stockOut) {
+            foreach ($stockOut->items as $item) {
+                // Find original stock or matching stock
+                $stock = null;
+                
+                if ($item->stock_id) {
+                    $stock = Stock::lockForUpdate()->find($item->stock_id);
+                }
+
+                if (!$stock) {
+                    // Try to find matching stock by product + distribution + batch
+                    $query = Stock::where('product_id', $item->product_id)
+                        ->where('distribution_id', $stockOut->distribution_id);
+                    
+                    if ($item->batch_number) {
+                        $query->where('batch_number', $item->batch_number);
+                    }
+                    
+                    $stock = $query->first();
+                }
+
+                if ($stock) {
+                    $stock->increment('quantity', $item->quantity);
+                } else {
+                    // Create new stock if necessary info is present to restore inventory
+                     Stock::create([
+                        'distribution_id' => $stockOut->distribution_id,
+                        'product_id' => $item->product_id,
+                        'batch_number' => $item->batch_number ?? 'Restored',
+                        'expiry_date' => $item->expiry_date,
+                        'quantity' => $item->quantity,
+                        'unit_cost' => $item->unit_cost ?? 0,
+                        'location' => $item->location ?? 'Default',
+                     ]);
+                }
+            }
+            
+            $stockOut->delete();
+            return true;
+        });
+    }
 }
