@@ -218,39 +218,59 @@ const searchCustomerByCode = async () => {
 };
 
 // Helper to calculate net unit price with taxes (matches Product calculation)
-// Formula: Base Price * (1 + FED%) * (1 + Sales Tax%) * (1 + Advance Tax%) + Extra Tax
+// For FOOD products: Net = Exclusive * (1 + SalesTax% + ExtraTax%)
+// For OTHER products: Net = Exclusive * (1 + FED%) * (1 + SalesTax%)
 const calculateNetUnitPrice = () => {
     const exclusive = parseFloat(newItem.value.exclusive_price) || 0;
     const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
     const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
     const extraTax = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
-    const advTax = parseFloat(newItem.value.adv_tax_percent) / 100 || 0;
-
-    // Compound calculation:
-    // Step 1: Base Price + FED %
-    let netPrice = exclusive * (1 + fed);
-    // Step 2: + Sales Tax %
-    netPrice = netPrice * (1 + salesTax);
     
-    // Extra Tax and Advance Tax are NOT included in Net Unit Price
-    // They are calculated separately on the total
+    // Check if product type is exactly "food" (case-insensitive)
+    // Default to non-food (original formula) if product type is not set or not 'food'
+    const productTypeName = (selectedProduct.value?.product_type?.name || '').toLowerCase().trim();
+    const isFood = productTypeName === 'food';
+    
+    let netPrice;
+    
+    if (isFood) {
+        // Food products: Net = Exclusive * (1 + SalesTax% + ExtraTax%)
+        netPrice = exclusive * (1 + salesTax + extraTax);
+    } else {
+        // Other products (DEFAULT): Compound calculation with FED and Sales Tax
+        // Net = Exclusive * (1 + FED%) * (1 + SalesTax%)
+        netPrice = exclusive * (1 + fed) * (1 + salesTax);
+    }
 
     newItem.value.net_unit_price = netPrice;
 };
 
 // Calculate exclusive price from net price (Reverse Calculation)
+// For FOOD products: Exclusive = Net / (1 + SalesTax% + ExtraTax%)
+// For OTHER products: Exclusive = Net / ((1 + FED%) * (1 + SalesTax%))
 const calculateReversePrice = () => {
     const netPrice = parseFloat(newItem.value.net_unit_price) || 0;
     const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
     const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
+    const extraTax = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
     
-    // Formula: Net = Exclusive * (1 + FED) * (1 + SalesTax)
-    // Exclusive = Net / ((1 + FED) * (1 + SalesTax))
-
-    const divisor = (1 + fed) * (1 + salesTax);
+    // Check if product type is exactly "food" (case-insensitive)
+    // Default to non-food (original formula) if product type is not set or not 'food'
+    const productTypeName = (selectedProduct.value?.product_type?.name || '').toLowerCase().trim();
+    const isFood = productTypeName === 'food';
     
-    if (divisor === 0) {
-        newItem.value.exclusive_price = 0;
+    let divisor;
+    
+    if (isFood) {
+        // Food products: Reverse of additive formula
+        divisor = 1 + salesTax + extraTax;
+    } else {
+        // Other products (DEFAULT): Reverse of compound formula
+        divisor = (1 + fed) * (1 + salesTax);
+    }
+    
+    if (divisor === 0 || divisor === 1) {
+        newItem.value.exclusive_price = netPrice;
     } else {
         newItem.value.exclusive_price = netPrice / divisor;
     }
@@ -310,8 +330,8 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
         const product = props.products.find(p => p.id === parseInt(productId));
         if (product) {
             selectedProduct.value = product;
-            // Use list_price_before_tax as exclusive price (before taxes)
-            newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || parseFloat(product.unit_price) || 0;
+            
+            // Get tax percentages from product
             newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
             newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
             // Get extra tax from product type
@@ -322,24 +342,21 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             // Get advance tax from selected customer
             newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
             
-            // Always calculate net unit price
-            calculateNetUnitPrice();
+            // Check if product type is "food" (case-insensitive)
+            const productTypeName = product.product_type?.name?.toLowerCase() || '';
+            const isFood = productTypeName === 'food';
             
-            // If product has pre-calculated unit_price and exclusive is 0, use it directly
-            if (product.unit_price && parseFloat(product.unit_price) > 0) {
-                newItem.value.net_unit_price = parseFloat(product.unit_price);
-                newItem.value.is_net_fixed = true; // Fix the net price
-                // Reverse-calculate exclusive price from unit price (approximate)
-                calculateReversePrice();
-            } else if (newItem.value.exclusive_price === 0 && product.unit_price && parseFloat(product.unit_price) > 0) {
-                // Fallback (logic overlap slightly with above, but explicit)
-                newItem.value.net_unit_price = parseFloat(product.unit_price);
-                newItem.value.is_net_fixed = true;
-                newItem.value.exclusive_price = parseFloat(product.unit_price); // Temp placeholder before calc? No, calcReverse will fix it.
-                calculateReversePrice();
-            } else {
-                newItem.value.is_net_fixed = false; // Standard forward calc
+            if (isFood) {
+                // FOOD products: Use exclusive_price (list_price_before_tax) and calculate net unit price
+                newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || 0;
+                newItem.value.is_net_fixed = false; // Calculate net from exclusive
                 calculateNetUnitPrice();
+            } else {
+                // OTHER products: Use unit_price directly as net unit price
+                newItem.value.net_unit_price = parseFloat(product.unit_price) || 0;
+                newItem.value.is_net_fixed = true; // Net is fixed from product
+                // Reverse-calculate exclusive price from unit price
+                calculateReversePrice();
             }
             
             loadProductSchemes(productId);

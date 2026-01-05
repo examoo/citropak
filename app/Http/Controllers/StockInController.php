@@ -55,7 +55,7 @@ class StockInController extends Controller
             'bilty_number' => $validated['bilty_number'] ?? null,
             'date' => $validated['date'],
             'remarks' => $validated['remarks'] ?? null,
-            'status' => 'draft',
+            'status' => 'posted',
             'created_by' => $request->user()->id,
         ];
 

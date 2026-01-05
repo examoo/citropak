@@ -54,8 +54,46 @@ class StockInService
                 $stockIn->items()->create($item);
             }
 
+            // If status is 'posted', also update the stocks table
+            if ($stockIn->status === 'posted') {
+                $this->updateStocksFromItems($stockIn);
+            }
+
             return $stockIn->load('items.product');
         });
+    }
+
+    /**
+     * Update stocks table from stock in items.
+     */
+    protected function updateStocksFromItems(StockIn $stockIn): void
+    {
+        foreach ($stockIn->items as $item) {
+            // Get product pricing data for the stock
+            $product = $item->product;
+            
+            Stock::create([
+                'product_id' => $item->product_id,
+                'distribution_id' => $stockIn->distribution_id,
+                'quantity' => $item->quantity,
+                'min_quantity' => 0,
+                'max_quantity' => null,
+                'unit_cost' => $item->unit_cost ?? 0,
+                'batch_number' => $item->batch_number,
+                'expiry_date' => $item->expiry_date,
+                'location' => $item->location,
+                // Pricing fields from product
+                'pieces_per_packing' => $product->pieces_per_packing ?? 1,
+                'list_price_before_tax' => $product->list_price_before_tax ?? 0,
+                'fed_sales_tax' => $product->fed_sales_tax ?? 0,
+                'fed_percent' => $product->fed_percent ?? 0,
+                'retail_margin' => $product->retail_margin ?? 0,
+                'tp_rate' => $product->tp_rate ?? 0,
+                'distribution_margin' => $product->distribution_margin ?? 0,
+                'invoice_price' => $product->invoice_price ?? 0,
+                'unit_price' => $product->unit_price ?? 0,
+            ]);
+        }
     }
 
     /**
