@@ -479,6 +479,21 @@ const addItem = () => {
 
     const product = props.products.find(p => p.id === parseInt(newItem.value.product_id));
 
+    // Check for duplicate product (only for non-free items)
+    const isDuplicate = form.items.some(item => 
+        item.product_id === parseInt(newItem.value.product_id) && !item.is_free
+    );
+    
+    if (isDuplicate) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Product Already Added',
+            text: `"${product?.name || 'This product'}" is already in the invoice. Please update the existing item instead.`,
+            confirmButtonColor: '#059669'
+        });
+        return;
+    }
+
     // Stock validation
     const hasNoBatches = availableBatches.value.length === 0;
     if (hasNoBatches) {
