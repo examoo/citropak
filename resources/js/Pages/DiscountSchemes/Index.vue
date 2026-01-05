@@ -226,6 +226,60 @@ const deleteItem = (item) => {
     });
 };
 
+// Import Modal Logic
+const isImportModalOpen = ref(false);
+const importFile = ref(null);
+const importDistributionId = ref('');
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+    importFile.value = null;
+    importDistributionId.value = '';
+};
+
+const closeImportModal = () => {
+    isImportModalOpen.value = false;
+    importFile.value = null;
+    importDistributionId.value = '';
+};
+
+const handleImportFileChange = (event) => {
+    importFile.value = event.target.files[0];
+};
+
+const submitImport = () => {
+    if (!importFile.value) {
+        Swal.fire('Error', 'Please select a file to import', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', importFile.value);
+    if (importDistributionId.value) {
+        formData.append('distribution_id', importDistributionId.value);
+    }
+
+    router.post(route('discount-schemes.import'), formData, {
+        onSuccess: () => {
+            closeImportModal();
+            Swal.fire({
+                title: 'Success',
+                text: 'Discount Schemes imported successfully',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to import discount schemes',
+                icon: 'error'
+            });
+        }
+    });
+};
+
 // Get display text for products/brands column
 const getItemsDisplay = (item) => {
     if (item.scheme_type === 'product') {
@@ -256,6 +310,13 @@ const getItemsDisplay = (item) => {
                         <input v-model="search" type="text" placeholder="Search..." class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 w-64 shadow-sm">
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
+                    <button @click="openImportModal"
+                        class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                        <svg class="w-5 h-5 mr-2 -ml-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Import Excel
+                    </button>
                     <button @click="openModal()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-medium shadow-lg shadow-amber-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                         Add Scheme
@@ -536,6 +597,47 @@ const getItemsDisplay = (item) => {
 
                 <div class="flex justify-end gap-3 mt-4 pt-4 border-t">
                     <SecondaryButton @click="isBrandModalOpen = false">Done</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Import Modal -->
+        <Modal :show="isImportModalOpen" @close="closeImportModal" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Import Discount Schemes</h2>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <span class="text-sm text-gray-600">Download sample format</span>
+                        <a :href="route('discount-schemes.template')"
+                            class="text-sm text-amber-600 hover:text-amber-900 font-medium hover:underline">
+                            Download Format
+                        </a>
+                    </div>
+
+                    <div>
+                        <!-- Distribution Selection for Import (Global View) -->
+                        <div v-if="!currentDistribution?.id" class="mb-4">
+                            <SearchableSelect v-model="importDistributionId" label="Target Distribution (Optional)"
+                                :options="distributions" option-value="id" option-label="name"
+                                placeholder="Select target distribution" />
+                            <p class="text-xs text-gray-500 mt-1">Select a distribution to import all schemes into. If
+                                empty, uses 'Distribution' column from Excel.</p>
+                        </div>
+
+                        <InputLabel value="Select Excel File" class="mb-2" />
+                        <input type="file" accept=".xlsx,.csv" @change="handleImportFileChange"
+                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <SecondaryButton @click="closeImportModal">
+                        Cancel
+                    </SecondaryButton>
+                    <PrimaryButton @click="submitImport" :disabled="!importFile" class="bg-gradient-to-r from-amber-600 to-orange-600 border-0">
+                        Import Schemes
+                    </PrimaryButton>
                 </div>
             </div>
         </Modal>

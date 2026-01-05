@@ -68,6 +68,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);
     Route::resource('packings', \App\Http\Controllers\PackingController::class);
+    Route::get('discount-schemes/template', [\App\Http\Controllers\DiscountSchemeController::class, 'downloadTemplate'])->name('discount-schemes.template');
+    Route::post('discount-schemes/import', [\App\Http\Controllers\DiscountSchemeController::class, 'import'])->name('discount-schemes.import');
     Route::resource('discount-schemes', \App\Http\Controllers\DiscountSchemeController::class);
     Route::resource('stocks', \App\Http\Controllers\StockController::class);
     Route::post('stocks/{stock}/adjust', [\App\Http\Controllers\StockController::class, 'adjust'])->name('stocks.adjust');

@@ -101,4 +101,40 @@ class DiscountSchemeController extends Controller
 
         return redirect()->back()->with('success', 'Discount Scheme deleted successfully.');
     }
+
+    /**
+     * Import discount schemes from Excel file.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv',
+        ]);
+
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+        
+        // If user is global, check if they selected a distribution in the form
+        if (!$distributionId && $request->has('distribution_id')) {
+            $distributionId = $request->distribution_id;
+        }
+
+        \Maatwebsite\Excel\Facades\Excel::import(
+            new \App\Imports\DiscountSchemesImport($distributionId), 
+            $request->file('file')
+        );
+
+        return redirect()->back()->with('success', 'Discount Schemes imported successfully.');
+    }
+
+    /**
+     * Download discount schemes template.
+     */
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\DiscountSchemesTemplateExport, 
+            'discount_schemes_template.xlsx'
+        );
+    }
 }
