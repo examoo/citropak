@@ -76,6 +76,16 @@ class CustomerController extends Controller
 
         return redirect()->back()->with('success', 'Selected customers deleted successfully.');
     }
+
+    public function deleteAll(Request $request)
+    {
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId === 'all') $distributionId = null;
+
+        $this->service->deleteAll($distributionId);
+
+        return redirect()->back()->with('success', 'All customers deleted successfully.');
+    }
     public function import(Request $request)
     {
         $request->validate([

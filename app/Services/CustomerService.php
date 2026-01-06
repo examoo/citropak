@@ -168,4 +168,18 @@ class CustomerService
         $customer = Customer::findOrFail($id);
         return $customer->delete();
     }
+
+    /**
+     * Delete all customers (optionally scoped by distribution)
+     */
+    public function deleteAll($distributionId = null): int
+    {
+        $query = Customer::query();
+        
+        if ($distributionId) {
+            $query->where('distribution_id', $distributionId);
+        }
+
+        return $query->delete();
+    }
 }

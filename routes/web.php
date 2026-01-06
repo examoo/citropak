@@ -97,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('customers/template', [CustomerController::class, 'downloadTemplate'])->name('customers.template');
     Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::post('customers/bulk-destroy', [CustomerController::class, 'bulkDestroy'])->name('customers.bulk-destroy');
+    Route::post('customers/delete-all', [CustomerController::class, 'deleteAll'])->name('customers.delete-all');
     Route::resource('customers', CustomerController::class);
     Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
     Route::resource('order-bookers', \App\Http\Controllers\OrderBookerController::class);

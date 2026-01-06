@@ -18,6 +18,21 @@ import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { debounce } from 'lodash';
 import { watch, ref, computed, nextTick } from 'vue';
 
+const props = defineProps({
+    customers: {
+        type: Object,
+        required: true
+    },
+    attributes: {
+        type: Object,
+        default: () => ({})
+    },
+    filters: {
+        type: Object,
+        default: () => ({ search: '', status: '', sort_field: 'created_at', sort_direction: 'desc' })
+    }
+});
+
 // Multi-select state
 const selectedCustomers = ref([]);
 const selectAll = ref(false);
@@ -32,21 +47,6 @@ const toggleSelectAll = () => {
 
 watch(selectedCustomers, (newVal) => {
     selectAll.value = newVal.length === props.customers.data.length && props.customers.data.length > 0;
-});
-
-const props = defineProps({
-    customers: {
-        type: Object,
-        required: true
-    },
-    attributes: {
-        type: Object,
-        default: () => ({})
-    },
-    filters: {
-        type: Object,
-        default: () => ({ search: '', status: '', sort_field: 'created_at', sort_direction: 'desc' })
-    }
 });
 
 const page = usePage();
@@ -324,7 +324,40 @@ const deleteSelected = () => {
     })
 };
 
-// Quick Add Attribute Logic
+const deleteAll = () => {
+    Swal.fire({
+        title: 'Delete ALL Customers?',
+        html: `<p class="text-red-600 font-semibold">This will permanently delete ALL customers!</p><p class="mt-2">Type <strong>DELETE</strong> to confirm:</p>`,
+        icon: 'warning',
+        input: 'text',
+        inputPlaceholder: 'Type DELETE',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete all!',
+        inputValidator: (value) => {
+            if (value !== 'DELETE') {
+                return 'You must type DELETE to confirm'
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('customers.delete-all'), {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedCustomers.value = [];
+                    selectAll.value = false;
+                    Swal.fire(
+                        'Deleted!',
+                        'All customers have been deleted.',
+                        'success'
+                    )
+                }
+            });
+        }
+    })
+};
+
 const quickAddAttribute = async (type, title) => {
     // Check for open dialog to attach SweetAlert
     const openDialog = document.querySelector('dialog[open]');
@@ -590,6 +623,15 @@ const submitImport = () => {
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         Delete Selected ({{ selectedCustomers.length }})
+                    </button>
+
+                    <button @click="deleteAll"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800 text-white rounded-xl font-medium shadow-lg shadow-gray-500/30 hover:bg-gray-900 hover:shadow-xl hover:shadow-gray-500/40 transition-all duration-200 hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete All
                     </button>
                 </div>
             </div>
