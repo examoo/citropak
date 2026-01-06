@@ -69,7 +69,13 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);
     Route::resource('packings', \App\Http\Controllers\PackingController::class);
     Route::resource('chillers', \App\Http\Controllers\ChillerController::class);
+    Route::post('chillers/{chiller}/move', [\App\Http\Controllers\ChillerController::class, 'move'])->name('chillers.move');
+    Route::post('chillers/{chiller}/return', [\App\Http\Controllers\ChillerController::class, 'returnChiller'])->name('chillers.return');
+    Route::get('chillers/{chiller}/history', [\App\Http\Controllers\ChillerController::class, 'history'])->name('chillers.history');
+    Route::get('chiller-reports', [\App\Http\Controllers\ChillerController::class, 'report'])->name('chillers.report');
+    Route::resource('chiller-types', \App\Http\Controllers\ChillerTypeController::class);
     Route::resource('shelves', \App\Http\Controllers\ShelfController::class);
+    Route::get('shelf-reports', [\App\Http\Controllers\ShelfController::class, 'report'])->name('shelves.report');
     Route::get('discount-schemes/template', [\App\Http\Controllers\DiscountSchemeController::class, 'downloadTemplate'])->name('discount-schemes.template');
     Route::post('discount-schemes/import', [\App\Http\Controllers\DiscountSchemeController::class, 'import'])->name('discount-schemes.import');
     Route::resource('discount-schemes', \App\Http\Controllers\DiscountSchemeController::class);

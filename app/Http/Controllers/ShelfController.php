@@ -4,41 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Models\Shelf;
 use App\Models\Customer;
+use App\Models\OrderBooker;
+use App\Services\ShelfService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ShelfController extends Controller
 {
+    public function __construct(private ShelfService $service)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $search = $request->query('search');
+        $shelves = $this->service->getAll($request->only(['search', 'status']));
 
-        $shelves = Shelf::query()
-            ->with(['customer:id,shop_name,customer_code'])
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function ($q) use ($search) {
-                          $q->where('shop_name', 'like', "%{$search}%")
-                            ->orWhere('customer_code', 'like', "%{$search}%");
-                      });
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
-        
-        // Providing customers for the create/edit modal dropdown
         $customers = Customer::select('id', 'shop_name as name', 'customer_code as code')
             ->where('status', 'active')
             ->orderBy('shop_name')
             ->get();
 
+        $orderBookers = OrderBooker::select('id', 'name', 'code')->orderBy('name')->get();
+
         return Inertia::render('Shelves/Index', [
             'shelves' => $shelves,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'status']),
             'customers' => $customers,
+            'orderBookers' => $orderBookers,
         ]);
     }
 
@@ -47,23 +42,27 @@ class ShelfController extends Controller
      */
     public function store(Request $request)
     {
-        $userDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
-        if($userDistributionId === 'all') $userDistributionId = null;
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'shelf_code' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
             'customer_id' => 'nullable|exists:customers,id',
-            'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            'rent_amount' => 'nullable|numeric|min:0',
+            'contract_months' => 'nullable|integer|min:1|max:120',
+            'start_date' => 'nullable|date',
+            'incentive_amount' => 'nullable|numeric|min:0',
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
         ]);
 
-        if ($userDistributionId) {
-            $validated['distribution_id'] = $userDistributionId;
+        // Auto-set distribution_id from session/user
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId && $distributionId !== 'all') {
+            $validated['distribution_id'] = $distributionId;
         }
 
-        Shelf::create($validated);
+        $this->service->create($validated);
 
-        return redirect()->back()->with('success', 'Shelf created successfully.');
+        return redirect()->route('shelves.index')->with('success', 'Shelf created successfully.');
     }
 
     /**
@@ -73,13 +72,19 @@ class ShelfController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'shelf_code' => 'nullable|string|max:50',
             'status' => 'required|in:active,inactive',
             'customer_id' => 'nullable|exists:customers,id',
+            'rent_amount' => 'nullable|numeric|min:0',
+            'contract_months' => 'nullable|integer|min:1|max:120',
+            'start_date' => 'nullable|date',
+            'incentive_amount' => 'nullable|numeric|min:0',
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
         ]);
 
-        $shelf->update($validated);
+        $this->service->update($shelf, $validated);
 
-        return redirect()->back()->with('success', 'Shelf updated successfully.');
+        return redirect()->route('shelves.index')->with('success', 'Shelf updated successfully.');
     }
 
     /**
@@ -89,6 +94,34 @@ class ShelfController extends Controller
     {
         $shelf->delete();
 
-        return redirect()->back()->with('success', 'Shelf deleted successfully.');
+        return redirect()->route('shelves.index')->with('success', 'Shelf deleted successfully.');
+    }
+
+    /**
+     * Display shelf rent report.
+     */
+    public function report(Request $request)
+    {
+        $filters = $request->only(['order_booker_id', 'customer_id', 'year']);
+        
+        $shelves = $this->service->getShelfReport($filters);
+
+        $orderBookers = OrderBooker::select('id', 'name', 'code')->orderBy('name')->get();
+        $customers = Customer::select('id', 'shop_name as name', 'customer_code as code')
+            ->where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        // Available years for filter
+        $years = range(now()->year - 2, now()->year + 1);
+
+        return Inertia::render('Shelves/Report', [
+            'shelves' => $shelves,
+            'filters' => $filters,
+            'orderBookers' => $orderBookers,
+            'customers' => $customers,
+            'years' => $years,
+            'currentYear' => $filters['year'] ?? now()->year,
+        ]);
     }
 }

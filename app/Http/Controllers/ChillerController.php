@@ -3,42 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\Chiller;
+use App\Models\ChillerType;
 use App\Models\Customer;
+use App\Models\OrderBooker;
+use App\Services\ChillerService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ChillerController extends Controller
 {
+    public function __construct(private ChillerService $service)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $search = $request->query('search');
+        $chillers = $this->service->getAll($request->only(['search', 'chiller_type_id', 'status']));
 
-        $chillers = Chiller::query()
-            ->with(['customer:id,shop_name,customer_code'])
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhereHas('customer', function ($q) use ($search) {
-                          $q->where('shop_name', 'like', "%{$search}%")
-                            ->orWhere('customer_code', 'like', "%{$search}%");
-                      });
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
-
-        // Providing customers for the create/edit modal dropdown
         $customers = Customer::select('id', 'shop_name as name', 'customer_code as code')
             ->where('status', 'active')
             ->orderBy('shop_name')
             ->get();
 
+        $chillerTypes = ChillerType::active()->orderBy('name')->get();
+
+        $orderBookers = OrderBooker::select('id', 'name', 'code')->orderBy('name')->get();
+
         return Inertia::render('Chillers/Index', [
             'chillers' => $chillers,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'chiller_type_id', 'status']),
             'customers' => $customers,
+            'chillerTypes' => $chillerTypes,
+            'orderBookers' => $orderBookers,
         ]);
     }
 
@@ -47,23 +46,24 @@ class ChillerController extends Controller
      */
     public function store(Request $request)
     {
-        $userDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
-        if($userDistributionId === 'all') $userDistributionId = null;
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'chiller_code' => 'nullable|string|max:50',
+            'chiller_type_id' => 'nullable|exists:chiller_types,id',
             'status' => 'required|in:active,inactive',
             'customer_id' => 'nullable|exists:customers,id',
-            'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
         ]);
 
-        if ($userDistributionId) {
-            $validated['distribution_id'] = $userDistributionId;
+        // Auto-set distribution_id from session/user
+        $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        if ($distributionId && $distributionId !== 'all') {
+            $validated['distribution_id'] = $distributionId;
         }
 
-        Chiller::create($validated);
+        $this->service->create($validated);
 
-        return redirect()->back()->with('success', 'Chiller created successfully.');
+        return redirect()->route('chillers.index')->with('success', 'Chiller created successfully.');
     }
 
     /**
@@ -73,13 +73,16 @@ class ChillerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'chiller_code' => 'nullable|string|max:50',
+            'chiller_type_id' => 'nullable|exists:chiller_types,id',
             'status' => 'required|in:active,inactive',
             'customer_id' => 'nullable|exists:customers,id',
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
         ]);
 
-        $chiller->update($validated);
+        $this->service->update($chiller, $validated);
 
-        return redirect()->back()->with('success', 'Chiller updated successfully.');
+        return redirect()->route('chillers.index')->with('success', 'Chiller updated successfully.');
     }
 
     /**
@@ -90,5 +93,74 @@ class ChillerController extends Controller
         $chiller->delete();
 
         return redirect()->back()->with('success', 'Chiller deleted successfully.');
+    }
+
+    /**
+     * Move chiller to another customer.
+     */
+    public function move(Request $request, Chiller $chiller)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $this->service->moveChiller($chiller, $validated);
+
+        return redirect()->back()->with('success', 'Chiller moved successfully.');
+    }
+
+    /**
+     * Return chiller from customer.
+     */
+    public function returnChiller(Request $request, Chiller $chiller)
+    {
+        $validated = $request->validate([
+            'order_booker_id' => 'nullable|exists:order_bookers,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $this->service->returnChiller($chiller, $validated);
+
+        return redirect()->back()->with('success', 'Chiller returned successfully.');
+    }
+
+    /**
+     * Get chiller movement history.
+     */
+    public function history(Chiller $chiller)
+    {
+        $movements = $this->service->getMovementHistory($chiller);
+
+        return response()->json([
+            'chiller' => $chiller->load(['customer', 'chillerType']),
+            'movements' => $movements,
+        ]);
+    }
+
+    /**
+     * Display chiller report.
+     */
+    public function report(Request $request)
+    {
+        $filters = $request->only(['chiller_type_id', 'order_booker_id', 'customer_id', 'date_from', 'date_to']);
+        
+        $chillers = $this->service->getChillerReport($filters);
+
+        $chillerTypes = ChillerType::active()->orderBy('name')->get();
+        $orderBookers = OrderBooker::select('id', 'name', 'code')->orderBy('name')->get();
+        $customers = Customer::select('id', 'shop_name as name', 'customer_code as code')
+            ->where('status', 'active')
+            ->orderBy('shop_name')
+            ->get();
+
+        return Inertia::render('Chillers/Report', [
+            'chillers' => $chillers,
+            'filters' => $filters,
+            'chillerTypes' => $chillerTypes,
+            'orderBookers' => $orderBookers,
+            'customers' => $customers,
+        ]);
     }
 }
