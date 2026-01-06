@@ -18,6 +18,22 @@ import SearchableSelect from '@/Components/Form/SearchableSelect.vue';
 import { debounce } from 'lodash';
 import { watch, ref, computed, nextTick } from 'vue';
 
+// Multi-select state
+const selectedCustomers = ref([]);
+const selectAll = ref(false);
+
+const toggleSelectAll = () => {
+    if (selectAll.value) {
+        selectedCustomers.value = props.customers.data.map(c => c.id);
+    } else {
+        selectedCustomers.value = [];
+    }
+};
+
+watch(selectedCustomers, (newVal) => {
+    selectAll.value = newVal.length === props.customers.data.length && props.customers.data.length > 0;
+});
+
 const props = defineProps({
     customers: {
         type: Object,
@@ -269,6 +285,37 @@ const deleteCustomer = (customer) => {
                     Swal.fire(
                         'Deleted!',
                         'Customer has been deleted.',
+                        'success'
+                    )
+                }
+            });
+        }
+    })
+};
+
+const deleteSelected = () => {
+    if (selectedCustomers.value.length === 0) return;
+
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `You want to delete ${selectedCustomers.value.length} selected customers?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete them!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('customers.bulk-destroy'), {
+                ids: selectedCustomers.value
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedCustomers.value = [];
+                    selectAll.value = false;
+                    Swal.fire(
+                        'Deleted!',
+                        'Selected customers have been deleted.',
                         'success'
                     )
                 }
@@ -535,6 +582,15 @@ const submitImport = () => {
                         </svg>
                         Add Customer
                     </button>
+                    
+                    <button v-if="selectedCustomers.length > 0" @click="deleteSelected"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl font-medium shadow-lg shadow-red-500/30 hover:bg-red-700 hover:shadow-xl hover:shadow-red-500/40 transition-all duration-200 hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Selected ({{ selectedCustomers.length }})
+                    </button>
                 </div>
             </div>
 
@@ -544,6 +600,10 @@ const submitImport = () => {
                     <table class="w-full text-left text-sm text-gray-600">
                         <thead class="bg-gray-50/50 text-xs uppercase font-semibold text-gray-500">
                             <tr>
+                                <th class="px-6 py-4 w-4">
+                                    <input type="checkbox" v-model="selectAll" @change="toggleSelectAll"
+                                        class="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50">
+                                </th>
                                 <th v-if="!currentDistribution?.id" class="px-6 py-4">Distribution</th>
                                 <th @click="handleSort('customer_code')"
                                     class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
@@ -585,6 +645,10 @@ const submitImport = () => {
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="customer in customers.data" :key="customer.id"
                                 class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" :value="customer.id" v-model="selectedCustomers"
+                                        class="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50">
+                                </td>
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4">
                                     <span v-if="customer.distribution"
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

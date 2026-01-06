@@ -62,6 +62,20 @@ class CustomerController extends Controller
 
         return redirect()->back()->with('success', 'Customer deleted successfully.');
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:customers,id',
+        ]);
+
+        foreach ($request->ids as $id) {
+            $this->service->delete($id);
+        }
+
+        return redirect()->back()->with('success', 'Selected customers deleted successfully.');
+    }
     public function import(Request $request)
     {
         $request->validate([
