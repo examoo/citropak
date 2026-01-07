@@ -31,6 +31,7 @@ class CustomerRequest extends FormRequest
             'phone' => 'nullable|string|max:20',
             'category' => 'nullable|string|max:100',
             'channel' => 'nullable|string|max:100',
+            'channel_id' => 'nullable|exists:channels,id',
             'ntn_number' => 'nullable|string|max:50',
             'cnic' => 'nullable|string|max:50',
             'sales_tax_number' => 'nullable|string|max:50',

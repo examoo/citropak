@@ -105,6 +105,7 @@ const form = useForm({
     phone: '',
     category: '',
     channel: '',
+    channel_id: null,
     ntn_number: '',
     distribution_id: '',
     sub_distribution: '',
@@ -150,8 +151,9 @@ const channelOptions = computed(() => filteredChannelOptions.value);
 // Update form fields when detailed channel selection changes (by ID)
 watch(selectedChannelId, (newId) => {
     if (!newId) {
-        // If cleared manually (though dropdown usually forces selection), don't necessarily clear form unless creating?
-        // Let's keep form sync if needed. But usually selection drives form.
+        // If cleared manually, reset channel fields
+        form.channel = '';
+        form.channel_id = null;
         return;
     }
 
@@ -161,6 +163,7 @@ watch(selectedChannelId, (newId) => {
     if (channel) {
         // Sync the form data
         form.channel = channel.value; // The name
+        form.channel_id = channel.id; // The ID
         
         // Only update adv_tax_percent and atl if NOT initializing (i.e., user explicitly changed channel)
         if (!isInitializingChannel.value) {
@@ -188,6 +191,7 @@ const openModal = (customer = null) => {
         form.phone = customer.phone;
         form.category = customer.category;
         form.channel = customer.channel;
+        form.channel_id = customer.channel_id;
         form.ntn_number = customer.ntn_number;
         form.distribution = customer.distribution;
         form.day = customer.day;
@@ -200,18 +204,25 @@ const openModal = (customer = null) => {
         form.sales_tax_status = customer.sales_tax_status || 'active';
         form.route = customer.route || '';
 
-        // Smartly find the correct channel ID to select
-        // Match by Name AND ATL status to distinguish duplicates
-        if (customer.channel) {
+        // Set the channel dropdown selection using channel_id directly
+        if (customer.channel_id) {
             // Set flag to prevent adv_tax auto-update during initialization
+            isInitializingChannel.value = true;
+            selectedChannelId.value = customer.channel_id;
+            
+            // Reset flag after initialization
+            nextTick(() => {
+                isInitializingChannel.value = false;
+            });
+        } else if (customer.channel) {
+            // Fallback: find channel by name if channel_id is not set
             isInitializingChannel.value = true;
             
             const match = channelOptions.value.find(ch =>
                 ch.value === customer.channel &&
-                ch.atl === (customer.atl || 'active')
+                ch.atl === (customer.atl === 'active')
             );
 
-            // Fallback to name only if exact match fails
             if (match) {
                 selectedChannelId.value = match.id;
             } else {
@@ -219,7 +230,6 @@ const openModal = (customer = null) => {
                 if (nameMatch) selectedChannelId.value = nameMatch.id;
             }
             
-            // Reset flag after initialization
             nextTick(() => {
                 isInitializingChannel.value = false;
             });

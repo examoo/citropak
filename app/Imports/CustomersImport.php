@@ -48,61 +48,124 @@ class CustomersImport implements ToModel, WithHeadingRow
             }
         }
 
-        // Auto-create Van if missing (scoped)
+        // Get values from Excel
         $vanName = $this->getValue($row, 'van');
-        if ($vanName) {
-            Van::firstOrCreate(
-                ['code' => $vanName, 'distribution_id' => $distributionId],
-                ['status' => 'active']
-            );
-        }
-
-        // Auto-create Channel if missing (scoped)
         $channelName = $this->getValue($row, 'channel');
-        if ($channelName) {
-            $atl = $this->getValue($row, 'atl') == 'active';
-            $advTax = $this->getValue($row, 'adv_tax') ?? 0;
-            
-            \App\Models\Channel::firstOrCreate(
-                ['name' => $channelName, 'distribution_id' => $distributionId],
-                ['status' => 'active', 'atl' => $atl, 'adv_tax_percent' => floatval($advTax)]
-            );
-        }
-
-        // Auto-create Category if missing (scoped)
         $catName = $this->getValue($row, 'categories') ?? $this->getValue($row, 'category');
-        if ($catName) {
-            \App\Models\Category::firstOrCreate(
-                ['name' => $catName, 'distribution_id' => $distributionId],
-                ['status' => 'active']
-            );
-        }
-
-        // Auto-create SubAddress if missing (scoped)
         $subAddress = $this->getValue($row, 'subaddress') ?? $this->getValue($row, 'sub_address');
-        if ($subAddress) {
-             \App\Models\SubAddress::firstOrCreate(
-                 ['name' => $subAddress, 'distribution_id' => $distributionId],
-                 ['status' => 'active']
-             );
-        }
-
-        // Auto-create SubDistribution if missing (scoped)
         $subDistName = $this->getValue($row, 'subdistribution') ?? $this->getValue($row, 'sub_distribution');
-        if ($subDistName) {
-             \App\Models\SubDistribution::firstOrCreate(
-                 ['name' => $subDistName, 'distribution_id' => $distributionId],
-                 ['status' => 'active']
-             );
+        $routeName = $this->getValue($row, 'route');
+
+        // Normalize ATL status from Excel (default to active)
+        // ATL in database is boolean: true (1) = ATL active, false (0/null) = not ATL
+        $atlStatusRaw = $this->getValue($row, 'atl_status') ?? $this->getValue($row, 'atl');
+        $atlBool = true; // Default to ATL active (true)
+        if ($atlStatusRaw) {
+            $atlLower = strtolower(trim($atlStatusRaw));
+            // Explicitly check: 'active', 'yes', '1', 'true', 'y' = true (ATL)
+            // 'inactive', 'no', '0', 'false', 'n' = false (not ATL)
+            if (in_array($atlLower, ['active', 'yes', '1', 'true', 'y'])) {
+                $atlBool = true;
+            } elseif (in_array($atlLower, ['inactive', 'no', '0', 'false', 'n'])) {
+                $atlBool = false;
+            }
+            // If not recognized, keep default (true)
+        }
+        // For customer's atl field (stored as 'active'/'inactive' string)
+        $atlStatus = $atlBool ? 'active' : 'inactive';
+
+        // Get adv_tax from Excel (fallback)
+        $advTaxFromExcel = floatval($this->getValue($row, 'adv_tax') ?? 0);
+        
+        // Find or create channel, get its ID
+        $channelId = null;
+        $advTaxPercent = $advTaxFromExcel;
+        
+        if ($channelName) {
+            // Build query to find channel by name
+            $channelQuery = \App\Models\Channel::where('name', $channelName);
+            
+            // Match ATL status: true (1) for active, false/null/0 for inactive
+            if ($atlBool) {
+                // Find channel where ATL = true (1)
+                $channelQuery->where('atl', 1);
+            } else {
+                // Find channel where ATL = false (0 or null)
+                $channelQuery->where(function ($q) {
+                    $q->where('atl', 0)
+                      ->orWhereNull('atl');
+                });
+            }
+            
+            // Scope to distribution if provided, also check global channels
+            if ($distributionId) {
+                $channelQuery->where(function ($q) use ($distributionId) {
+                    $q->where('distribution_id', $distributionId)
+                      ->orWhereNull('distribution_id');
+                });
+            }
+            
+            $existingChannel = $channelQuery->first();
+            
+            if ($existingChannel) {
+                // Use existing channel's ID
+                $channelId = $existingChannel->id;
+                $advTaxPercent = $advTaxFromExcel;
+            } elseif ($distributionId) {
+                // Create new channel if distribution is provided
+                $newChannel = \App\Models\Channel::create([
+                    'name' => $channelName,
+                    'distribution_id' => $distributionId,
+                    'atl' => $atlBool,
+                    'status' => 'active',
+                    'adv_tax_percent' => $advTaxFromExcel
+                ]);
+                $channelId = $newChannel->id;
+            }
         }
 
-        // Auto-create Route if missing (scoped)
-        $routeName = $this->getValue($row, 'route');
-        if ($routeName) {
-             \App\Models\Route::firstOrCreate(
-                 ['name' => $routeName, 'distribution_id' => $distributionId],
-                 ['status' => 'active']
-             );
+        // Auto-create related entities only when distribution is provided
+        // (These tables require distribution_id to be NOT NULL)
+        if ($distributionId) {
+            // Auto-create Van if missing (scoped)
+            if ($vanName) {
+                Van::firstOrCreate(
+                    ['code' => $vanName, 'distribution_id' => $distributionId],
+                    ['status' => 'active']
+                );
+            }
+
+            // Auto-create Category if missing (scoped)
+            if ($catName) {
+                \App\Models\Category::firstOrCreate(
+                    ['name' => $catName, 'distribution_id' => $distributionId],
+                    ['status' => 'active']
+                );
+            }
+
+            // Auto-create SubAddress if missing (scoped)
+            if ($subAddress) {
+                 \App\Models\SubAddress::firstOrCreate(
+                     ['name' => $subAddress, 'distribution_id' => $distributionId],
+                     ['status' => 'active']
+                 );
+            }
+
+            // Auto-create SubDistribution if missing (scoped)
+            if ($subDistName) {
+                 \App\Models\SubDistribution::firstOrCreate(
+                     ['name' => $subDistName, 'distribution_id' => $distributionId],
+                     ['status' => 'active']
+                 );
+            }
+
+            // Auto-create Route if missing (scoped)
+            if ($routeName) {
+                 \App\Models\Route::firstOrCreate(
+                     ['name' => $routeName, 'distribution_id' => $distributionId],
+                     ['status' => 'active']
+                 );
+            }
         }
 
         // Determine customer status (default to active)
@@ -121,19 +184,12 @@ class CustomersImport implements ToModel, WithHeadingRow
             $salesTaxStatus = 'active';
         }
 
-        // Normalize ATL status (default to active)
-        $atlStatus = $this->getValue($row, 'atl_status') ?? $this->getValue($row, 'atl');
-        if ($atlStatus) {
-            $atlStatus = strtolower(trim($atlStatus)) === 'inactive' ? 'inactive' : 'active';
-        } else {
-            $atlStatus = 'active';
-        }
-
         return new Customer([
             'shop_name'         => $shopName,
             'customer_code'     => $this->getValue($row, 'customercode') ?? $this->getValue($row, 'code'),
             'van'               => $vanName,
             'channel'           => $channelName,
+            'channel_id'        => $channelId,
             'category'          => $catName,
             'address'           => $this->getValue($row, 'address'),
             'sub_address'       => $subAddress,
@@ -148,7 +204,7 @@ class CustomersImport implements ToModel, WithHeadingRow
             'day'               => $this->getValue($row, 'day'),
             'status'            => $status,
             'atl'               => $atlStatus,
-            'adv_tax_percent'   => floatval($this->getValue($row, 'adv_tax') ?? 0),
+            'adv_tax_percent'   => $advTaxPercent,
             'percentage'        => floatval($this->getValue($row, 'percentage') ?? $this->getValue($row, 'pecentage') ?? 0),
             'opening_balance'   => floatval($this->getValue($row, 'openingbalance') ?? $this->getValue($row, 'opening_balance') ?? 0),
         ]);

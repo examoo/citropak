@@ -24,6 +24,7 @@ class Customer extends Model
         'shop_name',
         'van',
         'channel',
+        'channel_id',
         'category',
         'distribution_id',
         'sub_distribution',
@@ -44,6 +45,14 @@ class Customer extends Model
         'opening_balance',
         'sales_tax_status',
     ];
+
+    /**
+     * Get the channel this customer belongs to.
+     */
+    public function channelRelation(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'channel_id');
+    }
 
     /**
      * Get the distribution this customer belongs to.
