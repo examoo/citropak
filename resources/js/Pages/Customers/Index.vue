@@ -165,7 +165,8 @@ watch(selectedChannelId, (newId) => {
         // Only update adv_tax_percent and atl if NOT initializing (i.e., user explicitly changed channel)
         if (!isInitializingChannel.value) {
             form.adv_tax_percent = parseFloat(channel.adv_tax_percent || 0).toFixed(2);
-            form.atl = channel.atl || 'active';
+            // Channel.atl is boolean (true/false), convert to 'active'/'inactive' for dropdown
+            form.atl = channel.atl ? 'active' : 'inactive';
         }
     }
 });
