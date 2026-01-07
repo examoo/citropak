@@ -74,8 +74,26 @@ class CustomersImport implements ToModel, WithHeadingRow
         // For customer's atl field (stored as 'active'/'inactive' string)
         $atlStatus = $atlBool ? 'active' : 'inactive';
 
-        // Get adv_tax from Excel (fallback)
-        $advTaxFromExcel = floatval($this->getValue($row, 'adv_tax') ?? 0);
+        // Get adv_tax from Excel
+        $advTaxRaw = $this->getValue($row, 'adv_tax') ?? '0';
+        $advTaxFromExcel = 0;
+        
+        if ($advTaxRaw !== null && $advTaxRaw !== '') {
+            // Check if value contains % symbol (formatted as percentage text)
+            if (strpos($advTaxRaw, '%') !== false) {
+                // Remove % symbol and whitespace, then convert to float
+                $advTaxFromExcel = floatval(str_replace(['%', ' '], '', $advTaxRaw));
+            } else {
+                // Excel stores 0.50% as 0.005 internally (decimal format)
+                // If value is less than 1, it's likely a decimal that needs to be multiplied by 100
+                $numericValue = floatval($advTaxRaw);
+                if ($numericValue > 0 && $numericValue < 1) {
+                    $advTaxFromExcel = $numericValue * 100;
+                } else {
+                    $advTaxFromExcel = $numericValue;
+                }
+            }
+        }
         
         // Find or create channel, get its ID
         $channelId = null;
