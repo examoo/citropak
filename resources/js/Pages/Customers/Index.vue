@@ -120,6 +120,7 @@ const form = useForm({
 });
 
 const selectedChannelId = ref('');
+const isInitializingChannel = ref(false); // Flag to prevent adv_tax update on edit load
 
 // Helpers to safely get attributes or empty array
 const getAttributes = (type) => props.attributes[type] || [];
@@ -160,8 +161,12 @@ watch(selectedChannelId, (newId) => {
     if (channel) {
         // Sync the form data
         form.channel = channel.value; // The name
-        form.adv_tax_percent = parseFloat(channel.adv_tax_percent || 0).toFixed(2);
-        form.atl = channel.atl || 'active';
+        
+        // Only update adv_tax_percent and atl if NOT initializing (i.e., user explicitly changed channel)
+        if (!isInitializingChannel.value) {
+            form.adv_tax_percent = parseFloat(channel.adv_tax_percent || 0).toFixed(2);
+            form.atl = channel.atl || 'active';
+        }
     }
 });
 
@@ -171,6 +176,7 @@ const openModal = (customer = null) => {
 
     // Reset selection ID first
     selectedChannelId.value = '';
+    isInitializingChannel.value = false;
 
     if (customer) {
         form.customer_code = customer.customer_code;
@@ -196,6 +202,9 @@ const openModal = (customer = null) => {
         // Smartly find the correct channel ID to select
         // Match by Name AND ATL status to distinguish duplicates
         if (customer.channel) {
+            // Set flag to prevent adv_tax auto-update during initialization
+            isInitializingChannel.value = true;
+            
             const match = channelOptions.value.find(ch =>
                 ch.value === customer.channel &&
                 ch.atl === (customer.atl || 'active')
@@ -208,6 +217,11 @@ const openModal = (customer = null) => {
                 const nameMatch = channelOptions.value.find(ch => ch.value === customer.channel);
                 if (nameMatch) selectedChannelId.value = nameMatch.id;
             }
+            
+            // Reset flag after initialization
+            nextTick(() => {
+                isInitializingChannel.value = false;
+            });
         }
 
     } else {
