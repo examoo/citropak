@@ -25,18 +25,22 @@ class CustomersTemplateExport implements FromCollection, WithHeadings
             'ShopName',
             'Address',
             'SubAddress',
+            'Route',
             'Telephone',
             'Categories',
             'Channel',
+            'SubDistribution',
             'NTNNumber',
+            'SalesTaxNumber',
             'CNIC',
-            'FilerType', // Replacing ambiguous second "Categories"
-            'ST Status',
+            'Percentage',
             'ATL Status',
-            'Distribution',
+            'ST Status',
+            'Status',
             'Adv_Tax',
             'Day',
-            'Percentage',
+            'Distribution',
+            'OpeningBalance',
         ];
     }
 }

@@ -96,6 +96,39 @@ class CustomersImport implements ToModel, WithHeadingRow
              );
         }
 
+        // Auto-create Route if missing (scoped)
+        $routeName = $this->getValue($row, 'route');
+        if ($routeName) {
+             \App\Models\Route::firstOrCreate(
+                 ['name' => $routeName, 'distribution_id' => $distributionId],
+                 ['status' => 'active']
+             );
+        }
+
+        // Determine customer status (default to active)
+        $status = $this->getValue($row, 'status');
+        if ($status) {
+            $status = strtolower(trim($status)) === 'inactive' ? 'inactive' : 'active';
+        } else {
+            $status = 'active';
+        }
+
+        // Normalize sales_tax_status (default to active)
+        $salesTaxStatus = $this->getValue($row, 'st_status') ?? $this->getValue($row, 'saletaxstatus') ?? $this->getValue($row, 'sales_tax_status');
+        if ($salesTaxStatus) {
+            $salesTaxStatus = strtolower(trim($salesTaxStatus)) === 'inactive' ? 'inactive' : 'active';
+        } else {
+            $salesTaxStatus = 'active';
+        }
+
+        // Normalize ATL status (default to active)
+        $atlStatus = $this->getValue($row, 'atl_status') ?? $this->getValue($row, 'atl');
+        if ($atlStatus) {
+            $atlStatus = strtolower(trim($atlStatus)) === 'inactive' ? 'inactive' : 'active';
+        } else {
+            $atlStatus = 'active';
+        }
+
         return new Customer([
             'shop_name'         => $shopName,
             'customer_code'     => $this->getValue($row, 'customercode') ?? $this->getValue($row, 'code'),
@@ -104,18 +137,20 @@ class CustomersImport implements ToModel, WithHeadingRow
             'category'          => $catName,
             'address'           => $this->getValue($row, 'address'),
             'sub_address'       => $subAddress,
+            'route'             => $routeName,
             'sub_distribution'  => $subDistName,
             'phone'             => $this->getValue($row, 'telephone') ?? $this->getValue($row, 'phone'),
             'ntn_number'        => $this->getValue($row, 'ntnnumber') ?? $this->getValue($row, 'ntn'),
+            'sales_tax_number'  => $this->getValue($row, 'salestaxnumber') ?? $this->getValue($row, 'sales_tax_number') ?? $this->getValue($row, 'sales_tax'),
             'cnic'              => $this->getValue($row, 'cnic'),
-            'sales_tax_number'  => $this->getValue($row, 'sales_tax_number') ?? $this->getValue($row, 'sales_tax'), 
-            'sales_tax_status'  => $this->getValue($row, 'st_status') ?? $this->getValue($row, 'saletaxstatus'), 
+            'sales_tax_status'  => $salesTaxStatus,
             'distribution_id'   => $distributionId,
             'day'               => $this->getValue($row, 'day'),
-            'status'            => 'active',
-            'atl'               => $this->getValue($row, 'atl_status') ?? $this->getValue($row, 'atl') ?? 'active',
+            'status'            => $status,
+            'atl'               => $atlStatus,
             'adv_tax_percent'   => floatval($this->getValue($row, 'adv_tax') ?? 0),
             'percentage'        => floatval($this->getValue($row, 'percentage') ?? $this->getValue($row, 'pecentage') ?? 0),
+            'opening_balance'   => floatval($this->getValue($row, 'openingbalance') ?? $this->getValue($row, 'opening_balance') ?? 0),
         ]);
     }
 
