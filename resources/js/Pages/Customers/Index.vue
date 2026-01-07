@@ -669,6 +669,7 @@ const submitImport = () => {
                                 <th class="px-6 py-4">NTN/STRN</th>
                                 <th class="px-6 py-4">CNIC</th>
                                 <th class="px-6 py-4">Percentage</th>
+                                <th class="px-6 py-4">Adv Tax</th>
                                 <th @click="handleSort('phone')"
                                     class="px-6 py-4 cursor-pointer hover:text-emerald-600 transition-colors">
                                     Telephone {{ getSortIcon('phone') }}
@@ -736,6 +737,9 @@ const submitImport = () => {
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.percentage || '0.00' }}%
+                                </td>
+                                <td class="px-6 py-4 text-gray-500">
+                                    {{ customer.adv_tax_percent || '0.00' }}%
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     {{ customer.phone || 'N/A' }}
