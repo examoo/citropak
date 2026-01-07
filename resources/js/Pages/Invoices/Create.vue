@@ -598,69 +598,106 @@ const addItem = () => {
         trade_discount_amount: tradeDiscountAmount
     });
 
-    // If there's a free product, add it as a separate item with 0 price
-    // If there's a free product, add it as a separate item with 0 price
+    // If there's a free product, add it or update existing free item quantity
     if (newItem.value.free_product && newItem.value.free_pieces > 0) {
-        // Determine tax/price for free product
-        // If it's the same product, reuse current item's rates
-        const isSameProduct = newItem.value.free_product.id === newItem.value.product_id;
+        const freeProductId = newItem.value.free_product.id;
         
-        const freeExclusivePrice = parseFloat(newItem.value.free_product.list_price_before_tax) || 0;
-        const freeFedPercent = isSameProduct ? newItem.value.fed_percent : (parseFloat(newItem.value.free_product.fed_percent) || 0);
-        const freeSalesTaxPercent = isSameProduct ? newItem.value.sales_tax_percent : (parseFloat(newItem.value.free_product.fed_sales_tax) || 0);
-        const freeExtraTaxPercent = isSameProduct ? newItem.value.extra_tax_percent : (parseFloat(newItem.value.free_product.product_type?.extra_tax) || 0);
-        const freeAdvTaxPercent = isSameProduct ? newItem.value.adv_tax_percent : (parseFloat(selectedCustomer.value?.adv_tax_percent) || 0);
-
-        // Calculate amounts for free item
-        const freeTotalPieces = newItem.value.free_pieces;
-        const freeExclusiveAmount = freeExclusivePrice * freeTotalPieces;
-        const freeFedAmount = freeExclusiveAmount * (freeFedPercent / 100);
-        const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (freeSalesTaxPercent / 100);
-        const freeExtraTaxAmount = freeExclusiveAmount * (freeExtraTaxPercent / 100);
+        // Check if this free product already exists in the invoice
+        const existingFreeItemIndex = form.items.findIndex(item => 
+            item.product_id === freeProductId && item.is_free === true
+        );
         
-        // Net Unit Price for Free Item (Excl + FED + ST)
-        const freeNetUnitPrice = freeExclusivePrice * (1 + freeFedPercent/100) * (1 + freeSalesTaxPercent/100);
+        if (existingFreeItemIndex >= 0) {
+            // Update existing free item quantity
+            const existingItem = form.items[existingFreeItemIndex];
+            const additionalPieces = newItem.value.free_pieces;
+            
+            // Update quantities
+            existingItem.pieces += additionalPieces;
+            existingItem.total_pieces += additionalPieces;
+            
+            // Recalculate amounts based on new quantity
+            const freeExclusiveAmount = existingItem.exclusive_price * existingItem.total_pieces;
+            const freeFedAmount = freeExclusiveAmount * (existingItem.fed_percent / 100);
+            const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (existingItem.sales_tax_percent / 100);
+            const freeExtraTaxAmount = freeExclusiveAmount * ((existingItem.extra_tax_percent || 0) / 100);
+            const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
+            
+            existingItem.fed_amount = freeFedAmount;
+            existingItem.sales_tax_amount = freeSalesTaxAmount;
+            existingItem.extra_tax_amount = freeExtraTaxAmount;
+            existingItem.gross_amount = freeGrossAmount;
+            existingItem.trade_discount_amount = freeGrossAmount; // 100% trade discount to make it free
+        } else {
+            // Add as new free item
+            // Determine tax/price for free product
+            // If it's the same product, reuse current item's rates
+            const isSameProduct = newItem.value.free_product.id === newItem.value.product_id;
+            
+            const freeExclusivePrice = parseFloat(newItem.value.free_product.list_price_before_tax) || 0;
+            const freeFedPercent = isSameProduct ? newItem.value.fed_percent : (parseFloat(newItem.value.free_product.fed_percent) || 0);
+            const freeSalesTaxPercent = isSameProduct ? newItem.value.sales_tax_percent : (parseFloat(newItem.value.free_product.fed_sales_tax) || 0);
+            const freeExtraTaxPercent = isSameProduct ? newItem.value.extra_tax_percent : (parseFloat(newItem.value.free_product.product_type?.extra_tax) || 0);
+            const freeAdvTaxPercent = isSameProduct ? newItem.value.adv_tax_percent : (parseFloat(selectedCustomer.value?.adv_tax_percent) || 0);
 
-        // Gross = Excl + FED + ST + Extra
-        const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
-        
-        // Trade Discount = Gross Amount (to make it free - user requested strict "trade discount show gross value")
-        const freeTradeDiscountAmount = freeGrossAmount;
+            // Calculate amounts for free item
+            const freeTotalPieces = newItem.value.free_pieces;
+            const freeExclusiveAmount = freeExclusivePrice * freeTotalPieces;
+            const freeFedAmount = freeExclusiveAmount * (freeFedPercent / 100);
+            const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (freeSalesTaxPercent / 100);
+            const freeExtraTaxAmount = freeExclusiveAmount * (freeExtraTaxPercent / 100);
+            
+            // Net Unit Price for Free Item (Excl + FED + ST)
+            const freeNetUnitPrice = freeExclusivePrice * (1 + freeFedPercent/100) * (1 + freeSalesTaxPercent/100);
 
-        form.items.push({
-            product_id: newItem.value.free_product.id,
-            product_name: newItem.value.free_product.name + ' (FREE)',
-            product_code: newItem.value.free_product.dms_code,
-            brand_name: '',
-            cartons: 0,
-            pieces: newItem.value.free_pieces,
-            total_pieces: newItem.value.free_pieces,
-            exclusive_price: freeExclusivePrice,
-            fed_percent: freeFedPercent,
-            fed_amount: freeFedAmount,
-            sales_tax_percent: freeSalesTaxPercent,
-            sales_tax_amount: freeSalesTaxAmount,
-            extra_tax_percent: freeExtraTaxPercent,
-            extra_tax_amount: freeExtraTaxAmount,
-            adv_tax_percent: freeAdvTaxPercent,
-            adv_tax_amount: 0, // Adv Tax is 0 because taxable amount after discount is 0
-            gross_amount: freeGrossAmount,
-            net_unit_price: freeNetUnitPrice,
-            price: freeNetUnitPrice,
-            scheme_id: null,
-            scheme_name: 'FREE',
-            scheme_discount: 0,
-            discount_scheme_id: newItem.value.discount_scheme_id,
-            free_product: null,
-            free_pieces: 0,
-            manual_discount_percent: 0,
-            manual_discount_amount: 0,
-            total_discount: 0,
-            trade_discount_amount: freeTradeDiscountAmount,
-            line_total: 0,
-            is_free: true // Mark as free item
-        });
+            // Gross = Excl + FED + ST + Extra
+            const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
+            
+            // Trade Discount = Gross Amount (to make it free - user requested strict "trade discount show gross value")
+            const freeTradeDiscountAmount = freeGrossAmount;
+
+            form.items.push({
+                product_id: newItem.value.free_product.id,
+                product_name: newItem.value.free_product.name + ' (FREE)',
+                product_code: newItem.value.free_product.dms_code,
+                brand_name: '',
+                cartons: 0,
+                pieces: newItem.value.free_pieces,
+                total_pieces: newItem.value.free_pieces,
+                exclusive_price: freeExclusivePrice,
+                fed_percent: freeFedPercent,
+                fed_amount: freeFedAmount,
+                sales_tax_percent: freeSalesTaxPercent,
+                sales_tax_amount: freeSalesTaxAmount,
+                extra_tax_percent: freeExtraTaxPercent,
+                extra_tax_amount: freeExtraTaxAmount,
+                adv_tax_percent: freeAdvTaxPercent,
+                adv_tax_amount: 0, // Adv Tax is 0 because taxable amount after discount is 0
+                gross_amount: freeGrossAmount,
+                net_unit_price: freeNetUnitPrice,
+                price: freeNetUnitPrice,
+                scheme_id: null,
+                scheme_name: 'FREE',
+                scheme_discount: 0,
+                discount_scheme_id: newItem.value.discount_scheme_id,
+                free_product: null,
+                free_pieces: 0,
+                manual_discount_percent: 0,
+                manual_discount_amount: 0,
+                total_discount: 0,
+                trade_discount_amount: freeTradeDiscountAmount,
+                line_total: 0,
+                is_free: true // Mark as free item
+            });
+        }
     }
+
+    // Sort items: Free products at the bottom
+    form.items.sort((a, b) => {
+        const freeA = !!a.is_free;
+        const freeB = !!b.is_free;
+        return (freeA === freeB) ? 0 : (freeA ? 1 : -1);
+    });
 
     // Reset
     resetNewItem();

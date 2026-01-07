@@ -620,13 +620,30 @@ class InvoiceController extends Controller
         }
 
         // Get applicable discount schemes for this product or its brand
-        // We now include schemes where from_qty <= quantity (no upper bound check here)
+        // Check both pivot tables (new multi-product) and legacy columns (backward compatibility)
         $schemes = DiscountScheme::active()
             ->where(function($q) use ($product) {
+                // Check pivot table for products (new many-to-many relationship)
                 $q->where(function($inner) use ($product) {
                     $inner->where('scheme_type', 'product')
+                          ->whereHas('products', function($pq) use ($product) {
+                              $pq->where('products.id', $product->id);
+                          });
+                })
+                // Also check legacy product_id column (backward compatibility)
+                ->orWhere(function($inner) use ($product) {
+                    $inner->where('scheme_type', 'product')
                           ->where('product_id', $product->id);
-                })->orWhere(function($inner) use ($product) {
+                })
+                // Check pivot table for brands (new many-to-many relationship)
+                ->orWhere(function($inner) use ($product) {
+                    $inner->where('scheme_type', 'brand')
+                          ->whereHas('brands', function($bq) use ($product) {
+                              $bq->where('brands.id', $product->brand_id);
+                          });
+                })
+                // Also check legacy brand_id column (backward compatibility)
+                ->orWhere(function($inner) use ($product) {
                     $inner->where('scheme_type', 'brand')
                           ->where('brand_id', $product->brand_id);
                 });

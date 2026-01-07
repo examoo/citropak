@@ -83,11 +83,13 @@ class DiscountScheme extends Model
 
     /**
      * Scope to active schemes only.
+     * Uses date-only comparison to ensure schemes are active for the entire day.
      */
     public function scopeActive($query)
     {
+        $today = now()->toDateString();
         return $query->where('status', 'active')
-            ->where('start_date', '<=', now())
-            ->where('end_date', '>=', now());
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today);
     }
 }
