@@ -614,14 +614,14 @@ class InvoiceController extends Controller
     {
         $product = Product::find($productId);
         $quantity = (int) $request->query('quantity', 0);
+        $subDistributionName = $request->query('sub_distribution', '');
         
         if (!$product) {
             return response()->json([]);
         }
 
-        // Get applicable discount schemes for this product or its brand
-        // Check both pivot tables (new multi-product) and legacy columns (backward compatibility)
-        $schemes = DiscountScheme::active()
+        // Build query for applicable discount schemes
+        $query = DiscountScheme::active()
             ->where(function($q) use ($product) {
                 // Check pivot table for products (new many-to-many relationship)
                 $q->where(function($inner) use ($product) {
@@ -648,8 +648,24 @@ class InvoiceController extends Controller
                           ->where('brand_id', $product->brand_id);
                 });
             })
-            ->where('from_qty', '<=', $quantity > 0 ? $quantity : 1)
-            ->get()
+            ->where('from_qty', '<=', $quantity > 0 ? $quantity : 1);
+        
+        // Filter by sub-distribution
+        if (!empty($subDistributionName)) {
+            // Customer has a sub-distribution: fetch schemes that match it
+            $subDist = SubDistribution::where('name', $subDistributionName)->first();
+            if ($subDist) {
+                $query->where('sub_distribution_id', $subDist->id);
+            } else {
+                // Sub-distribution name not found, return empty
+                return response()->json([]);
+            }
+        } else {
+            // Customer has NO sub-distribution: fetch schemes without sub_distribution_id
+            $query->whereNull('sub_distribution_id');
+        }
+        
+        $schemes = $query->get()
             ->map(function($scheme) use ($product, $quantity) {
                 // Calculate multiplier for tiered discount
                 $fromQty = (int) $scheme->from_qty;
