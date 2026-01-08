@@ -126,13 +126,14 @@ const openModal = (item = null) => {
     if (item) {
         form.name = item.name;
         form.distribution_id = item.distribution_id;
-        form.sub_distribution_id = item.sub_distribution_id || '';
+
         form.start_date = item.start_date?.split('T')[0] || item.start_date;
         form.end_date = item.end_date?.split('T')[0] || item.end_date;
         
         // Set product_ids and brand_ids BEFORE setting scheme_type to prevent watcher from clearing them
         const productIds = item.products ? item.products.map(p => p.id) : [];
         const brandIds = item.brands ? item.brands.map(b => b.id) : [];
+        const subDistId = item.sub_distribution_id || '';
         
         form.scheme_type = item.scheme_type;
         
@@ -140,6 +141,7 @@ const openModal = (item = null) => {
         setTimeout(() => {
             form.product_ids = productIds;
             form.brand_ids = brandIds;
+            form.sub_distribution_id = subDistId;
         }, 0);
         
         form.from_qty = item.from_qty;
