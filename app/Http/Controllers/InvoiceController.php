@@ -614,6 +614,8 @@ class InvoiceController extends Controller
     {
         $product = Product::find($productId);
         $quantity = (int) $request->query('quantity', 0);
+        // Brand quantity for brand-type schemes (accumulated across all brand products)
+        $brandQuantity = (int) $request->query('brand_quantity', $quantity);
         
         if (!$product) {
             return response()->json([]);
@@ -650,7 +652,11 @@ class InvoiceController extends Controller
             })
             ->where('from_qty', '<=', $quantity > 0 ? $quantity : 1)
             ->get()
-            ->map(function($scheme) use ($product, $quantity) {
+            ->map(function($scheme) use ($product, $quantity, $brandQuantity) {
+                // For brand-type schemes, use brandQuantity for multiplier calculation
+                // For product-type schemes, use the individual product quantity
+                $effectiveQty = $scheme->scheme_type === 'brand' ? $brandQuantity : $quantity;
+                
                 // Calculate multiplier for tiered discount
                 $fromQty = (int) $scheme->from_qty;
                 $toQty = $scheme->to_qty ? (int) $scheme->to_qty : null;
@@ -661,7 +667,7 @@ class InvoiceController extends Controller
                     $rangeSize = $toQty - $fromQty + 1;
                     // Calculate how many times the range fits
                     // E.g., qty=15, from=1, to=10, range=10: (15-1)/10 = 1.4 -> floor = 1, +1 = 2
-                    $multiplier = (int) floor(($quantity - $fromQty) / $rangeSize) + 1;
+                    $multiplier = (int) floor(($effectiveQty - $fromQty) / $rangeSize) + 1;
                     if ($multiplier < 1) $multiplier = 1;
                 }
 

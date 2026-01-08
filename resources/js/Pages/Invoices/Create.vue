@@ -75,6 +75,19 @@ const newItem = ref({
 const productSchemes = ref([]);
 const discountSchemes = ref([]);
 
+// Calculate total pieces per brand from all invoice items (non-free items only)
+const brandQuantities = computed(() => {
+    const quantities = {};
+    form.items.forEach(item => {
+        if (item.is_free) return;
+        const brandId = item.brand_id;
+        if (brandId) {
+            quantities[brandId] = (quantities[brandId] || 0) + item.total_pieces;
+        }
+    });
+    return quantities;
+});
+
 // Day options
 const dayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -420,10 +433,20 @@ const loadProductSchemes = async (productId) => {
 };
 
 // Load discount schemes for product based on quantity
-const loadDiscountSchemes = async (productId, quantity) => {
+// For brand-type schemes, pass the accumulated brand quantity
+const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
     try {
+        // Calculate total brand quantity including current item being added
+        let brandQuantity = quantity;
+        if (brandId) {
+            brandQuantity = (brandQuantities.value[brandId] || 0) + quantity;
+        }
+        
         const response = await axios.get(route('api.discount-schemes', productId), {
-            params: { quantity }
+            params: { 
+                quantity,
+                brand_quantity: brandQuantity
+            }
         });
         discountSchemes.value = response.data;
         // Auto-apply if only one scheme matches
@@ -463,7 +486,8 @@ watch([() => newItem.value.cartons, () => newItem.value.pieces], () => {
     
     // Load discount schemes based on quantity
     if (newItem.value.product_id && newItem.value.total_pieces > 0) {
-        loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces);
+        const brandId = selectedProduct.value?.brand_id || null;
+        loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces, brandId);
     }
 });
 
@@ -567,6 +591,7 @@ const addItem = () => {
         product_id: newItem.value.product_id,
         product_name: product?.name,
         product_code: product?.dms_code || product?.sku,
+        brand_id: product?.brand_id || null,
         brand_name: product?.brand?.name,
         stock_id: newItem.value.stock_id || null,
         batch_number: newItem.value.batch_number || null,
@@ -602,19 +627,49 @@ const addItem = () => {
     if (newItem.value.free_product && newItem.value.free_pieces > 0) {
         const freeProductId = newItem.value.free_product.id;
         
+        // Check which scheme type was applied
+        const appliedScheme = discountSchemes.value.find(s => s.id === newItem.value.discount_scheme_id);
+        const isBrandScheme = appliedScheme?.scheme_type === 'brand';
+        const schemeBrandId = isBrandScheme ? (product?.brand_id || null) : null;
+        
         // Check if this free product already exists in the invoice
-        const existingFreeItemIndex = form.items.findIndex(item => 
-            item.product_id === freeProductId && item.is_free === true
-        );
+        // For brand schemes: Check if there's already a free item for this brand's scheme
+        // For product schemes: Check if this exact free product already exists
+        const existingFreeItemIndex = form.items.findIndex(item => {
+            if (!item.is_free) return false;
+            // For brand schemes, look for free items linked to this brand
+            if (isBrandScheme && item.brand_scheme_brand_id === schemeBrandId) {
+                return true;
+            }
+            // Also match by product ID to prevent duplicate free products
+            if (item.product_id === freeProductId) {
+                return true;
+            }
+            return false;
+        });
         
         if (existingFreeItemIndex >= 0) {
-            // Update existing free item quantity
+            // Update existing free item
             const existingItem = form.items[existingFreeItemIndex];
-            const additionalPieces = newItem.value.free_pieces;
             
-            // Update quantities
-            existingItem.pieces += additionalPieces;
-            existingItem.total_pieces += additionalPieces;
+            console.log('Updating existing free item:', {
+                isBrandScheme,
+                newFreePieces: newItem.value.free_pieces,
+                existingPieces: existingItem.pieces,
+                appliedScheme: appliedScheme,
+                schemeBrandId
+            });
+            
+            if (isBrandScheme) {
+                // For brand schemes: SET the quantity to the calculated total (not increment)
+                // because free_pieces from API already accounts for accumulated brand quantity
+                existingItem.pieces = newItem.value.free_pieces;
+                existingItem.total_pieces = newItem.value.free_pieces;
+            } else {
+                // For product schemes: INCREMENT the quantity
+                existingItem.pieces += newItem.value.free_pieces;
+                existingItem.total_pieces += newItem.value.free_pieces;
+            }
             
             // Recalculate amounts based on new quantity
             const freeExclusiveAmount = existingItem.exclusive_price * existingItem.total_pieces;
@@ -628,6 +683,11 @@ const addItem = () => {
             existingItem.extra_tax_amount = freeExtraTaxAmount;
             existingItem.gross_amount = freeGrossAmount;
             existingItem.trade_discount_amount = freeGrossAmount; // 100% trade discount to make it free
+            
+            // Update brand_scheme_brand_id if this was a brand scheme
+            if (isBrandScheme) {
+                existingItem.brand_scheme_brand_id = schemeBrandId;
+            }
         } else {
             // Add as new free item
             // Determine tax/price for free product
@@ -687,7 +747,8 @@ const addItem = () => {
                 total_discount: 0,
                 trade_discount_amount: freeTradeDiscountAmount,
                 line_total: 0,
-                is_free: true // Mark as free item
+                is_free: true, // Mark as free item
+                brand_scheme_brand_id: schemeBrandId // Track which brand's scheme this belongs to
             });
         }
     }
@@ -736,7 +797,80 @@ const resetNewItem = () => {
 };
 
 const removeItem = (index) => {
+    const removedItem = form.items[index];
     form.items.splice(index, 1);
+    
+    // Recalculate brand schemes after removing an item
+    if (removedItem && !removedItem.is_free && removedItem.brand_id) {
+        recalculateBrandSchemes(removedItem.brand_id);
+    }
+};
+
+// Recalculate brand-type schemes when items change
+const recalculateBrandSchemes = async (brandId) => {
+    // Get total quantity for this brand after the change
+    const totalBrandQty = brandQuantities.value[brandId] || 0;
+    
+    // Find any existing free items for brand-type schemes of this brand
+    const brandFreeItemIndex = form.items.findIndex(item => 
+        item.is_free && item.brand_scheme_brand_id === brandId
+    );
+    
+    if (totalBrandQty <= 0) {
+        // Remove free items for this brand if no products remain
+        if (brandFreeItemIndex >= 0) {
+            form.items.splice(brandFreeItemIndex, 1);
+        }
+        return;
+    }
+    
+    // Find a product of this brand to get scheme information
+    const brandProduct = form.items.find(item => !item.is_free && item.brand_id === brandId);
+    if (!brandProduct) return;
+    
+    try {
+        // Fetch updated schemes based on new total brand quantity
+        const response = await axios.get(route('api.discount-schemes', brandProduct.product_id), {
+            params: { 
+                quantity: totalBrandQty,
+                brand_quantity: totalBrandQty
+            }
+        });
+        
+        const schemes = response.data;
+        // Find brand-type scheme
+        const brandScheme = schemes.find(s => s.scheme_type === 'brand' && s.discount_type === 'free_product');
+        
+        if (brandScheme && brandScheme.free_product) {
+            const freeProduct = brandScheme.free_product;
+            const freePieces = brandScheme.free_pieces > 0 ? brandScheme.free_pieces : 1;
+            
+            if (brandFreeItemIndex >= 0) {
+                // Update existing free item
+                const existingItem = form.items[brandFreeItemIndex];
+                existingItem.pieces = freePieces;
+                existingItem.total_pieces = freePieces;
+                
+                // Recalculate amounts
+                const freeExclusiveAmount = existingItem.exclusive_price * freePieces;
+                const freeFedAmount = freeExclusiveAmount * (existingItem.fed_percent / 100);
+                const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (existingItem.sales_tax_percent / 100);
+                const freeExtraTaxAmount = freeExclusiveAmount * ((existingItem.extra_tax_percent || 0) / 100);
+                const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
+                
+                existingItem.fed_amount = freeFedAmount;
+                existingItem.sales_tax_amount = freeSalesTaxAmount;
+                existingItem.extra_tax_amount = freeExtraTaxAmount;
+                existingItem.gross_amount = freeGrossAmount;
+                existingItem.trade_discount_amount = freeGrossAmount;
+            }
+        } else if (brandFreeItemIndex >= 0) {
+            // No scheme applies anymore, remove free item
+            form.items.splice(brandFreeItemIndex, 1);
+        }
+    } catch (e) {
+        console.error('Error recalculating brand schemes:', e);
+    }
 };
 
 // Calculate item discount (scheme + manual)
