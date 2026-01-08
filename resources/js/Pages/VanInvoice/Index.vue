@@ -453,10 +453,19 @@ const grandTotals = computed(() => {
     
     .invoice-page {
         page-break-after: always;
+        min-height: 270mm; /* Reduced to safely fit A4 with margins */
+        height: auto;
+        overflow: hidden; /* Prevent spillover */
     }
     .invoice-page:last-child {
         page-break-after: auto;
+        page-break-inside: avoid;
     }
+}
+
+.invoice-page {
+    /* Enforce A4 height on screen too if requested, or just for structure */
+    min-height: 297mm; 
 }
 
 .font-urdu {

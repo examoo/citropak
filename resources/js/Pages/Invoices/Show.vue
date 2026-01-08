@@ -374,11 +374,9 @@ const resyncFbr = () => {
     /* Removed color adjust to avoid forced backgrounds */
     table, th, td { border-color: #000 !important; }
     
-    .invoice-page {
-        page-break-after: always;
-    }
-    .invoice-page:last-child {
-        page-break-after: auto;
+    body, html {
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
