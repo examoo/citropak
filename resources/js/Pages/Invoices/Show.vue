@@ -58,6 +58,19 @@ const getItemNet = (item) => parseFloat(item.line_total) || 0;
 const regularItems = computed(() => props.invoice.items?.filter(item => !item.is_free) || []);
 const freeItems = computed(() => props.invoice.items?.filter(item => item.is_free) || []);
 
+// Group Regular Items by Brand
+const groupedItems = computed(() => {
+    const groups = {};
+    regularItems.value.forEach(item => {
+        const brand = item.product?.brand?.name || 'Unbranded';
+        if (!groups[brand]) groups[brand] = [];
+        groups[brand].push(item);
+    });
+    // Sort items within groups by product name/code if needed
+    // Object.values(groups).forEach(group => group.sort((a,b) => a.product?.name?.localeCompare(b.product?.name)));
+    return groups;
+});
+
 // Helper for summing
 const sumItems = (items, valueFn) => items.reduce((sum, item) => sum + valueFn(item), 0);
 
@@ -231,25 +244,35 @@ const resyncFbr = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Regular Items -->
-                        <tr v-for="(item, index) in regularItems" :key="'reg-'+item.id">
-                            <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
-                            <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
-                            <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
-                            <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
-                            <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
-                        </tr>
+                        <!-- Grouped Items -->
+                        <template v-for="(group, groupName) in groupedItems" :key="groupName">
+                            <!-- Group Header -->
+                            <tr class="bg-gray-50 print:bg-white text-left break-inside-avoid">
+                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase">
+                                    {{ groupName }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Group Items -->
+                            <tr v-for="(item, index) in group" :key="groupName + '-' + item.id">
+                                <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
+                                <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
+                                <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
+                            </tr>
+                        </template>
 
                         <!-- Regular Total Row -->
-                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black">
+                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black break-inside-avoid">
                              <td class="border border-black px-1 py-1 text-center" colspan="3">TOTAL</td>
                              <td class="border border-black px-1 py-1 text-center">{{ regularTotalQty }}</td>
                              <td class="border border-black px-1 py-1"></td>
@@ -263,11 +286,11 @@ const resyncFbr = () => {
                              <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalNet) }}</td>
                         </tr>
 
-                        <!-- Free Scheme Section -->
+                        <!-- Free Scheme Section (Separate Group) -->
                         <template v-if="freeItems.length > 0">
-                            <tr>
-                                <td colspan="13" class="border border-black px-1 py-1 text-center font-bold bg-white">
-                                    Free Piece Scheme:_
+                            <tr class="break-inside-avoid">
+                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase bg-gray-50 print:bg-white">
+                                    Free Items
                                 </td>
                             </tr>
                             <tr v-for="(item, index) in freeItems" :key="'free-'+item.id">
@@ -350,6 +373,13 @@ const resyncFbr = () => {
     :deep(main) { margin: 0 !important; padding: 0 !important; width: 100% !important; }
     /* Removed color adjust to avoid forced backgrounds */
     table, th, td { border-color: #000 !important; }
+    
+    .invoice-page {
+        page-break-after: always;
+    }
+    .invoice-page:last-child {
+        page-break-after: auto;
+    }
 }
 
 .font-urdu {

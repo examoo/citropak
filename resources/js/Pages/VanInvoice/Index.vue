@@ -71,16 +71,31 @@ const getItemGross = (item) => {
 };
 const getItemNet = (item) => parseFloat(item.line_total) || 0;
 
+// Helper to group items by brand
+const groupItems = (items) => {
+    const groups = {};
+    items.forEach(item => {
+        const brand = item.product?.brand?.name || 'Unbranded';
+        if (!groups[brand]) groups[brand] = [];
+        groups[brand].push(item);
+    });
+    return groups;
+};
+
 // Get totals for an invoice
 const getInvoiceTotals = (invoice) => {
     const items = invoice.items || [];
     const regularItems = items.filter(item => !item.is_free);
     const freeItems = items.filter(item => item.is_free);
     
+    // Group regular items
+    const groupedItems = groupItems(regularItems);
+    
     const sumItems = (items, valueFn) => items.reduce((sum, item) => sum + valueFn(item), 0);
     
     return {
         regularItems,
+        groupedItems,
         freeItems,
         regularTotalQty: sumItems(regularItems, i => i.total_pieces || 0),
         regularTotalExclusive: sumItems(regularItems, getItemExclusive),
@@ -103,6 +118,7 @@ const getInvoiceTotals = (invoice) => {
         totalNet: sumItems(items, getItemNet),
     };
 };
+// ... existing code ...
 
 // Generate QR Data string
 const getQrData = (invoice) => {
@@ -303,25 +319,35 @@ const grandTotals = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Regular Items -->
-                        <tr v-for="(item, index) in getInvoiceTotals(invoice).regularItems" :key="'reg-'+item.id">
-                            <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
-                            <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
-                            <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
-                            <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
-                            <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
-                        </tr>
+                        <!-- Grouped Items -->
+                        <template v-for="(group, groupName) in getInvoiceTotals(invoice).groupedItems" :key="groupName">
+                            <!-- Group Header -->
+                            <tr class="bg-gray-50 print:bg-white text-left break-inside-avoid">
+                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase">
+                                    {{ groupName }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Group Items -->
+                            <tr v-for="(item, index) in group" :key="groupName + '-' + item.id">
+                                <td class="border border-black px-1 py-1 text-center">{{ index + 1 }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code || item.product?.sku }}</td>
+                                <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
+                                <td class="border border-black px-1 py-1 text-center">{{ item.total_pieces }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.list_price_before_tax || item.price) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExclusive(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSalesTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
+                                <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
+                            </tr>
+                        </template>
 
                         <!-- Regular Total Row -->
-                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black">
+                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black break-inside-avoid">
                              <td class="border border-black px-1 py-1 text-center" colspan="3">TOTAL</td>
                              <td class="border border-black px-1 py-1 text-center">{{ getInvoiceTotals(invoice).regularTotalQty }}</td>
                              <td class="border border-black px-1 py-1"></td>
@@ -337,9 +363,9 @@ const grandTotals = computed(() => {
 
                         <!-- Free Scheme Section -->
                         <template v-if="getInvoiceTotals(invoice).freeItems.length > 0">
-                            <tr>
-                                <td colspan="13" class="border border-black px-1 py-1 text-center font-bold bg-white">
-                                    Free Piece Scheme:_
+                            <tr class="break-inside-avoid">
+                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase bg-gray-50 print:bg-white">
+                                    Free Items
                                 </td>
                             </tr>
                             <tr v-for="(item, index) in getInvoiceTotals(invoice).freeItems" :key="'free-'+item.id">
@@ -377,38 +403,40 @@ const grandTotals = computed(() => {
                 </table>
 
                 <!-- Footer Section -->
-                <div class="grid grid-cols-2 gap-6 text-xs">
-                    <!-- Left: Checked By -->
-                    <div>
-                        <div class="font-semibold underline">Checked By O.B.: {{ invoice.order_booker?.name }}</div>
+                <div>
+                    <div class="grid grid-cols-2 gap-6 text-xs">
+                        <!-- Left: Checked By -->
+                        <div>
+                            <div class="font-semibold underline">Checked By O.B.: {{ invoice.order_booker?.name }}</div>
+                        </div>
+
+                        <!-- Right: Summary Box -->
+                        <div class="border border-black">
+                            <table class="w-full text-xs">
+                                <tr class="border-b border-black">
+                                    <td class="px-2 py-1">Net Invoice Value Inclusive Sales Tax:</td>
+                                    <td class="px-2 py-1 text-right font-medium">{{ formatAmount(getInvoiceTotals(invoice).totalNet) }}</td>
+                                </tr>
+                                <tr class="border-b border-black">
+                                    <td class="px-2 py-1">Total Discount:</td>
+                                    <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalRetailMargin + getInvoiceTotals(invoice).totalSchemeDiscount) }}</td>
+                                </tr>
+                                <tr class="border-b border-black">
+                                    <td class="px-2 py-1">Advance Tax:</td>
+                                    <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalAdvTax) }}</td>
+                                </tr>
+                                <tr class="font-bold">
+                                    <td class="px-2 py-1">Total Invoice Value:</td>
+                                    <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalNet + getInvoiceTotals(invoice).totalAdvTax) }}</td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
 
-                    <!-- Right: Summary Box -->
-                    <div class="border border-black">
-                        <table class="w-full text-xs">
-                            <tr class="border-b border-black">
-                                <td class="px-2 py-1">Net Invoice Value Inclusive Sales Tax:</td>
-                                <td class="px-2 py-1 text-right font-medium">{{ formatAmount(getInvoiceTotals(invoice).totalNet) }}</td>
-                            </tr>
-                            <tr class="border-b border-black">
-                                <td class="px-2 py-1">Total Discount:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalRetailMargin + getInvoiceTotals(invoice).totalSchemeDiscount) }}</td>
-                            </tr>
-                            <tr class="border-b border-black">
-                                <td class="px-2 py-1">Advance Tax:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalAdvTax) }}</td>
-                            </tr>
-                            <tr class="font-bold">
-                                <td class="px-2 py-1">Total Invoice Value:</td>
-                                <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalNet + getInvoiceTotals(invoice).totalAdvTax) }}</td>
-                            </tr>
-                        </table>
+                    <!-- Urdu Note -->
+                    <div class="mt-4 text-[9px] text-gray-600 font-urdu text-right" dir="rtl">
+                        نوٹ: اپنا مال موقع پر چیک کر کے پورا کر لیں ۔ رقم کی ادائیگی نقد یا ادھار بل وصول کر کے کریں ۔ کمپنی نمائندے سے بل کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
                     </div>
-                </div>
-
-                <!-- Urdu Note -->
-                <div class="mt-4 text-[9px] text-gray-600 font-urdu text-right" dir="rtl">
-                    نوٹ: اپنا مال موقع پر چیک کر کے پورا کر لیں ۔ رقم کی ادائیگی نقد یا ادھار بل وصول کر کے کریں ۔ کمپنی نمائندے سے بل کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
                 </div>
             </div>
         </div>
