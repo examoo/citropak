@@ -27,6 +27,7 @@ class Customer extends Model
         'channel_id',
         'category',
         'distribution_id',
+        'sub_distribution_id',
         'sub_distribution',
         'day',
         'address',
@@ -60,6 +61,14 @@ class Customer extends Model
     public function distribution(): BelongsTo
     {
         return $this->belongsTo(Distribution::class);
+    }
+
+    /**
+     * Get the sub distribution this customer belongs to.
+     */
+    public function subDistribution(): BelongsTo
+    {
+        return $this->belongsTo(SubDistribution::class);
     }
 
     /**

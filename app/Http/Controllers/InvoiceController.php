@@ -616,6 +616,8 @@ class InvoiceController extends Controller
         $quantity = (int) $request->query('quantity', 0);
         // Brand quantity for brand-type schemes (accumulated across all brand products)
         $brandQuantity = (int) $request->query('brand_quantity', $quantity);
+        // Sub distribution filter from customer
+        $subDistributionId = $request->query('sub_distribution_id');
         
         if (!$product) {
             return response()->json([]);
@@ -624,6 +626,17 @@ class InvoiceController extends Controller
         // Get applicable discount schemes for this product or its brand
         // Check both pivot tables (new multi-product) and legacy columns (backward compatibility)
         $schemes = DiscountScheme::active()
+            // Filter by sub_distribution_id
+            ->where(function($q) use ($subDistributionId) {
+                if ($subDistributionId) {
+                    // If customer has sub_distribution_id, show schemes for that sub_distribution OR for all (null)
+                    $q->where('sub_distribution_id', $subDistributionId)
+                      ->orWhereNull('sub_distribution_id');
+                } else {
+                    // If customer has no sub_distribution_id, show only schemes for all (null)
+                    $q->whereNull('sub_distribution_id');
+                }
+            })
             ->where(function($q) use ($product) {
                 // Check pivot table for products (new many-to-many relationship)
                 $q->where(function($inner) use ($product) {

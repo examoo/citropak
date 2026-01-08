@@ -186,6 +186,17 @@ class CustomersImport implements ToModel, WithHeadingRow
             }
         }
 
+        // Find sub_distribution_id by name
+        $subDistributionId = null;
+        if ($subDistName) {
+            $subDist = \App\Models\SubDistribution::where('name', $subDistName)
+                ->when($distributionId, fn($q) => $q->where('distribution_id', $distributionId))
+                ->first();
+            if ($subDist) {
+                $subDistributionId = $subDist->id;
+            }
+        }
+
         // Determine customer status (default to active)
         $status = $this->getValue($row, 'status');
         if ($status) {
@@ -213,6 +224,7 @@ class CustomersImport implements ToModel, WithHeadingRow
             'sub_address'       => $subAddress,
             'route'             => $routeName,
             'sub_distribution'  => $subDistName,
+            'sub_distribution_id' => $subDistributionId,
             'phone'             => $this->getValue($row, 'telephone') ?? $this->getValue($row, 'phone'),
             'ntn_number'        => $this->getValue($row, 'ntnnumber') ?? $this->getValue($row, 'ntn'),
             'sales_tax_number'  => $this->getValue($row, 'salestaxnumber') ?? $this->getValue($row, 'sales_tax_number') ?? $this->getValue($row, 'sales_tax'),

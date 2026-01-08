@@ -41,6 +41,7 @@ class CustomerRequest extends FormRequest
                 }
             }],
             'sub_distribution' => 'nullable|string|max:100',
+            'sub_distribution_id' => 'nullable|exists:sub_distributions,id',
             'day' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
             'atl' => 'nullable|in:active,inactive',

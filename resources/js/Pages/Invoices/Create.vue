@@ -411,14 +411,22 @@ watch(() => newItem.value.stock_id, (stockId) => {
     }
 });
 
-// Watch customer selection to update advance tax
+// Watch customer selection to update advance tax and clear schemes
 watch(() => selectedCustomer.value, (customer) => {
-    if (customer && newItem.value.product_id) {
-        newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
+    console.log('Customer changed, sub_distribution_id:', customer?.sub_distribution_id);
+    
+    // Clear any loaded schemes when customer changes
+    discountSchemes.value = [];
+    
     if (customer && newItem.value.product_id) {
         newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
         handleTaxChange(); // Use smart handler to preserve net or forward calc
-    }
+        
+        // Reload schemes for current product with new customer's sub_distribution_id
+        if (newItem.value.total_pieces > 0) {
+            const selectedProduct = products.value.find(p => p.id === newItem.value.product_id);
+            loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces, selectedProduct?.brand_id);
+        }
     }
 });
 
@@ -442,10 +450,15 @@ const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
             brandQuantity = (brandQuantities.value[brandId] || 0) + quantity;
         }
         
+        // Get customer's sub_distribution_id for filtering schemes
+        const subDistributionId = selectedCustomer.value?.sub_distribution_id || null;
+        console.log('Loading schemes with sub_distribution_id:', subDistributionId);
+        
         const response = await axios.get(route('api.discount-schemes', productId), {
             params: { 
                 quantity,
-                brand_quantity: brandQuantity
+                brand_quantity: brandQuantity,
+                sub_distribution_id: subDistributionId
             }
         });
         discountSchemes.value = response.data;

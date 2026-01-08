@@ -109,6 +109,7 @@ const form = useForm({
     ntn_number: '',
     distribution_id: '',
     sub_distribution: '',
+    sub_distribution_id: '',
     day: '',
     status: 'active',
     atl: 'active',
@@ -174,6 +175,21 @@ watch(selectedChannelId, (newId) => {
     }
 });
 
+
+
+// Watch for sub_distribution_id changes to update the name
+watch(() => form.sub_distribution_id, (newId) => {
+    if (!newId) 
+    {
+        form.sub_distribution = '';
+        return;
+    }
+    const selected = filteredSubDistributionOptions.value.find(opt => opt.id == newId);
+    if (selected) {
+        form.sub_distribution = selected.value;
+    }
+});
+
 const openModal = (customer = null) => {
     isEditing.value = !!customer;
     editingCustomerId.value = customer?.id;
@@ -203,6 +219,8 @@ const openModal = (customer = null) => {
         form.sales_tax_number = customer.sales_tax_number;
         form.sales_tax_status = customer.sales_tax_status || 'active';
         form.route = customer.route || '';
+        form.sub_distribution = customer.sub_distribution || '';
+        form.sub_distribution_id = customer.sub_distribution_id || '';
 
         // Set the channel dropdown selection using channel_id directly
         if (customer.channel_id) {
@@ -249,6 +267,7 @@ const openModal = (customer = null) => {
         if (currentDistribution.value?.id) {
             form.distribution_id = currentDistribution.value.id;
         }
+        form.sub_distribution_id = '';
     }
 
     isModalOpen.value = true;
@@ -520,7 +539,18 @@ const quickAddAttribute = async (type, title) => {
                     showConfirmButton: false
                 });
                 // Auto Select
-                form[type === 'sub_address' ? 'sub_address' : type] = newValue;
+                const key = type === 'sub_address' ? 'sub_address' : type;
+                form[key] = newValue;
+
+                if (type === 'sub_distribution') {
+                    nextTick(() => {
+                        const list = getAttributes(type);
+                        const match = list.find(item => item.value === newValue);
+                        if (match) {
+                            form.sub_distribution_id = match.id;
+                        }
+                    });
+                }
             },
             onError: () => {
                 Swal.fire({
@@ -997,11 +1027,11 @@ const submitImport = () => {
                         <div>
                             <InputLabel value="Sub Distribution" />
                             <div class="flex gap-2">
-                                <select v-model="form.sub_distribution"
+                                <select v-model="form.sub_distribution_id"
                                     class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select Sub Distribution</option>
                                     <option v-for="attr in filteredSubDistributionOptions" :key="attr.id"
-                                        :value="attr.value">{{ attr.value }}</option>
+                                        :value="attr.id">{{ attr.value }}</option>
                                 </select>
                                 <button type="button" @click="isSubDistributionModalOpen = true"
                                     class="mt-1 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors"
@@ -1012,7 +1042,9 @@ const submitImport = () => {
                                     </svg>
                                 </button>
                             </div>
-                            <div v-if="form.errors.sub_distribution" class="text-xs text-red-600 mt-1">{{ form.errors.sub_distribution }}</div>
+                            <div v-if="form.errors.sub_distribution || form.errors.sub_distribution_id" class="text-xs text-red-600 mt-1">
+                                {{ form.errors.sub_distribution || form.errors.sub_distribution_id }}
+                            </div>
                         </div>
                         <div>
                             <InputLabel value="Day" />
