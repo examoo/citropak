@@ -423,10 +423,7 @@ const loadProductSchemes = async (productId) => {
 const loadDiscountSchemes = async (productId, quantity) => {
     try {
         const response = await axios.get(route('api.discount-schemes', productId), {
-            params: { 
-                quantity,
-                sub_distribution: selectedCustomer.value?.sub_distribution || ''
-            }
+            params: { quantity }
         });
         discountSchemes.value = response.data;
         // Auto-apply if only one scheme matches
