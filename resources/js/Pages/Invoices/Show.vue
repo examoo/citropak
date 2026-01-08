@@ -214,7 +214,7 @@ const resyncFbr = () => {
                 <!-- Items Table -->
                 <table class="w-full text-[10px] border-collapse border border-black mb-4">
                     <thead>
-                        <tr class="bg-gray-100">
+                        <tr class="bg-gray-100 print:bg-white">
                             <th class="border border-black px-1 py-1 text-center">Sr.No</th>
                             <th class="border border-black px-1 py-1 text-center">Product<br/>Code</th>
                             <th class="border border-black px-1 py-1 text-left">Item Name</th>
@@ -249,7 +249,7 @@ const resyncFbr = () => {
                         </tr>
 
                         <!-- Regular Total Row -->
-                        <tr class="bg-amber-500 font-bold print:bg-amber-500 print:text-black">
+                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black">
                              <td class="border border-black px-1 py-1 text-center" colspan="3">TOTAL</td>
                              <td class="border border-black px-1 py-1 text-center">{{ regularTotalQty }}</td>
                              <td class="border border-black px-1 py-1"></td>
@@ -288,7 +288,7 @@ const resyncFbr = () => {
                         </template>
                     </tbody>
                     <tfoot>
-                        <tr class="bg-amber-500 font-bold print:bg-amber-500 print:text-black">
+                        <tr class="bg-amber-500 font-bold print:bg-white print:text-black">
                             <td class="border border-black px-1 py-1 text-right" colspan="3">TOTAL WITH FREE SCHEME</td>
                             <td class="border border-black px-1 py-1 text-center">{{ totalQty }}</td>
                             <td class="border border-black px-1 py-1"></td>
@@ -345,10 +345,10 @@ const resyncFbr = () => {
 
 <style scoped>
 @media print {
-    @page { size: A4 landscape; margin: 5mm; }
+    @page { size: A4; margin: 5mm; }
     :deep(aside), :deep(nav), :deep(header) { display: none !important; }
     :deep(main) { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    /* Removed color adjust to avoid forced backgrounds */
     table, th, td { border-color: #000 !important; }
 }
 
