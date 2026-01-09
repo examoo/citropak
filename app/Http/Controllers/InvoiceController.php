@@ -670,20 +670,9 @@ class InvoiceController extends Controller
                 // For product-type schemes, use the individual product quantity
                 $effectiveQty = $scheme->scheme_type === 'brand' ? $brandQuantity : $quantity;
                 
-                // Calculate multiplier for tiered discount
                 $fromQty = (int) $scheme->from_qty;
-                $toQty = $scheme->to_qty ? (int) $scheme->to_qty : null;
-                $multiplier = 1;
-
-                if ($toQty !== null && $toQty >= $fromQty) {
-                    // Range size (e.g., 1-10 = 10 items)
-                    $rangeSize = $toQty - $fromQty + 1;
-                    // Calculate how many times the range fits
-                    // E.g., qty=15, from=1, to=10, range=10: (15-1)/10 = 1.4 -> floor = 1, +1 = 2
-                    $multiplier = (int) floor(($effectiveQty - $fromQty) / $rangeSize) + 1;
-                    if ($multiplier < 1) $multiplier = 1;
-                }
-
+                $toQty = $scheme->to_qty ? (int) $scheme->to_qty : $fromQty;
+                
                 // Determine if this is a free product scheme (amount_less is 0 or null)
                 $isFreeProductScheme = !($scheme->amount_less > 0);
                 
@@ -708,9 +697,35 @@ class InvoiceController extends Controller
                     }
                 }
 
-                // Apply multiplier to discount values
-                $amountLess = ($scheme->amount_less ?? 0) * $multiplier;
-                $freePieces = $baseFreePieces * $multiplier;
+                // Calculate discount based on scheme type
+                $amountLess = 0;
+                $perPieceDiscount = 0;
+                $freePieces = 0;
+                $multiplier = 1;
+
+                if ($isFreeProductScheme) {
+                    // BRAND SCHEMES (Free Product): Apply on MAX slab completions ONLY
+                    // Example: "1 free on 12" - only give free pieces when qty reaches 12
+                    // With 11 pieces = 0 free, 12 pieces = 1 free, 24 pieces = 2 free
+                    // Use toQty as the slab size
+                    $slabSize = $toQty > 0 ? $toQty : 1;
+                    $multiplier = (int) floor($effectiveQty / $slabSize);
+                    // Do NOT force minimum multiplier - if qty < slabSize, multiplier = 0
+                    
+                    $freePieces = $baseFreePieces * $multiplier;
+                } else {
+                    // PRODUCT SCHEMES (Amount Less): Apply per quantity
+                    // Example: "1-12 less 950" with 4 pieces = (950/12) * 4 = 316.67
+                    // Calculate per-piece discount rate
+                    $rangeSize = $toQty - $fromQty + 1;
+                    if ($rangeSize > 0) {
+                        $perPieceDiscount = ($scheme->amount_less ?? 0) / $rangeSize;
+                    }
+                    // Total discount = per piece discount * quantity purchased
+                    $amountLess = $perPieceDiscount * $effectiveQty;
+                    // Keep multiplier for display purposes
+                    $multiplier = $effectiveQty;
+                }
 
                 return [
                     'id' => $scheme->id,
@@ -719,13 +734,22 @@ class InvoiceController extends Controller
                     'from_qty' => $scheme->from_qty,
                     'to_qty' => $scheme->to_qty,
                     'discount_type' => $scheme->amount_less > 0 ? 'amount_less' : 'free_product',
-                    'amount_less' => $amountLess,
+                    'amount_less' => round($amountLess, 2),
+                    'per_piece_discount' => round($perPieceDiscount, 4), // For frontend calculation
                     'free_pieces' => $freePieces,
                     'free_product_code' => $scheme->free_product_code ?: ($freeProduct ? $product->dms_code : null),
                     'free_product' => $freeProduct,
                     'multiplier' => $multiplier, // Include multiplier for frontend display
                 ];
-            });
+            })
+            // Filter out schemes that give no benefit (0 free pieces or 0 amount_less)
+            ->filter(function($scheme) {
+                if ($scheme['discount_type'] === 'free_product') {
+                    return $scheme['free_pieces'] > 0;
+                }
+                return $scheme['amount_less'] > 0;
+            })
+            ->values(); // Re-index array after filtering
         
         return response()->json($schemes);
     }

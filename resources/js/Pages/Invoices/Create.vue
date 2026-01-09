@@ -462,12 +462,24 @@ const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
             }
         });
         discountSchemes.value = response.data;
-        // Auto-apply if only one scheme matches
-        if (discountSchemes.value.length === 1) {
+        
+        // Auto-apply if there's at least one scheme available
+        if (discountSchemes.value.length >= 1) {
             applyDiscountScheme(discountSchemes.value[0]);
+        } else {
+            // Clear scheme selection when no schemes match
+            newItem.value.discount_scheme_id = '';
+            newItem.value.scheme_discount = 0;
+            newItem.value.free_product = null;
+            newItem.value.free_pieces = 0;
         }
     } catch (e) {
         discountSchemes.value = [];
+        // Clear scheme selection on error
+        newItem.value.discount_scheme_id = '';
+        newItem.value.scheme_discount = 0;
+        newItem.value.free_product = null;
+        newItem.value.free_pieces = 0;
     }
 };
 
