@@ -463,11 +463,12 @@ const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
         });
         discountSchemes.value = response.data;
         
-        // Auto-apply if there's at least one scheme available
+        // Auto-apply first scheme if available
+        // The scheme's free_pieces will be 0 until qty reaches max, then calculated value
         if (discountSchemes.value.length >= 1) {
             applyDiscountScheme(discountSchemes.value[0]);
         } else {
-            // Clear scheme selection when no schemes match
+            // Clear scheme selection when no schemes available
             newItem.value.discount_scheme_id = '';
             newItem.value.scheme_discount = 0;
             newItem.value.free_product = null;
@@ -489,17 +490,17 @@ const applyDiscountScheme = (scheme) => {
     
     newItem.value.discount_scheme_id = scheme.id;
     
-    if (scheme.discount_type === 'amount_less' && scheme.amount_less > 0) {
-        // Amount-based discount
-        newItem.value.scheme_discount = parseFloat(scheme.amount_less);
+    if (scheme.discount_type === 'amount_less') {
+        // Amount-based discount - use exact value from API (per qty calculation)
+        newItem.value.scheme_discount = parseFloat(scheme.amount_less) || 0;
         newItem.value.free_product = null;
         newItem.value.free_pieces = 0;
-    } else if (scheme.discount_type === 'free_product' && scheme.free_product) {
-        // Free product scheme
+    } else if (scheme.discount_type === 'free_product') {
+        // Free product scheme - use exact free_pieces from API
+        // free_pieces will be 0 until qty reaches max, then calculated value
         newItem.value.scheme_discount = 0;
         newItem.value.free_product = scheme.free_product;
-        // Default to 1 if free_pieces is 0 or null
-        newItem.value.free_pieces = scheme.free_pieces > 0 ? scheme.free_pieces : 1;
+        newItem.value.free_pieces = scheme.free_pieces || 0; // Use exact value, don't default to 1
     }
 };
 

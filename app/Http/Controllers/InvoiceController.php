@@ -741,15 +741,7 @@ class InvoiceController extends Controller
                     'free_product' => $freeProduct,
                     'multiplier' => $multiplier, // Include multiplier for frontend display
                 ];
-            })
-            // Filter out schemes that give no benefit (0 free pieces or 0 amount_less)
-            ->filter(function($scheme) {
-                if ($scheme['discount_type'] === 'free_product') {
-                    return $scheme['free_pieces'] > 0;
-                }
-                return $scheme['amount_less'] > 0;
-            })
-            ->values(); // Re-index array after filtering
+            });
         
         return response()->json($schemes);
     }
