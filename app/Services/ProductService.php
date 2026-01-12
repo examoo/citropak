@@ -72,12 +72,29 @@ class ProductService
     }
 
     /**
-     * Delete product
+     * Delete product and all related records
      */
     public function delete(int $id): bool
     {
         $product = Product::findOrFail($id);
-        return $product->delete();
+        
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($product, $id) {
+            // Delete related records in order (children first)
+            \App\Models\GoodIssueNoteItem::where('product_id', $id)->delete();
+            \App\Models\InvoiceItem::where('product_id', $id)->delete();
+            \App\Models\StockInItem::where('product_id', $id)->delete();
+            \App\Models\StockOutItem::where('product_id', $id)->delete();
+            \App\Models\Stock::where('product_id', $id)->delete();
+            \App\Models\StockLedger::where('product_id', $id)->delete();
+            \App\Models\OpeningStock::where('product_id', $id)->delete();
+            \App\Models\ClosingStock::where('product_id', $id)->delete();
+            
+            // Delete product variants
+            $product->variants()->delete();
+            
+            // Finally delete the product
+            return $product->delete();
+        });
     }
 
     /**

@@ -55,9 +55,12 @@ class ProductController extends Controller
      */
     public function destroy(int $id)
     {
-        $this->service->delete($id);
-
-        return redirect()->back()->with('success', 'Product deleted successfully.');
+        try {
+            $this->service->delete($id);
+            return redirect()->back()->with('success', 'Product deleted successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     public function import(Request $request)
