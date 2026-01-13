@@ -48,6 +48,12 @@ const orderDay = ref('');
 // Product entry state
 const productCode = ref('');
 const selectedProduct = ref(null);
+
+// Template refs for focus management
+const productCodeRef = ref(null);
+const cartonsRef = ref(null);
+const piecesRef = ref(null);
+const schemeRef = ref(null);
 const newItem = ref({
     product_id: '',
     stock_id: '',            // Selected batch/stock
@@ -209,10 +215,14 @@ watch(orderDay, async (day) => {
     }
 });
 
-// Watch customer selection
+// Watch customer selection - auto-focus product code after selection
 watch(() => form.customer_id, (customerId) => {
     if (customerId) {
         selectedCustomer.value = filteredCustomers.value.find(c => c.id === parseInt(customerId));
+        // Auto-focus product code input after customer selection
+        setTimeout(() => {
+            productCodeRef.value?.focus();
+        }, 100);
     } else {
         selectedCustomer.value = null;
     }
@@ -304,7 +314,7 @@ const onExclusivePriceInput = () => {
     calculateNetUnitPrice();
 };
 
-// Search product by code
+// Search product by code - auto-focus cartons after product found
 const searchProductByCode = async () => {
     if (!productCode.value) return;
     try {
@@ -325,6 +335,10 @@ const searchProductByCode = async () => {
             calculateNetUnitPrice();
         }
         loadProductSchemes(product.id);
+        // Auto-focus cartons input after product is found
+        setTimeout(() => {
+            cartonsRef.value?.focus();
+        }, 100);
     } catch (e) {
         selectedProduct.value = null;
     }
@@ -820,6 +834,10 @@ const resetNewItem = () => {
     productCode.value = '';
     productSchemes.value = [];
     discountSchemes.value = [];
+    // Auto-focus product code for next entry
+    setTimeout(() => {
+        productCodeRef.value?.focus();
+    }, 100);
 };
 
 const removeItem = (index) => {
@@ -1192,7 +1210,7 @@ const submit = (andPrint = false) => {
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Product Code" />
                             <div class="flex items-stretch mt-1">
-                                <TextInput v-model="productCode" placeholder="Enter code" 
+                                <TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code" 
                                     class="flex-1 !rounded-r-none !border-r-0 min-w-0"
                                     @keyup.enter="searchProductByCode" />
                                 <button type="button" @click="searchProductByCode"
@@ -1233,13 +1251,18 @@ const submit = (andPrint = false) => {
                         <!-- Cartons -->
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Cartons" />
-                            <TextInput v-model.number="newItem.cartons" type="number" min="0" class="mt-1 w-full text-center font-medium" />
+                            <TextInput ref="cartonsRef" v-model.number="newItem.cartons" type="number" min="0" 
+                                class="mt-1 w-full text-center font-medium"
+                                @keydown.enter.prevent="piecesRef?.focus()" />
                         </div>
 
                         <!-- Pieces -->
                         <div class="col-span-2 lg:col-span-1">
                             <InputLabel value="Pieces" />
-                            <TextInput v-model.number="newItem.pieces" type="number" min="0" class="mt-1 w-full text-center font-medium" />
+                            <TextInput ref="piecesRef" v-model.number="newItem.pieces" type="number" min="0" 
+                                class="mt-1 w-full text-center font-medium"
+                                @keydown.enter.prevent="schemeRef?.focus()" 
+                                @keydown.tab="schemeRef?.focus()" />
                         </div>
 
                         <!-- Total Pieces (readonly) -->
@@ -1309,8 +1332,10 @@ const submit = (andPrint = false) => {
                             <!-- Discount Scheme Dropdown -->
                             <div class="col-span-3 lg:col-span-2">
                                 <InputLabel value="Scheme" class="text-xs" />
-                                <select v-model="newItem.discount_scheme_id"
+                                <select ref="schemeRef" v-model="newItem.discount_scheme_id"
                                     @change="discountSchemes.length > 0 && applyDiscountScheme(discountSchemes.find(s => s.id == newItem.discount_scheme_id))"
+                                    @keydown.enter.prevent="addItem"
+                                    @keydown.tab.prevent="addItem"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm h-[42px]"
                                     :class="newItem.free_product ? 'bg-green-50 border-green-300' : (newItem.scheme_discount > 0 ? 'bg-orange-50 border-orange-300' : '')">
                                     <option value="">No Scheme</option>
