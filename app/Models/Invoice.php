@@ -62,22 +62,30 @@ class Invoice extends Model
 
     /**
      * Generate unique invoice number.
+     * Pattern: Distribution_code-YY-00000 (e.g., DMS-26-00001)
+     * Numbers continue sequentially without daily reset.
      */
     public static function generateInvoiceNumber($distributionId): string
     {
-        $date = now()->format('Ymd');
-        $prefix = "INV-{$date}-";
+        // Get distribution code
+        $distribution = Distribution::find($distributionId);
+        $distCode = $distribution?->code ?? 'INV';
         
+        // Year in 2-digit format
+        $year = now()->format('y');
+        $prefix = "{$distCode}-{$year}-";
+        
+        // Find the last invoice for this distribution and year (no daily reset)
         $lastInvoice = static::where('invoice_number', 'like', "{$prefix}%")
             ->where('distribution_id', $distributionId)
-            ->orderBy('invoice_number', 'desc')
+            ->orderByRaw('CAST(SUBSTRING(invoice_number, -5) AS UNSIGNED) DESC')
             ->first();
         
         if ($lastInvoice) {
-            $lastNumber = (int) substr($lastInvoice->invoice_number, -4);
-            $nextNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+            $lastNumber = (int) substr($lastInvoice->invoice_number, -5);
+            $nextNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
         } else {
-            $nextNumber = '0001';
+            $nextNumber = '00001';
         }
         
         return $prefix . $nextNumber;
