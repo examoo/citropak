@@ -42,8 +42,18 @@ class SaleTaxInvoicesReportController extends Controller
                 'id' => $invoice->id,
                 'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
                 'invoice_number' => $invoice->invoice_number,
+                // Customer Details
+                'customer_code' => $invoice->customer->customer_code ?? '',
                 'buyer_name' => $buyerName,
+                'address' => $invoice->customer->address ?? '',
+                'phone' => $invoice->customer->phone ?? '',
                 'buyer_ntn' => $buyerNtn,
+                'sales_tax_number' => $invoice->customer->sales_tax_number ?? '',
+                'cnic' => $invoice->customer->cnic ?? '',
+                'status' => $invoice->customer->status ?? '',
+                
+                'subtotal' => $invoice->subtotal, // Gross
+                'discount' => $invoice->discount_amount,
                 'taxable_value' => $taxableValue,
                 'sales_tax' => $invoice->tax_amount,
                 'further_tax' => $invoice->fed_amount,
@@ -53,6 +63,8 @@ class SaleTaxInvoicesReportController extends Controller
 
         // Calculate Totals
         $totals = [
+            'subtotal' => $reportData->sum('subtotal'),
+            'discount' => $reportData->sum('discount'),
             'taxable_value' => $reportData->sum('taxable_value'),
             'sales_tax' => $reportData->sum('sales_tax'),
             'further_tax' => $reportData->sum('further_tax'),

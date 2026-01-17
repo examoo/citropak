@@ -107,8 +107,15 @@ const getMonthName = (monthNum) => {
                                 <th class="px-3 py-3">Sr #</th>
                                 <th class="px-3 py-3">Date</th>
                                 <th class="px-3 py-3">Invoice No</th>
+                                <th class="px-3 py-3">Code</th>
                                 <th class="px-3 py-3">Buyer Name</th>
-                                <th class="px-3 py-3">Buyer NTN / CNIC</th>
+                                <th class="px-3 py-3">Address</th>
+                                <th class="px-3 py-3">Phone</th>
+                                <th class="px-3 py-3">NTN</th>
+                                <th class="px-3 py-3">CNIC</th>
+                                <th class="px-3 py-3">STN</th>
+                                <th class="px-3 py-3 text-right">Gross Amount</th>
+                                <th class="px-3 py-3 text-right">Discount</th>
                                 <th class="px-3 py-3 text-right">Value Excl. Tax</th>
                                 <th class="px-3 py-3 text-right">Sales Tax</th>
                                 <th class="px-3 py-3 text-right">Further Tax</th>
@@ -120,8 +127,15 @@ const getMonthName = (monthNum) => {
                                 <td class="px-3 py-2 text-center">{{ idx + 1 }}</td>
                                 <td class="px-3 py-2">{{ inv.invoice_date }}</td>
                                 <td class="px-3 py-2 font-medium text-indigo-600">{{ inv.invoice_number }}</td>
-                                <td class="px-3 py-2">{{ inv.buyer_name }}</td>
+                                <td class="px-3 py-2 text-xs">{{ inv.customer_code }}</td>
+                                <td class="px-3 py-2 font-semibold">{{ inv.buyer_name }}</td>
+                                <td class="px-3 py-2 text-xs truncate max-w-xs">{{ inv.address }}</td>
+                                <td class="px-3 py-2">{{ inv.phone }}</td>
                                 <td class="px-3 py-2">{{ inv.buyer_ntn }}</td>
+                                <td class="px-3 py-2">{{ inv.cnic }}</td>
+                                <td class="px-3 py-2">{{ inv.sales_tax_number }}</td>
+                                <td class="px-3 py-2 text-right">{{ formatCurrency(inv.subtotal) }}</td>
+                                <td class="px-3 py-2 text-right">{{ formatCurrency(inv.discount) }}</td>
                                 <td class="px-3 py-2 text-right">{{ formatCurrency(inv.taxable_value) }}</td>
                                 <td class="px-3 py-2 text-right">{{ formatCurrency(inv.sales_tax) }}</td>
                                 <td class="px-3 py-2 text-right">{{ formatCurrency(inv.further_tax) }}</td>
@@ -129,7 +143,7 @@ const getMonthName = (monthNum) => {
                                     formatCurrency(inv.total_value) }}</td>
                             </tr>
                             <tr v-if="invoices.length === 0">
-                                <td colspan="9" class="px-6 py-12 text-center text-gray-400">
+                                <td colspan="15" class="px-6 py-12 text-center text-gray-400">
                                     No invoices found for this month.
                                 </td>
                             </tr>
@@ -137,7 +151,9 @@ const getMonthName = (monthNum) => {
                         <tfoot v-if="invoices.length > 0"
                             class="bg-gray-50 font-bold text-gray-800 border-t-2 border-gray-200">
                             <tr>
-                                <td colspan="5" class="px-3 py-3 text-right uppercase">Total</td>
+                                <td colspan="9" class="px-3 py-3 text-right uppercase">Total</td>
+                                <td class="px-3 py-3 text-right">{{ formatCurrency(totals.subtotal) }}</td>
+                                <td class="px-3 py-3 text-right">{{ formatCurrency(totals.discount) }}</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.taxable_value) }}</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.sales_tax) }}</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.further_tax) }}</td>
