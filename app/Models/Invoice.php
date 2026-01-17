@@ -20,6 +20,7 @@ class Invoice extends Model
         'distribution_id',
         'invoice_number',
         'van_id',
+        'good_issue_note_id', // Linked GIN
         'order_booker_id',
         'customer_id',
         'invoice_type',
@@ -97,6 +98,14 @@ class Invoice extends Model
     public function van(): BelongsTo
     {
         return $this->belongsTo(Van::class);
+    }
+
+    /**
+     * Get the linked Good Issue Note.
+     */
+    public function goodIssueNote(): BelongsTo
+    {
+        return $this->belongsTo(GoodIssueNote::class);
     }
 
     /**

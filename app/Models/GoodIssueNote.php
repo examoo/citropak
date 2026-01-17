@@ -56,6 +56,14 @@ class GoodIssueNote extends Model
     }
 
     /**
+     * Get the invoices linked to this GIN.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
      * Get the items.
      */
     public function items(): HasMany

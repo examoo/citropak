@@ -67,8 +67,9 @@ const mergedItems = computed(() => {
 
         if (parent) {
             parent.free_quantity += freeQty;
-            // Also merge returned quantity for free items if any (though logic handles them separately mostly)
+            // Also merge returned and damage quantity for free items
             parent.returned_quantity = (parent.returned_quantity || 0) + (freeItem.returned_quantity || 0);
+            parent.damage_quantity = (parent.damage_quantity || 0) + (freeItem.damage_quantity || 0);
         } else {
             // Orphan free item (e.g. different batch or purely free gift)
             // Show as separate row, set its free_quantity to its actual quantity
@@ -82,6 +83,14 @@ const mergedItems = computed(() => {
 
 const totalAmount = computed(() => {
     return props.gin.items?.reduce((sum, item) => sum + parseFloat(item.total_price || 0), 0) || 0;
+});
+
+const hasReturnedItems = computed(() => {
+    return mergedItems.value.some(item => item.returned_quantity > 0);
+});
+
+const hasDamageItems = computed(() => {
+    return mergedItems.value.some(item => item.damage_quantity > 0);
 });
 
 const issueGin = () => {
@@ -223,7 +232,10 @@ const printGin = () => {
                             <th class="border border-gray-200 px-3 py-2">Batch</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Quantity</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Free</th>
-                            <th class="border border-gray-200 px-3 py-2 text-right text-red-600">Returned</th>
+                            <th v-if="hasReturnedItems"
+                                class="border border-gray-200 px-3 py-2 text-right text-red-600">Returned</th>
+                            <th v-if="hasDamageItems"
+                                class="border border-gray-200 px-3 py-2 text-right text-orange-600">Damage</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Unit Price</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Total</th>
                         </tr>
@@ -244,8 +256,13 @@ const printGin = () => {
                             <td class="border border-gray-200 px-3 py-2 text-right font-medium text-emerald-600">
                                 {{ item.free_quantity > 0 ? item.free_quantity : '-' }}
                             </td>
-                            <td class="border border-gray-200 px-3 py-2 text-right font-medium text-red-600">
+                            <td v-if="hasReturnedItems"
+                                class="border border-gray-200 px-3 py-2 text-right font-medium text-red-600">
                                 {{ item.returned_quantity > 0 ? item.returned_quantity : '-' }}
+                            </td>
+                            <td v-if="hasDamageItems"
+                                class="border border-gray-200 px-3 py-2 text-right font-medium text-orange-600">
+                                {{ item.damage_quantity > 0 ? item.damage_quantity : '-' }}
                             </td>
                             <td class="border border-gray-200 px-3 py-2 text-right">Rs. {{ formatAmount(item.unit_price)
                                 }}</td>
@@ -255,7 +272,9 @@ const printGin = () => {
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-100 font-bold">
-                            <td colspan="7" class="border border-gray-200 px-3 py-3 text-right">GRAND TOTAL:</td>
+                            <td :colspan="(hasReturnedItems ? 1 : 0) + (hasDamageItems ? 1 : 0) + 6"
+                                class="border border-gray-200 px-3 py-3 text-right">
+                                GRAND TOTAL:</td>
                             <td class="border border-gray-200 px-3 py-3 text-right text-lg text-emerald-600">Rs. {{
                                 formatAmount(totalAmount) }}</td>
                         </tr>

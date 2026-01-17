@@ -358,12 +358,85 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
+            // Check if type is changing to 'damage'
+            $wasDamage = $invoice->invoice_type === 'damage';
+            $isBecomingDamage = $validated['invoice_type'] === 'damage' && !$wasDamage;
+
             // Update invoice
             $invoice->update([
                 'invoice_type' => $validated['invoice_type'],
                 'is_credit' => $validated['is_credit'] ?? false,
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            // If changing to Damage, treat items as Returned in GIN
+            if ($isBecomingDamage) {
+                // ... (Existing Damage Logic) ...
+                // Use the linked GIN first, fallback to date matching if not linked (legacy support)
+                $gin = $invoice->good_issue_note_id 
+                    ? \App\Models\GoodIssueNote::find($invoice->good_issue_note_id) 
+                    : \App\Models\GoodIssueNote::where('van_id', $invoice->van_id)
+                        ->whereDate('issue_date', $invoice->invoice_date)
+                        ->first();
+
+                if ($gin) {
+                    foreach ($invoice->items as $invItem) {
+                        $ginItem = \App\Models\GoodIssueNoteItem::where('good_issue_note_id', $gin->id)
+                            ->where('product_id', $invItem->product_id)
+                            ->first();
+                        
+                        if ($ginItem) {
+                            $qtyToReturn = $invItem->total_pieces;
+                            $ginItem->quantity = max(0, $ginItem->quantity - $qtyToReturn);
+                            $ginItem->damage_quantity = $ginItem->damage_quantity + $qtyToReturn;
+                            $ginItem->total_price = $ginItem->quantity * $ginItem->unit_price;
+                            $ginItem->save();
+
+                            if ($gin->status === 'issued' && $ginItem->stock_id) {
+                                $stock = \App\Models\Stock::find($ginItem->stock_id);
+                                if ($stock) {
+                                    $stock->increment('quantity', $qtyToReturn);
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif ($wasDamage && $validated['invoice_type'] !== 'damage') {
+                // Case: Reverting FROM Damage TO Sale
+                $gin = $invoice->good_issue_note_id 
+                    ? \App\Models\GoodIssueNote::find($invoice->good_issue_note_id) 
+                    : \App\Models\GoodIssueNote::where('van_id', $invoice->van_id)
+                        ->whereDate('issue_date', $invoice->invoice_date)
+                        ->first();
+
+                if ($gin) {
+                    foreach ($invoice->items as $invItem) {
+                        $ginItem = \App\Models\GoodIssueNoteItem::where('good_issue_note_id', $gin->id)
+                            ->where('product_id', $invItem->product_id)
+                            ->first();
+
+                        if ($ginItem) {
+                            $qtyToReverse = $invItem->total_pieces;
+                            
+                            // Move from Damage back to Sold Quantity
+                            $ginItem->damage_quantity = max(0, $ginItem->damage_quantity - $qtyToReverse);
+                            $ginItem->quantity = $ginItem->quantity + $qtyToReverse; // Restoring Sold Quantity
+                            
+                            $ginItem->total_price = $ginItem->quantity * $ginItem->unit_price;
+                            $ginItem->save();
+
+                            // Stock Deduction if GIN Issued
+                            // Since it's now "Sold" again, it must leave the warehouse (again)
+                            if ($gin->status === 'issued' && $ginItem->stock_id) {
+                                $stock = \App\Models\Stock::find($ginItem->stock_id);
+                                if ($stock) {
+                                    $stock->decrement('quantity', $qtyToReverse);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // Get existing item IDs
             $existingItemIds = collect($validated['items'])->pluck('id')->filter()->toArray();
@@ -458,10 +531,12 @@ class InvoiceController extends Controller
             }
 
             // 3. Update Good Issue Note (if exists)
-            // Find GIN for this Van + Date (any status)
-            $gin = \App\Models\GoodIssueNote::where('van_id', $invoice->van_id)
-                ->whereDate('issue_date', $invoice->invoice_date)
-                ->first();
+            // Use the linked GIN first, fallback to date matching if not linked (legacy support)
+            $gin = $invoice->good_issue_note_id 
+                ? \App\Models\GoodIssueNote::find($invoice->good_issue_note_id) 
+                : \App\Models\GoodIssueNote::where('van_id', $invoice->van_id)
+                    ->whereDate('issue_date', $invoice->invoice_date)
+                    ->first();
 
             if ($gin) {
                 foreach ($invoice->items as $invItem) {
@@ -470,23 +545,36 @@ class InvoiceController extends Controller
                         ->first();
                     
                     if ($ginItem) {
-                        // Decrease quantity, Increase returned_quantity
-                        $ginItem->quantity = max(0, $ginItem->quantity - $invItem->total_pieces);
-                        $ginItem->returned_quantity = $ginItem->returned_quantity + $invItem->total_pieces;
+                        $qtyToReturn = $invItem->total_pieces;
+
+                        if ($invoice->invoice_type === 'damage') {
+                            // If deleting a DAMAGE invoice, items are already in 'damage_quantity'.
+                            // Move from Damage -> Returned
+                            $ginItem->damage_quantity = max(0, $ginItem->damage_quantity - $qtyToReturn);
+                            $ginItem->returned_quantity = $ginItem->returned_quantity + $qtyToReturn;
+                            
+                            // Stock: NO CHANGE. 
+                            // When marked Damage: Stock was restored (+).
+                            // Now marked Returned: Stock should be restored (+).
+                            // Since it's already restored, we don't do it again.
+                        } else {
+                            // Normal Sale Invoice Deletion
+                            // Move from Sold Qty -> Returned
+                            $ginItem->quantity = max(0, $ginItem->quantity - $qtyToReturn);
+                            $ginItem->returned_quantity = $ginItem->returned_quantity + $qtyToReturn;
+
+                            // IF GIN IS ISSUED: We must restore the stock for the returned items
+                            if ($gin->status === 'issued' && $ginItem->stock_id) {
+                                $stock = \App\Models\Stock::find($ginItem->stock_id);
+                                if ($stock) {
+                                    $stock->increment('quantity', $qtyToReturn);
+                                }
+                            }
+                        }
                         
                         // Recalculate total price based on new quantity
                         $ginItem->total_price = $ginItem->quantity * $ginItem->unit_price;
-                        
                         $ginItem->save();
-
-                        // IF GIN IS ISSUED: We must restore the stock for the returned items
-                        // Because when GIN was issued, stock was deducted. Now we are "returning" it.
-                        if ($gin->status === 'issued' && $ginItem->stock_id) {
-                            $stock = \App\Models\Stock::find($ginItem->stock_id);
-                            if ($stock) {
-                                $stock->increment('quantity', $invItem->total_pieces);
-                            }
-                        }
                     }
                 }
             }

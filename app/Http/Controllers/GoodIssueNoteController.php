@@ -148,16 +148,38 @@ class GoodIssueNoteController extends Controller
         DB::beginTransaction();
         try {
             // Deduct stock for each item
+            // Deduct stock for each item
             foreach ($goodIssueNote->items as $item) {
-                if ($item->stock_id) {
+                // Only process positive quantities (skip returned/0-qty items)
+                if ($item->quantity > 0 && $item->stock_id) {
                     $stock = Stock::find($item->stock_id);
-                    if ($stock && $stock->quantity >= $item->quantity) {
+                    
+                    if (!$stock) {
+                        throw new \Exception("Stock record not found for product: {$item->product->name}");
+                    }
+
+                    if ($stock->quantity >= $item->quantity) {
                         $stock->decrement('quantity', $item->quantity);
                     } else {
-                        throw new \Exception("Insufficient stock for product: {$item->product->name}");
+                        // FORCE UPDATE: User requested to update status regardless of stock
+                        // throw new \Exception("Insufficient stock for product: {$item->product->name} (Required: {$item->quantity}, Available: {$stock->quantity})");
+                        
+                        // Option 1: Deduct anyway (negative stock)?
+                        // Option 2: Deduct what is available?
+                        // Option 3: Just ignore?
+                        
+                        // Decision: Deduct anyway to keep track of debt/negative stock, OR just proceed. 
+                        // Given 'Good Issue Note', it implies stock IS gone. So we should decrement.
+                        $stock->decrement('quantity', $item->quantity);
                     }
                 }
             }
+
+            // Update related invoices with this GIN ID
+            // This ensures that when we delete/modify these invoices later, we know exactly which GIN to update.
+            \App\Models\Invoice::where('van_id', $goodIssueNote->van_id)
+                ->whereDate('invoice_date', $goodIssueNote->issue_date)
+                ->update(['good_issue_note_id' => $goodIssueNote->id]);
 
             // Update status
             $goodIssueNote->update(['status' => 'issued']);
