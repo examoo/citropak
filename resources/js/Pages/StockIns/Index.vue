@@ -214,7 +214,7 @@ const postStockIn = (item) => {
         confirmButtonText: 'Yes, Post it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.post(route('stock-ins.post', item.id), {}, {
+            router.post(route('stock-ins.post', item.stock_in_id), {}, {
                 preserveScroll: true,
                 onSuccess: () => Swal.fire('Posted!', 'Stocks updated.', 'success')
             });
@@ -223,19 +223,17 @@ const postStockIn = (item) => {
 };
 
 const deleteItem = (item) => {
-    if (item.status === 'posted') {
-        Swal.fire('Error', 'Cannot delete posted stock in', 'error');
-        return;
-    }
+    // Posted check removed to allow deleting (server handles cascade)
     Swal.fire({
         title: 'Delete Stock In?',
+        text: 'This will delete the entire Stock In record and remove associated stocks.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         confirmButtonText: 'Yes, delete!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.delete(route('stock-ins.destroy', item.id), {
+            router.delete(route('stock-ins.destroy', item.stock_in_id), {
                 preserveScroll: true,
                 onSuccess: () => Swal.fire('Deleted!', 'Stock In deleted.', 'success')
             });
@@ -311,12 +309,16 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <!-- Actions apply to the parent StockIn, so we need to pass the parent ID or object if possible -->
-                                <!-- Since we only have item here, we might need to fetch parent or assume edit affects parent -->
-                                <!-- For simplicity, viewing/editing refers to the header record -->
                                 <div class="flex items-center justify-end gap-1">
-                                    <button v-if="item.status === 'draft'"
-                                        @click="openModal(item.stock_in || { id: item.stock_in_id })"
+                                    <button v-if="item.status === 'draft'" @click="postStockIn(item)"
+                                        class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                                        title="Post Stock In">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </button>
+                                    <button @click="openModal(item.stock_in || { id: item.stock_in_id })"
                                         class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
                                         title="View/Edit Bilty">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,6 +326,13 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    <button @click="deleteItem(item)"
+                                        class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete Stock In">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
                                 </div>
@@ -424,12 +433,12 @@ const totalValue = computed(() => form.items.reduce((sum, i) => sum + (Number(i.
                                 <div class="p-2 bg-orange-50 rounded">
                                     <div class="text-gray-500">FED %</div>
                                     <div class="font-semibold text-orange-600">{{ selectedNewProduct.fed_percent || 0
-                                        }}%</div>
+                                    }}%</div>
                                 </div>
                                 <div class="p-2 bg-orange-50 rounded">
                                     <div class="text-gray-500">Sales Tax %</div>
                                     <div class="font-semibold text-orange-600">{{ selectedNewProduct.fed_sales_tax || 0
-                                        }}%</div>
+                                    }}%</div>
                                 </div>
                                 <div class="p-2 bg-gray-50 rounded">
                                     <div class="text-gray-500">Retail Margin %</div>

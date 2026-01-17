@@ -69,9 +69,8 @@ class StockInController extends Controller
      */
     public function update(Request $request, StockIn $stockIn)
     {
-        if ($stockIn->status === 'posted') {
-            return redirect()->back()->with('error', 'Cannot edit a posted stock in.');
-        }
+        // Posted check removed to allow editing (service handles stock updates)
+
 
         $validated = $request->validate([
             'distribution_id' => 'required|exists:distributions,id',

@@ -19,7 +19,7 @@ class StockInService
         $query = \App\Models\StockInItem::query()
             ->join('stock_ins', 'stock_in_items.stock_in_id', '=', 'stock_ins.id')
             ->select('stock_in_items.*', 'stock_ins.date', 'stock_ins.bilty_number', 'stock_ins.status', 'stock_ins.distribution_id as parent_distribution_id')
-            ->with(['stockIn.distribution', 'product']);
+            ->with(['stockIn.distribution', 'stockIn.items.product', 'product']);
 
         if ($distributionId) {
             $query->where('stock_ins.distribution_id', $distributionId);
@@ -92,6 +92,8 @@ class StockInService
                 'distribution_margin' => $product->distribution_margin ?? 0,
                 'invoice_price' => $product->invoice_price ?? 0,
                 'unit_price' => $product->unit_price ?? 0,
+                'unit_price' => $product->unit_price ?? 0,
+                'stock_in_item_id' => $item->id,
             ]);
         }
     }
@@ -102,13 +104,24 @@ class StockInService
     public function update(StockIn $stockIn, array $data, array $items): StockIn
     {
         return DB::transaction(function () use ($stockIn, $data, $items) {
+            // Cleanup legacy stocks (pre-migration) if needed
+            if ($stockIn->status === 'posted') {
+                $this->cleanupLegacyStocks($stockIn->items);
+            }
+
             $stockIn->update($data);
 
-            // Delete existing items and recreate
+            // Delete existing items (this will cascade delete stocks because of stock_in_item_id fk)
             $stockIn->items()->delete();
 
             foreach ($items as $item) {
                 $stockIn->items()->create($item);
+            }
+            
+            // If it was already posted, we need to recreate the stocks for the new items
+            if ($stockIn->status === 'posted') {
+                $stockIn->load('items'); // Reload items with new IDs
+                $this->updateStocksFromItems($stockIn);
             }
 
             return $stockIn->load('items.product');
@@ -143,6 +156,9 @@ class StockInService
                     'distribution_margin' => $item->distribution_margin,
                     'invoice_price' => $item->invoice_price,
                     'unit_price' => $item->unit_price,
+                    'invoice_price' => $item->invoice_price,
+                    'unit_price' => $item->unit_price,
+                    'stock_in_item_id' => $item->id,
                 ]);
             }
 
@@ -158,9 +174,38 @@ class StockInService
      */
     public function delete(StockIn $stockIn): bool
     {
+        // Cleanup legacy stocks (pre-migration) if needed
         if ($stockIn->status === 'posted') {
-            throw new \Exception('Cannot delete a posted stock in.');
+            $this->cleanupLegacyStocks($stockIn->items);
         }
+
+        // Cascade delete ensures stock_in_items and linked stocks are deleted
         return $stockIn->delete();
+    }
+    
+    /**
+     * Attempt to find and delete matching stocks for items that don't have stock_in_item_id link.
+     */
+    protected function cleanupLegacyStocks($items): void
+    {
+        foreach ($items as $item) {
+            // Linked stocks will be handled by cascade, we only look for unlinked ones
+            $query = Stock::where('product_id', $item->product_id)
+                ->where('distribution_id', $item->stockIn->distribution_id)
+                ->where('quantity', $item->quantity)
+                ->where('batch_number', $item->batch_number)
+                ->whereNull('stock_in_item_id'); // Only target legacy unlinked stocks
+            
+            // Handle null/empty expiry
+            if ($item->expiry_date) {
+                $query->whereDate('expiry_date', $item->expiry_date);
+            }
+            
+            $legacyStock = $query->first();
+            
+            if ($legacyStock) {
+                $legacyStock->delete();
+            }
+        }
     }
 }
