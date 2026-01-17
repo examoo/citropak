@@ -248,14 +248,14 @@ const calculateNetUnitPrice = () => {
     const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
     const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
     const extraTax = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
-    
+
     // Check if product type is exactly "food" (case-insensitive)
     // Default to non-food (original formula) if product type is not set or not 'food'
     const productTypeName = (selectedProduct.value?.product_type?.name || '').toLowerCase().trim();
     const isFood = productTypeName === 'food';
-    
+
     let netPrice;
-    
+
     if (isFood) {
         // Food products: Net = Exclusive * (1 + SalesTax% + ExtraTax%)
         netPrice = exclusive * (1 + salesTax + extraTax);
@@ -276,14 +276,14 @@ const calculateReversePrice = () => {
     const fed = parseFloat(newItem.value.fed_percent) / 100 || 0;
     const salesTax = parseFloat(newItem.value.sales_tax_percent) / 100 || 0;
     const extraTax = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
-    
+
     // Check if product type is exactly "food" (case-insensitive)
     // Default to non-food (original formula) if product type is not set or not 'food'
     const productTypeName = (selectedProduct.value?.product_type?.name || '').toLowerCase().trim();
     const isFood = productTypeName === 'food';
-    
+
     let divisor;
-    
+
     if (isFood) {
         // Food products: Reverse of additive formula
         divisor = 1 + salesTax + extraTax;
@@ -291,7 +291,7 @@ const calculateReversePrice = () => {
         // Other products (DEFAULT): Reverse of compound formula
         divisor = (1 + fed) * (1 + salesTax);
     }
-    
+
     if (divisor === 0 || divisor === 1) {
         newItem.value.exclusive_price = netPrice;
     } else {
@@ -352,12 +352,12 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
         newItem.value.batch_number = '';
         newItem.value.available_qty = 0;
     }
-    
+
     if (productId) {
         const product = props.products.find(p => p.id === parseInt(productId));
         if (product) {
             selectedProduct.value = product;
-            
+
             // Get tax percentages from product
             newItem.value.fed_percent = parseFloat(product.fed_percent) || 0;
             newItem.value.sales_tax_percent = parseFloat(product.fed_sales_tax) || 0;
@@ -368,11 +368,11 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             newItem.value.trade_discount_percent = parseFloat(product.retail_margin) || 0;
             // Get advance tax from selected customer
             newItem.value.adv_tax_percent = parseFloat(selectedCustomer.value?.adv_tax_percent) || 0;
-            
+
             // Check if product type is "food" (case-insensitive)
             const productTypeName = product.product_type?.name?.toLowerCase() || '';
             const isFood = productTypeName === 'food';
-            
+
             if (isFood) {
                 // FOOD products: Use exclusive_price (list_price_before_tax) and calculate net unit price
                 newItem.value.exclusive_price = parseFloat(product.list_price_before_tax) || 0;
@@ -385,10 +385,10 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
                 // Reverse-calculate exclusive price from unit price
                 calculateReversePrice();
             }
-            
+
             loadProductSchemes(productId);
             productCode.value = product.dms_code || product.sku || '';
-            
+
             // FIFO: Auto-select the first (oldest) available batch
             const distId = form.distribution_id || currentDistribution.value?.id;
             let stocks = props.availableStocks.filter(s => Number(s.product_id) === Number(productId));
@@ -428,14 +428,14 @@ watch(() => newItem.value.stock_id, (stockId) => {
 // Watch customer selection to update advance tax and clear schemes
 watch(() => selectedCustomer.value, (customer) => {
     console.log('Customer changed, sub_distribution_id:', customer?.sub_distribution_id);
-    
+
     // Clear any loaded schemes when customer changes
     discountSchemes.value = [];
-    
+
     if (customer && newItem.value.product_id) {
         newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
         handleTaxChange(); // Use smart handler to preserve net or forward calc
-        
+
         // Reload schemes for current product with new customer's sub_distribution_id
         if (newItem.value.total_pieces > 0) {
             const selectedProduct = products.value.find(p => p.id === newItem.value.product_id);
@@ -463,31 +463,28 @@ const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
         if (brandId) {
             brandQuantity = (brandQuantities.value[brandId] || 0) + quantity;
         }
-        
+
         // Get customer's sub_distribution_id for filtering schemes
         const subDistributionId = selectedCustomer.value?.sub_distribution_id || null;
         console.log('Loading schemes with sub_distribution_id:', subDistributionId);
-        
+
         const response = await axios.get(route('api.discount-schemes', productId), {
-            params: { 
+            params: {
                 quantity,
                 brand_quantity: brandQuantity,
                 sub_distribution_id: subDistributionId
             }
         });
         discountSchemes.value = response.data;
-        
-        // Auto-apply first scheme if available
-        // The scheme's free_pieces will be 0 until qty reaches max, then calculated value
-        if (discountSchemes.value.length >= 1) {
-            applyDiscountScheme(discountSchemes.value[0]);
-        } else {
-            // Clear scheme selection when no schemes available
-            newItem.value.discount_scheme_id = '';
-            newItem.value.scheme_discount = 0;
-            newItem.value.free_product = null;
-            newItem.value.free_pieces = 0;
-        }
+
+        // Do NOT auto-apply first scheme - User must select manually
+        // But we should ensure any previous selection is cleared if we're reloading schemes
+        // or just let the user re-select? safely clearing is better to avoid stale state
+        newItem.value.discount_scheme_id = '';
+        newItem.value.scheme_discount = 0;
+        newItem.value.free_product = null;
+        newItem.value.free_pieces = 0;
+
     } catch (e) {
         discountSchemes.value = [];
         // Clear scheme selection on error
@@ -500,10 +497,17 @@ const loadDiscountSchemes = async (productId, quantity, brandId = null) => {
 
 // Apply a discount scheme (amount_less or free_product)
 const applyDiscountScheme = (scheme) => {
-    if (!scheme) return; // Guard against undefined scheme
-    
+    // If no scheme is provided (e.g. "No Scheme" selected), clear all scheme fields
+    if (!scheme) {
+        newItem.value.discount_scheme_id = '';
+        newItem.value.scheme_discount = 0;
+        newItem.value.free_product = null;
+        newItem.value.free_pieces = 0;
+        return;
+    }
+
     newItem.value.discount_scheme_id = scheme.id;
-    
+
     if (scheme.discount_type === 'amount_less') {
         // Amount-based discount - use exact value from API (per qty calculation)
         newItem.value.scheme_discount = parseFloat(scheme.amount_less) || 0;
@@ -523,7 +527,7 @@ watch([() => newItem.value.cartons, () => newItem.value.pieces], () => {
     // Use pieces_per_packing from new simplified structure
     const packing = selectedProduct.value?.pieces_per_packing || selectedProduct.value?.packing?.quantity || 12;
     newItem.value.total_pieces = (newItem.value.cartons * packing) + newItem.value.pieces;
-    
+
     // Load discount schemes based on quantity
     if (newItem.value.product_id && newItem.value.total_pieces > 0) {
         const brandId = selectedProduct.value?.brand_id || null;
@@ -561,10 +565,10 @@ const addItem = () => {
     const product = props.products.find(p => p.id === parseInt(newItem.value.product_id));
 
     // Check for duplicate product (only for non-free items)
-    const isDuplicate = form.items.some(item => 
+    const isDuplicate = form.items.some(item =>
         item.product_id === parseInt(newItem.value.product_id) && !item.is_free
     );
-    
+
     if (isDuplicate) {
         Swal.fire({
             icon: 'error',
@@ -609,7 +613,7 @@ const addItem = () => {
 
     // Gross amount = Exclusive + FED + Sales Tax + Extra Tax
     const grossAmount = exclusiveAmount + fedAmount + salesTaxAmount + extraTaxAmount;
-    
+
     // DO NOT update unit price based on gross amount
     // newItem.value.net_unit_price = grossAmount / newItem.value.total_pieces;
 
@@ -666,12 +670,12 @@ const addItem = () => {
     // If there's a free product, add it or update existing free item quantity
     if (newItem.value.free_product && newItem.value.free_pieces > 0) {
         const freeProductId = newItem.value.free_product.id;
-        
+
         // Check which scheme type was applied
         const appliedScheme = discountSchemes.value.find(s => s.id === newItem.value.discount_scheme_id);
         const isBrandScheme = appliedScheme?.scheme_type === 'brand';
         const schemeBrandId = isBrandScheme ? (product?.brand_id || null) : null;
-        
+
         // Check if this free product already exists in the invoice
         // For brand schemes: Check if there's already a free item for this brand's scheme
         // For product schemes: Check if this exact free product already exists
@@ -687,11 +691,11 @@ const addItem = () => {
             }
             return false;
         });
-        
+
         if (existingFreeItemIndex >= 0) {
             // Update existing free item
             const existingItem = form.items[existingFreeItemIndex];
-            
+
             console.log('Updating existing free item:', {
                 isBrandScheme,
                 newFreePieces: newItem.value.free_pieces,
@@ -699,7 +703,7 @@ const addItem = () => {
                 appliedScheme: appliedScheme,
                 schemeBrandId
             });
-            
+
             if (isBrandScheme) {
                 // For brand schemes: SET the quantity to the calculated total (not increment)
                 // because free_pieces from API already accounts for accumulated brand quantity
@@ -710,20 +714,20 @@ const addItem = () => {
                 existingItem.pieces += newItem.value.free_pieces;
                 existingItem.total_pieces += newItem.value.free_pieces;
             }
-            
+
             // Recalculate amounts based on new quantity
             const freeExclusiveAmount = existingItem.exclusive_price * existingItem.total_pieces;
             const freeFedAmount = freeExclusiveAmount * (existingItem.fed_percent / 100);
             const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (existingItem.sales_tax_percent / 100);
             const freeExtraTaxAmount = freeExclusiveAmount * ((existingItem.extra_tax_percent || 0) / 100);
             const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
-            
+
             existingItem.fed_amount = freeFedAmount;
             existingItem.sales_tax_amount = freeSalesTaxAmount;
             existingItem.extra_tax_amount = freeExtraTaxAmount;
             existingItem.gross_amount = freeGrossAmount;
             existingItem.trade_discount_amount = freeGrossAmount; // 100% trade discount to make it free
-            
+
             // Update brand_scheme_brand_id if this was a brand scheme
             if (isBrandScheme) {
                 existingItem.brand_scheme_brand_id = schemeBrandId;
@@ -733,7 +737,7 @@ const addItem = () => {
             // Determine tax/price for free product
             // If it's the same product, reuse current item's rates
             const isSameProduct = newItem.value.free_product.id === newItem.value.product_id;
-            
+
             const freeExclusivePrice = parseFloat(newItem.value.free_product.list_price_before_tax) || 0;
             const freeFedPercent = isSameProduct ? newItem.value.fed_percent : (parseFloat(newItem.value.free_product.fed_percent) || 0);
             const freeSalesTaxPercent = isSameProduct ? newItem.value.sales_tax_percent : (parseFloat(newItem.value.free_product.fed_sales_tax) || 0);
@@ -746,13 +750,13 @@ const addItem = () => {
             const freeFedAmount = freeExclusiveAmount * (freeFedPercent / 100);
             const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (freeSalesTaxPercent / 100);
             const freeExtraTaxAmount = freeExclusiveAmount * (freeExtraTaxPercent / 100);
-            
+
             // Net Unit Price for Free Item (Excl + FED + ST)
-            const freeNetUnitPrice = freeExclusivePrice * (1 + freeFedPercent/100) * (1 + freeSalesTaxPercent/100);
+            const freeNetUnitPrice = freeExclusivePrice * (1 + freeFedPercent / 100) * (1 + freeSalesTaxPercent / 100);
 
             // Gross = Excl + FED + ST + Extra
             const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
-            
+
             // Trade Discount = Gross Amount (to make it free - user requested strict "trade discount show gross value")
             const freeTradeDiscountAmount = freeGrossAmount;
 
@@ -843,7 +847,7 @@ const resetNewItem = () => {
 const removeItem = (index) => {
     const removedItem = form.items[index];
     form.items.splice(index, 1);
-    
+
     // Recalculate brand schemes after removing an item
     if (removedItem && !removedItem.is_free && removedItem.brand_id) {
         recalculateBrandSchemes(removedItem.brand_id);
@@ -854,12 +858,12 @@ const removeItem = (index) => {
 const recalculateBrandSchemes = async (brandId) => {
     // Get total quantity for this brand after the change
     const totalBrandQty = brandQuantities.value[brandId] || 0;
-    
+
     // Find any existing free items for brand-type schemes of this brand
-    const brandFreeItemIndex = form.items.findIndex(item => 
+    const brandFreeItemIndex = form.items.findIndex(item =>
         item.is_free && item.brand_scheme_brand_id === brandId
     );
-    
+
     if (totalBrandQty <= 0) {
         // Remove free items for this brand if no products remain
         if (brandFreeItemIndex >= 0) {
@@ -867,41 +871,41 @@ const recalculateBrandSchemes = async (brandId) => {
         }
         return;
     }
-    
+
     // Find a product of this brand to get scheme information
     const brandProduct = form.items.find(item => !item.is_free && item.brand_id === brandId);
     if (!brandProduct) return;
-    
+
     try {
         // Fetch updated schemes based on new total brand quantity
         const response = await axios.get(route('api.discount-schemes', brandProduct.product_id), {
-            params: { 
+            params: {
                 quantity: totalBrandQty,
                 brand_quantity: totalBrandQty
             }
         });
-        
+
         const schemes = response.data;
         // Find brand-type scheme
         const brandScheme = schemes.find(s => s.scheme_type === 'brand' && s.discount_type === 'free_product');
-        
+
         if (brandScheme && brandScheme.free_product) {
             const freeProduct = brandScheme.free_product;
             const freePieces = brandScheme.free_pieces > 0 ? brandScheme.free_pieces : 1;
-            
+
             if (brandFreeItemIndex >= 0) {
                 // Update existing free item
                 const existingItem = form.items[brandFreeItemIndex];
                 existingItem.pieces = freePieces;
                 existingItem.total_pieces = freePieces;
-                
+
                 // Recalculate amounts
                 const freeExclusiveAmount = existingItem.exclusive_price * freePieces;
                 const freeFedAmount = freeExclusiveAmount * (existingItem.fed_percent / 100);
                 const freeSalesTaxAmount = (freeExclusiveAmount + freeFedAmount) * (existingItem.sales_tax_percent / 100);
                 const freeExtraTaxAmount = freeExclusiveAmount * ((existingItem.extra_tax_percent || 0) / 100);
                 const freeGrossAmount = freeExclusiveAmount + freeFedAmount + freeSalesTaxAmount + freeExtraTaxAmount;
-                
+
                 existingItem.fed_amount = freeFedAmount;
                 existingItem.sales_tax_amount = freeSalesTaxAmount;
                 existingItem.extra_tax_amount = freeExtraTaxAmount;
@@ -950,7 +954,7 @@ const getItemAdvTax = (item) => {
     const gross = getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item) + getItemExtraTax(item);
     const discount = getItemDiscount(item) + (parseFloat(item.trade_discount_amount) || 0);
     const netAmount = gross - discount;
-    
+
     return netAmount * (item.adv_tax_percent / 100);
 };
 
@@ -1024,7 +1028,7 @@ onUnmounted(() => {
 // Submit form
 const submit = (andPrint = false) => {
     if (form.items.length === 0) return;
-    
+
     if (andPrint) {
         // Save & Print: Let controller redirect to show page (default behavior)
         form.post(route('invoices.store'));
@@ -1193,7 +1197,8 @@ const submit = (andPrint = false) => {
                                 <span class="text-gray-500">S.Tax Status:</span>
                                 <span class="font-medium ml-2"
                                     :class="selectedCustomer.sales_tax_status === 'active' ? 'text-blue-600' : 'text-red-600'">
-                                    {{ selectedCustomer.sales_tax_status ? selectedCustomer.sales_tax_status.toUpperCase() : 'N/A' }}
+                                    {{ selectedCustomer.sales_tax_status ?
+                                        selectedCustomer.sales_tax_status.toUpperCase() : 'N/A' }}
                                 </span>
                             </div>
                         </div>
@@ -1210,7 +1215,7 @@ const submit = (andPrint = false) => {
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Product Code" />
                             <div class="flex items-stretch mt-1">
-                                <TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code" 
+                                <TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code"
                                     class="flex-1 !rounded-r-none !border-r-0 min-w-0"
                                     @keyup.enter="searchProductByCode" />
                                 <button type="button" @click="searchProductByCode"
@@ -1251,7 +1256,7 @@ const submit = (andPrint = false) => {
                         <!-- Cartons -->
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Cartons" />
-                            <TextInput ref="cartonsRef" v-model.number="newItem.cartons" type="number" min="0" 
+                            <TextInput ref="cartonsRef" v-model.number="newItem.cartons" type="number" min="0"
                                 class="mt-1 w-full text-center font-medium"
                                 @keydown.enter.prevent="piecesRef?.focus()" />
                         </div>
@@ -1259,17 +1264,16 @@ const submit = (andPrint = false) => {
                         <!-- Pieces -->
                         <div class="col-span-2 lg:col-span-1">
                             <InputLabel value="Pieces" />
-                            <TextInput ref="piecesRef" v-model.number="newItem.pieces" type="number" min="0" 
-                                class="mt-1 w-full text-center font-medium"
-                                @keydown.enter.prevent="schemeRef?.focus()" 
+                            <TextInput ref="piecesRef" v-model.number="newItem.pieces" type="number" min="0"
+                                class="mt-1 w-full text-center font-medium" @keydown.enter.prevent="schemeRef?.focus()"
                                 @keydown.tab="schemeRef?.focus()" />
                         </div>
 
                         <!-- Total Pieces (readonly) -->
                         <div class="col-span-2 lg:col-span-2">
                             <InputLabel value="Total Pcs" />
-                            <TextInput :value="newItem.total_pieces" type="number" 
-                                :class="['mt-1 w-full text-center font-bold', isStockExceeded ? 'bg-red-50 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700']" 
+                            <TextInput :value="newItem.total_pieces" type="number"
+                                :class="['mt-1 w-full text-center font-bold', isStockExceeded ? 'bg-red-50 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700']"
                                 readonly />
                             <div v-if="isStockExceeded" class="text-xs text-red-600 mt-1 font-medium">
                                 Exceeds available ({{ newItem.available_qty }})
@@ -1319,7 +1323,8 @@ const submit = (andPrint = false) => {
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
                                 <TextInput :model-value="formatAmount(newItem.net_unit_price)" type="text"
-                                    class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center" readonly />
+                                    class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center"
+                                    readonly />
                             </div>
 
                             <!-- Trade Discount (Retail Margin) -->
@@ -1334,13 +1339,14 @@ const submit = (andPrint = false) => {
                                 <InputLabel value="Scheme" class="text-xs" />
                                 <select ref="schemeRef" v-model="newItem.discount_scheme_id"
                                     @change="discountSchemes.length > 0 && applyDiscountScheme(discountSchemes.find(s => s.id == newItem.discount_scheme_id))"
-                                    @keydown.enter.prevent="addItem"
-                                    @keydown.tab.prevent="addItem"
+                                    @keydown.enter.prevent="addItem" @keydown.tab.prevent="addItem"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm h-[42px]"
                                     :class="newItem.free_product ? 'bg-green-50 border-green-300' : (newItem.scheme_discount > 0 ? 'bg-orange-50 border-orange-300' : '')">
                                     <option value="">No Scheme</option>
                                     <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
-                                        {{ scheme.name }} - {{ scheme.discount_type === 'amount_less' ? `Rs ${scheme.amount_less}` : `${scheme.free_pieces} FREE` }}
+                                        {{ scheme.name }} - {{ scheme.discount_type === 'amount_less' ? `Rs
+                                        ${scheme.amount_less}` :
+                                        `${scheme.free_pieces} FREE` }}
                                     </option>
                                 </select>
                             </div>
@@ -1355,8 +1361,8 @@ const submit = (andPrint = false) => {
                             <!-- Manual Discount Amount -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. Rs" class="text-xs" />
-                                <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.00001" min="0"
-                                    class="mt-1 w-full text-sm text-center" placeholder="0" />
+                                <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.00001"
+                                    min="0" class="mt-1 w-full text-sm text-center" placeholder="0" />
                             </div>
 
                             <!-- Add Button -->
@@ -1372,18 +1378,19 @@ const submit = (andPrint = false) => {
                     </div>
 
                     <!-- Discount Scheme Banner (when applicable) -->
-                    <div v-if="newItem.product_id && discountSchemes.length > 0" 
-                        class="mb-4 p-3 rounded-lg border-2"
+                    <div v-if="newItem.product_id && discountSchemes.length > 0" class="mb-4 p-3 rounded-lg border-2"
                         :class="newItem.free_product ? 'bg-green-50 border-green-300' : 'bg-orange-50 border-orange-300'">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span v-if="newItem.free_product" class="text-2xl">🎁</span>
                                 <span v-else class="text-2xl">💰</span>
                                 <div>
-                                    <p class="font-bold" :class="newItem.free_product ? 'text-green-700' : 'text-orange-700'">
+                                    <p class="font-bold"
+                                        :class="newItem.free_product ? 'text-green-700' : 'text-orange-700'">
                                         {{ discountSchemes[0]?.name || 'Discount Scheme Applied' }}
                                     </p>
-                                    <p class="text-sm" :class="newItem.free_product ? 'text-green-600' : 'text-orange-600'">
+                                    <p class="text-sm"
+                                        :class="newItem.free_product ? 'text-green-600' : 'text-orange-600'">
                                         <span v-if="newItem.scheme_discount > 0">
                                             Discount: Rs {{ formatAmount(newItem.scheme_discount) }}
                                         </span>
@@ -1393,11 +1400,13 @@ const submit = (andPrint = false) => {
                                     </p>
                                 </div>
                             </div>
-                            <select v-if="discountSchemes.length > 1" 
+                            <select v-if="discountSchemes.length > 1"
                                 @change="applyDiscountScheme(discountSchemes.find(s => s.id == $event.target.value))"
                                 class="text-sm rounded-md border-gray-300">
                                 <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
-                                    {{ scheme.name }} ({{ scheme.discount_type === 'amount_less' ? `Rs ${scheme.amount_less}` : `${scheme.free_pieces} FREE` }})
+                                    {{ scheme.name }} ({{ scheme.discount_type === 'amount_less' ? `Rs
+                                    ${scheme.amount_less}` :
+                                    `${scheme.free_pieces} FREE` }})
                                 </option>
                             </select>
                         </div>
@@ -1437,12 +1446,14 @@ const submit = (andPrint = false) => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                <tr v-for="(item, index) in form.items" :key="index" :class="{'bg-emerald-50/60': item.is_free}">
+                                <tr v-for="(item, index) in form.items" :key="index"
+                                    :class="{ 'bg-emerald-50/60': item.is_free }">
                                     <td class="px-2 py-3">{{ index + 1 }}</td>
                                     <td class="px-2 py-3">
-                                        <div class="font-medium" :class="{'text-emerald-700': item.is_free}">
+                                        <div class="font-medium" :class="{ 'text-emerald-700': item.is_free }">
                                             {{ item.product_name }}
-                                            <span v-if="item.is_free" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">
+                                            <span v-if="item.is_free"
+                                                class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">
                                                 FREE
                                             </span>
                                         </div>
@@ -1453,7 +1464,8 @@ const submit = (andPrint = false) => {
                                     <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
                                     <td class="px-2 py-3 text-right">
                                         {{ formatAmount(item.exclusive_price) }}
-                                        <span v-if="item.is_free" class="ml-1 text-[10px] font-bold text-emerald-600">(FREE)</span>
+                                        <span v-if="item.is_free"
+                                            class="ml-1 text-[10px] font-bold text-emerald-600">(FREE)</span>
                                     </td>
                                     <td class="px-2 py-3 text-right text-gray-600">{{
                                         formatAmount(getItemExclusive(item)) }}</td>
@@ -1473,7 +1485,8 @@ const submit = (andPrint = false) => {
                                         {{ formatAmount(getItemAdvTax(item)) }}
                                         <div class="text-xs">({{ item.adv_tax_percent }}%)</div>
                                     </td>
-                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}</td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}
+                                    </td>
                                     <td class="px-2 py-3 text-right text-amber-600">
                                         {{ formatAmount(item.trade_discount_amount || 0) }}
                                     </td>
@@ -1481,7 +1494,9 @@ const submit = (andPrint = false) => {
                                         -{{ formatAmount(getItemDiscount(item)) }}
                                     </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
-                                        {{ formatAmount(item.gross_amount - getItemDiscount(item) - (item.trade_discount_amount || 0)) }}
+                                        {{ formatAmount(item.gross_amount - getItemDiscount(item) -
+                                        (item.trade_discount_amount || 0))
+                                        }}
                                     </td>
                                     <td class="px-2 py-3">
                                         <button type="button" @click="removeItem(index)"
@@ -1537,7 +1552,8 @@ const submit = (andPrint = false) => {
                             </div>
                             <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
                                 <div class="text-amber-600 text-xs uppercase">Total Trade Discount</div>
-                                <div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}</div>
+                                <div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}
+                                </div>
                             </div>
                             <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
                                 <div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div>
@@ -1553,18 +1569,19 @@ const submit = (andPrint = false) => {
                     <Link :href="route('invoices.index')">
                         <SecondaryButton type="button">Cancel</SecondaryButton>
                     </Link>
-                    <button type="button" 
-                        @click="submit(false)"
-                        :disabled="form.processing || form.items.length === 0"
+                    <button type="button" @click="submit(false)" :disabled="form.processing || form.items.length === 0"
                         class="inline-flex items-center px-5 py-2.5 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
                         {{ form.processing ? 'Saving...' : 'Save' }}
                     </button>
-                    <button type="button"
-                        @click="submit(true)"
-                        :disabled="form.processing || form.items.length === 0"
+                    <button type="button" @click="submit(true)" :disabled="form.processing || form.items.length === 0"
                         class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-medium hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/30 transition-all">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
                         {{ form.processing ? 'Saving...' : 'Save & Print' }}
                     </button>
                 </div>
