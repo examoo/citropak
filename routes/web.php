@@ -65,17 +65,27 @@ Route::middleware(['auth'])->group(function () {
     Route::get('products/template', [ProductController::class, 'downloadTemplate'])->name('products.template');
     Route::post('products/import', [ProductController::class, 'import'])->name('products.import');
     Route::resource('products', ProductController::class);
+    Route::get('stock-report/export', [\App\Http\Controllers\StockReportController::class, 'export'])->name('stock-report.export');
+    Route::get('stock-report', [\App\Http\Controllers\StockReportController::class, 'index'])->name('stock-report.index');
+    Route::get('low-stock-report/export', [\App\Http\Controllers\LowStockReportController::class, 'export'])->name('low-stock-report.export');
+    Route::get('low-stock-report', [\App\Http\Controllers\LowStockReportController::class, 'index'])->name('low-stock-report.index');
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('product-categories', \App\Http\Controllers\ProductCategoryController::class);
     Route::resource('packings', \App\Http\Controllers\PackingController::class);
+    
+    // Chillers
+    Route::get('chillers/report/export', [\App\Http\Controllers\ChillerController::class, 'exportReport'])->name('chillers.report.export');
+    Route::get('chillers/report', [\App\Http\Controllers\ChillerController::class, 'report'])->name('chillers.report');
     Route::resource('chillers', \App\Http\Controllers\ChillerController::class);
-    Route::post('chillers/{chiller}/move', [\App\Http\Controllers\ChillerController::class, 'move'])->name('chillers.move');
-    Route::post('chillers/{chiller}/return', [\App\Http\Controllers\ChillerController::class, 'returnChiller'])->name('chillers.return');
+    Route::put('chillers/{chiller}/move', [\App\Http\Controllers\ChillerController::class, 'move'])->name('chillers.move');
+    Route::put('chillers/{chiller}/return', [\App\Http\Controllers\ChillerController::class, 'returnChiller'])->name('chillers.return');
     Route::get('chillers/{chiller}/history', [\App\Http\Controllers\ChillerController::class, 'history'])->name('chillers.history');
-    Route::get('chiller-reports', [\App\Http\Controllers\ChillerController::class, 'report'])->name('chillers.report');
     Route::resource('chiller-types', \App\Http\Controllers\ChillerTypeController::class);
+    
+    // Shelves
+    Route::get('shelves/report/export', [\App\Http\Controllers\ShelfController::class, 'exportReport'])->name('shelves.report.export');
+    Route::get('shelves/report', [\App\Http\Controllers\ShelfController::class, 'report'])->name('shelves.report');
     Route::resource('shelves', \App\Http\Controllers\ShelfController::class);
-    Route::get('shelf-reports', [\App\Http\Controllers\ShelfController::class, 'report'])->name('shelves.report');
     Route::get('discount-schemes/template', [\App\Http\Controllers\DiscountSchemeController::class, 'downloadTemplate'])->name('discount-schemes.template');
     Route::post('discount-schemes/import', [\App\Http\Controllers\DiscountSchemeController::class, 'import'])->name('discount-schemes.import');
     Route::resource('discount-schemes', \App\Http\Controllers\DiscountSchemeController::class);
@@ -116,15 +126,19 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('recoveries', \App\Http\Controllers\RecoveryController::class);
     Route::get('sales-accounts', [\App\Http\Controllers\SalesAccountController::class, 'index'])->name('sales-accounts.index');
     Route::get('sales-sheets', [\App\Http\Controllers\SalesSheetController::class, 'index'])->name('sales-sheets.index');
+    Route::get('sales-reports/export', [\App\Http\Controllers\SalesReportController::class, 'export'])->name('sales-reports.export');
     Route::get('sales-reports', [\App\Http\Controllers\SalesReportController::class, 'index'])->name('sales-reports.index');
+    Route::get('customer-sales-reports/export', [\App\Http\Controllers\CustomerSalesReportController::class, 'export'])->name('customer-sales-reports.export');
     Route::get('customer-sales-reports', [\App\Http\Controllers\CustomerSalesReportController::class, 'index'])->name('customer-sales-reports.index');
     Route::get('customer-ledgers', [\App\Http\Controllers\CustomerLedgerController::class, 'index'])->name('customer-ledgers.index');
+    Route::get('daily-sales-reports/export', [\App\Http\Controllers\DailySalesReportController::class, 'export'])->name('daily-sales-reports.export');
     Route::get('daily-sales-reports', [\App\Http\Controllers\DailySalesReportController::class, 'index'])->name('daily-sales-reports.index');
     Route::get('van-comparison', [\App\Http\Controllers\VanComparisonController::class, 'index'])->name('van-comparison.index');
     Route::get('sale-tax-invoices-reports/export', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'export'])->name('sale-tax-invoices-reports.export');
     Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
     Route::get('day-closing', [\App\Http\Controllers\DayClosingController::class, 'index'])->name('day-closing.index');
     Route::get('customer-wise-discount-reports', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'index'])->name('customer-wise-discount-reports.index');
+    Route::get('brand-wise-sales-reports/export', [\App\Http\Controllers\BrandWiseSalesReportController::class, 'export'])->name('brand-wise-sales-reports.export');
     Route::get('brand-wise-sales-reports', [\App\Http\Controllers\BrandWiseSalesReportController::class, 'index'])->name('brand-wise-sales-reports.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
@@ -133,20 +147,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/product-by-code/{code}', [\App\Http\Controllers\InvoiceController::class, 'getProductByCode'])->name('api.product-by-code');
     Route::get('api/schemes-for-product/{product}', [\App\Http\Controllers\InvoiceController::class, 'getSchemesForProduct'])->name('api.schemes-for-product');
     Route::get('api/discount-schemes/{product}', [\App\Http\Controllers\InvoiceController::class, 'getDiscountSchemes'])->name('api.discount-schemes');
-    Route::get('api/next-order-date', [\App\Http\Controllers\InvoiceController::class, 'getNextOrderDateApi'])->name('api.next-order-date');
-    
-    // Good Issue Notes
     Route::get('good-issue-notes/pending-items', [\App\Http\Controllers\GoodIssueNoteController::class, 'getPendingItems'])->name('good-issue-notes.pending-items');
     Route::post('good-issue-notes/{good_issue_note}/issue', [\App\Http\Controllers\GoodIssueNoteController::class, 'issue'])->name('good-issue-notes.issue');
     Route::post('good-issue-notes/{good_issue_note}/cancel', [\App\Http\Controllers\GoodIssueNoteController::class, 'cancel'])->name('good-issue-notes.cancel');
     Route::resource('good-issue-notes', \App\Http\Controllers\GoodIssueNoteController::class);
     
+    // Customer Wise Discount Report
+    Route::get('customer-wise-discount-report/export', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'export'])->name('customer-wise-discount-report.export');
+    Route::get('customer-wise-discount-report', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'index'])->name('customer-wise-discount-report.index');
+    
     // Credit Management
     Route::get('credit-management', [\App\Http\Controllers\CreditManagementController::class, 'index'])->name('credit-management.index');
     Route::get('credit-management/entries', [\App\Http\Controllers\CreditManagementController::class, 'entries'])->name('credit-management.entries');
+    Route::get('credit-management/summary/export', [\App\Http\Controllers\CreditManagementController::class, 'exportSummary'])->name('credit-management.summary.export');
     Route::get('credit-management/summary', [\App\Http\Controllers\CreditManagementController::class, 'summary'])->name('credit-management.summary');
+    Route::get('credit-management/bill-summary/export', [\App\Http\Controllers\CreditManagementController::class, 'exportBillSummary'])->name('credit-management.bill-summary.export');
     Route::get('credit-management/bill-summary', [\App\Http\Controllers\CreditManagementController::class, 'billSummary'])->name('credit-management.bill-summary');
     Route::get('credit-management/bill-wise-recovery', [\App\Http\Controllers\CreditManagementController::class, 'billWiseRecovery'])->name('credit-management.bill-wise-recovery');
+    Route::get('credit-management/daily-report/export', [\App\Http\Controllers\CreditManagementController::class, 'exportDailyReport'])->name('credit-management.daily-report.export');
     Route::get('credit-management/daily-report', [\App\Http\Controllers\CreditManagementController::class, 'dailyReport'])->name('credit-management.daily-report');
     Route::get('credit-management/daily-progress', [\App\Http\Controllers\CreditManagementController::class, 'dailyProgress'])->name('credit-management.daily-progress');
     Route::get('credit-management/search', [\App\Http\Controllers\CreditManagementController::class, 'search'])->name('credit-management.search');

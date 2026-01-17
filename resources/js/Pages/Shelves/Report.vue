@@ -57,6 +57,15 @@ const printReport = () => {
     window.print();
 };
 
+const exportExcel = () => {
+    const params = new URLSearchParams({
+        order_booker_id: filters.value.order_booker_id,
+        customer_id: filters.value.customer_id,
+        year: filters.value.year
+    });
+    window.location.href = route('shelves.report.export') + '?' + params.toString();
+};
+
 // Calculate totals
 const totals = computed(() => {
     const result = {
@@ -67,28 +76,29 @@ const totals = computed(() => {
         sales: 0,
         monthlySales: {}
     };
-    
+
     for (let m = 1; m <= 12; m++) {
         result.monthlySales[m] = 0;
     }
-    
+
     props.shelves?.forEach(shelf => {
         result.rent += parseFloat(shelf.rent_amount) || 0;
         result.months += parseInt(shelf.contract_months) || 0;
         result.total += (parseFloat(shelf.rent_amount) || 0) * (parseInt(shelf.contract_months) || 0);
         result.incentive += parseFloat(shelf.incentive_amount) || 0;
         result.sales += parseFloat(shelf.total_sales) || 0;
-        
+
         for (let m = 1; m <= 12; m++) {
             result.monthlySales[m] += parseFloat(shelf.monthly_sales?.[m]) || 0;
         }
     });
-    
+
     return result;
 });
 </script>
 
 <template>
+
     <Head title="Shelf Rent Report" />
 
     <DashboardLayout>
@@ -100,17 +110,17 @@ const totals = computed(() => {
                     <p class="text-gray-500 mt-1">View shelf rentals with month-wise sales performance.</p>
                 </div>
                 <div class="flex gap-2">
-                    <Link 
-                        :href="route('shelves.index')" 
-                        class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
-                    >
+                    <Link :href="route('shelves.index')"
+                        class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
                         Back to Shelves
                     </Link>
-                    <button 
-                        @click="printReport" 
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700"
-                    >
+                    <button @click="printReport"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
                         Print Report
+                    </button>
+                    <button @click="exportExcel"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                        Export Excel
                     </button>
                 </div>
             </div>
@@ -121,10 +131,8 @@ const totals = computed(() => {
                     <!-- Year -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                        <select 
-                            v-model="filters.year"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        >
+                        <select v-model="filters.year"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                             <option v-for="year in years" :key="year" :value="year">
                                 {{ year }}
                             </option>
@@ -134,10 +142,8 @@ const totals = computed(() => {
                     <!-- Order Booker -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Order Booker</label>
-                        <select 
-                            v-model="filters.order_booker_id"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        >
+                        <select v-model="filters.order_booker_id"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                             <option value="">All Order Bookers</option>
                             <option v-for="booker in orderBookers" :key="booker.id" :value="booker.id">
                                 {{ booker.name }}
@@ -148,10 +154,8 @@ const totals = computed(() => {
                     <!-- Customer -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                        <select 
-                            v-model="filters.customer_id"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        >
+                        <select v-model="filters.customer_id"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                             <option value="">All Customers</option>
                             <option v-for="customer in customers" :key="customer.id" :value="customer.id">
                                 {{ customer.name }} ({{ customer.code }})
@@ -161,16 +165,12 @@ const totals = computed(() => {
 
                     <!-- Buttons -->
                     <div class="flex items-end gap-2">
-                        <button 
-                            @click="applyFilters"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
-                        >
+                        <button @click="applyFilters"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
                             Apply
                         </button>
-                        <button 
-                            @click="resetFilters"
-                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-300"
-                        >
+                        <button @click="resetFilters"
+                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-300">
                             Reset
                         </button>
                     </div>
@@ -178,7 +178,8 @@ const totals = computed(() => {
             </div>
 
             <!-- Report Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-none">
+            <div
+                class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-none">
                 <!-- Print Header -->
                 <div class="hidden print:block p-4 border-b">
                     <h1 class="text-xl font-bold text-center">Shelf Rent Report - {{ currentYear }}</h1>
@@ -196,11 +197,8 @@ const totals = computed(() => {
                                 <th class="px-2 py-2 text-right font-medium text-gray-500 uppercase">Rent/M</th>
                                 <th class="px-2 py-2 text-center font-medium text-gray-500 uppercase">Months</th>
                                 <th class="px-2 py-2 text-right font-medium text-gray-500 uppercase">Total</th>
-                                <th 
-                                    v-for="month in months" 
-                                    :key="month.num"
-                                    class="px-2 py-2 text-right font-medium text-gray-500 uppercase"
-                                >
+                                <th v-for="month in months" :key="month.num"
+                                    class="px-2 py-2 text-right font-medium text-gray-500 uppercase">
                                     {{ month.name }}
                                 </th>
                                 <th class="px-2 py-2 text-right font-medium text-gray-500 uppercase">Total Sale</th>
@@ -225,12 +223,9 @@ const totals = computed(() => {
                                 <td class="px-2 py-2 whitespace-nowrap text-right font-medium">
                                     {{ formatCurrency((item.rent_amount || 0) * (item.contract_months || 0)) }}
                                 </td>
-                                <td 
-                                    v-for="month in months" 
-                                    :key="month.num"
+                                <td v-for="month in months" :key="month.num"
                                     class="px-2 py-2 whitespace-nowrap text-right"
-                                    :class="item.monthly_sales?.[month.num] > 0 ? 'text-green-600' : 'text-gray-400'"
-                                >
+                                    :class="item.monthly_sales?.[month.num] > 0 ? 'text-green-600' : 'text-gray-400'">
                                     {{ formatCurrency(item.monthly_sales?.[month.num] || 0) }}
                                 </td>
                                 <td class="px-2 py-2 whitespace-nowrap text-right font-semibold text-green-700">
@@ -253,15 +248,12 @@ const totals = computed(() => {
                                 <td class="px-2 py-2 text-right">{{ formatCurrency(totals.rent) }}</td>
                                 <td class="px-2 py-2 text-center">-</td>
                                 <td class="px-2 py-2 text-right">{{ formatCurrency(totals.total) }}</td>
-                                <td 
-                                    v-for="month in months" 
-                                    :key="month.num"
-                                    class="px-2 py-2 text-right"
-                                >
+                                <td v-for="month in months" :key="month.num" class="px-2 py-2 text-right">
                                     {{ formatCurrency(totals.monthlySales[month.num]) }}
                                 </td>
                                 <td class="px-2 py-2 text-right text-green-700">{{ formatCurrency(totals.sales) }}</td>
-                                <td class="px-2 py-2 text-right text-blue-600">{{ formatCurrency(totals.incentive) }}</td>
+                                <td class="px-2 py-2 text-right text-blue-600">{{ formatCurrency(totals.incentive) }}
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -271,8 +263,10 @@ const totals = computed(() => {
                 <div v-if="shelves.length > 0" class="p-4 border-t border-gray-200 bg-gray-50 print:hidden">
                     <div class="flex justify-between items-center text-sm">
                         <span class="text-gray-600">Total Shelves: <strong>{{ shelves.length }}</strong></span>
-                        <span class="text-gray-600">Total Rent: <strong>Rs. {{ formatCurrency(totals.total) }}</strong></span>
-                        <span class="text-gray-600">Total Sales: <strong class="text-green-600">Rs. {{ formatCurrency(totals.sales) }}</strong></span>
+                        <span class="text-gray-600">Total Rent: <strong>Rs. {{ formatCurrency(totals.total)
+                                }}</strong></span>
+                        <span class="text-gray-600">Total Sales: <strong class="text-green-600">Rs. {{
+                                formatCurrency(totals.sales) }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -286,9 +280,11 @@ const totals = computed(() => {
         size: landscape;
         margin: 0.5cm;
     }
+
     body {
         font-size: 10px;
     }
+
     table {
         font-size: 9px;
     }

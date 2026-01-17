@@ -431,4 +431,19 @@ class CreditManagementController extends Controller
             'years' => $years,
         ]);
     }
+    public function exportSummary(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CreditCustomerSummaryExport($request->all()), 'credit-customer-summary.xlsx');
+    }
+
+    public function exportBillSummary(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CreditBillSummaryExport($request->all()), 'credit-bill-summary.xlsx');
+    }
+
+    public function exportDailyReport(Request $request) 
+    {
+        $date = $request->input('date', date('Y-m-d'));
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CreditDailyReportExport($date), 'credit-daily-report-' . $date . '.xlsx');
+    }
 }

@@ -41,6 +41,11 @@ const formatDate = (dateStr) => {
 };
 
 const print = () => window.print();
+
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('sales-reports.export') + '?' + params.toString();
+};
 </script>
 
 <template>
@@ -74,6 +79,10 @@ const print = () => window.print();
                     </div>
                     <div class="flex gap-2 pb-0.5">
                         <PrimaryButton @click="search">Search</PrimaryButton>
+                        <button @click="exportExcel"
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                            Export Excel
+                        </button>
                         <SecondaryButton @click="print">Print</SecondaryButton>
                     </div>
                 </div>
@@ -141,8 +150,69 @@ const print = () => window.print();
 
 <style scoped>
 @media print {
-    .no-print {
+
+    /* Hide non-printable elements */
+    .no-print,
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky {
         display: none !important;
     }
+
+    /* Reset layout for print */
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Overwrite container styles */
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Ensure table fits */
+    .overflow-x-auto,
+    .overflow-hidden {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        padding: 4px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Hide colored status badges for print if needed, or adjust colors */
 }
 </style>

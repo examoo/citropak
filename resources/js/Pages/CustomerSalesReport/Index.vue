@@ -52,6 +52,13 @@ const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
+
+const print = () => window.print();
+
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('customer-sales-reports.export') + '?' + params.toString();
+};
 </script>
 
 <template>
@@ -129,13 +136,14 @@ const formatDate = (dateStr) => {
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-gray-800">All Invoices</h3>
                             <div class="flex gap-2 no-print">
-                                <button class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">🖨
-                                    Print</button>
-                                <button class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200">📄
-                                    Export PDF</button>
-                                <button
-                                    class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200">📊
-                                    Export CSV</button>
+                                <button @click="print"
+                                    class="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700">
+                                    🖨 Print / PDF
+                                </button>
+                                <button @click="exportExcel"
+                                    class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                                    📊 Export Excel
+                                </button>
                             </div>
                         </div>
                         <table class="w-full text-left text-sm">
@@ -229,3 +237,76 @@ const formatDate = (dateStr) => {
         </div>
     </DashboardLayout>
 </template>
+<style scoped>
+@media print {
+
+    /* Hide non-printable elements */
+    .no-print,
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky {
+        display: none !important;
+    }
+
+    /* Reset layout for print */
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Overwrite container styles */
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border,
+    .bg-gradient-to-r,
+    .shadow-lg {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: black !important;
+    }
+
+    .text-white {
+        color: black !important;
+    }
+
+    /* Ensure table fits */
+    .overflow-x-auto,
+    .overflow-hidden {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        padding: 4px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+</style>

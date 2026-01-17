@@ -76,4 +76,8 @@ class DailySalesReportController extends Controller
             'productTypes' => ProductType::orderBy('name')->get(['id', 'name']),
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\DailySalesExport($request->all()), 'daily-sales-report.xlsx');
+    }
 }

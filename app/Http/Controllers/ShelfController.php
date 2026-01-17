@@ -124,4 +124,8 @@ class ShelfController extends Controller
             'currentYear' => $filters['year'] ?? now()->year,
         ]);
     }
+    public function exportReport(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ShelfReportExport($request->all()), 'shelf-report.xlsx');
+    }
 }

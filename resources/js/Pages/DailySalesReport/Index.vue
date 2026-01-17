@@ -32,6 +32,13 @@ const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
+
+const print = () => window.print();
+
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('daily-sales-reports.export') + '?' + params.toString();
+};
 </script>
 
 <template>
@@ -73,6 +80,14 @@ const formatDate = (dateStr) => {
                     <PrimaryButton @click="search" class="bg-blue-600 hover:bg-blue-700">
                         Generate Report
                     </PrimaryButton>
+                    <button @click="exportExcel"
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Export Excel
+                    </button>
+                    <button @click="print"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Print / PDF
+                    </button>
                 </div>
             </div>
 
@@ -123,8 +138,75 @@ const formatDate = (dateStr) => {
 
 <style scoped>
 @media print {
-    .no-print {
+
+    /* Hide non-printable elements */
+    .no-print,
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky {
         display: none !important;
+    }
+
+    /* Reset layout for print */
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Overwrite container styles */
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border,
+    .bg-gradient-to-r,
+    .shadow-lg {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: black !important;
+    }
+
+    .text-white {
+        color: black !important;
+    }
+
+    /* Ensure table fits */
+    .overflow-x-auto,
+    .overflow-hidden {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8px !important;
+        /* Smaller for daily sales pivot */
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        padding: 2px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }
 </style>

@@ -27,10 +27,19 @@ const formatCurrency = (value) => {
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const print = () => window.print();
+
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('credit-management.bill-summary.export') + '?' + params.toString();
 };
 </script>
 
 <template>
+
     <Head title="Credit Bill Summary" />
     <DashboardLayout>
         <div class="space-y-6">
@@ -43,13 +52,23 @@ const formatDate = (dateStr) => {
                 <div class="flex gap-4 items-end">
                     <div>
                         <InputLabel value="From Date" />
-                        <input type="date" v-model="form.date_from" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <input type="date" v-model="form.date_from"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     </div>
                     <div>
                         <InputLabel value="To Date" />
-                        <input type="date" v-model="form.date_to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <input type="date" v-model="form.date_to"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     </div>
                     <PrimaryButton @click="search" class="bg-teal-600 hover:bg-teal-700">Search</PrimaryButton>
+                    <button @click="exportExcel"
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Export
+                    </button>
+                    <button @click="print"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Print
+                    </button>
                 </div>
             </div>
 
@@ -75,7 +94,8 @@ const formatDate = (dateStr) => {
                             <td class="px-4 py-3">{{ bill.van }}</td>
                             <td class="px-4 py-3 text-right">{{ formatCurrency(bill.amount) }}</td>
                             <td class="px-4 py-3 text-right text-green-600">{{ formatCurrency(bill.recovered) }}</td>
-                            <td class="px-4 py-3 text-right font-bold" :class="bill.pending > 0 ? 'text-red-600' : 'text-green-600'">
+                            <td class="px-4 py-3 text-right font-bold"
+                                :class="bill.pending > 0 ? 'text-red-600' : 'text-green-600'">
                                 {{ formatCurrency(bill.pending) }}
                             </td>
                             <td class="px-4 py-3 text-center">{{ bill.recovery_count }}</td>
@@ -98,3 +118,66 @@ const formatDate = (dateStr) => {
         </div>
     </DashboardLayout>
 </template>
+<style scoped>
+@media print {
+
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky,
+    button,
+    .no-print {
+        display: none !important;
+    }
+
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border,
+    .bg-gradient-to-r,
+    .shadow-lg {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: black !important;
+    }
+
+    .text-white {
+        color: black !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        padding: 4px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+</style>

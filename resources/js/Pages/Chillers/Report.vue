@@ -45,6 +45,17 @@ const formatCurrency = (value) => {
     }).format(value || 0);
 };
 
+const exportExcel = () => {
+    const params = new URLSearchParams({
+        chiller_type_id: filters.value.chiller_type_id,
+        order_booker_id: filters.value.order_booker_id,
+        customer_id: filters.value.customer_id,
+        date_from: filters.value.date_from,
+        date_to: filters.value.date_to
+    });
+    window.location.href = route('chillers.report.export') + '?' + params.toString();
+};
+
 const printReport = () => {
     window.print();
 };
@@ -57,6 +68,7 @@ watch(() => props.chillers, (newChillers) => {
 </script>
 
 <template>
+
     <Head title="Chiller Report" />
 
     <DashboardLayout>
@@ -68,17 +80,17 @@ watch(() => props.chillers, (newChillers) => {
                     <p class="text-gray-500 mt-1">View chillers with customer details and sales.</p>
                 </div>
                 <div class="flex gap-2">
-                    <Link 
-                        :href="route('chillers.index')" 
-                        class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700"
-                    >
+                    <Link :href="route('chillers.index')"
+                        class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
                         Back to Chillers
                     </Link>
-                    <button 
-                        @click="printReport" 
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700"
-                    >
+                    <button @click="printReport"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
                         Print Report
+                    </button>
+                    <button @click="exportExcel"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                        Export Excel
                     </button>
                 </div>
             </div>
@@ -89,10 +101,8 @@ watch(() => props.chillers, (newChillers) => {
                     <!-- Chiller Type -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Chiller Type</label>
-                        <select 
-                            v-model="filters.chiller_type_id"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        >
+                        <select v-model="filters.chiller_type_id"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                             <option value="">All Types</option>
                             <option v-for="type in chillerTypes" :key="type.id" :value="type.id">
                                 {{ type.name }}
@@ -103,10 +113,8 @@ watch(() => props.chillers, (newChillers) => {
                     <!-- Order Booker -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Order Booker</label>
-                        <select 
-                            v-model="filters.order_booker_id"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        >
+                        <select v-model="filters.order_booker_id"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                             <option value="">All Order Bookers</option>
                             <option v-for="booker in orderBookers" :key="booker.id" :value="booker.id">
                                 {{ booker.name }}
@@ -117,35 +125,25 @@ watch(() => props.chillers, (newChillers) => {
                     <!-- Date From -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Sale Date From</label>
-                        <input 
-                            v-model="filters.date_from"
-                            type="date"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        />
+                        <input v-model="filters.date_from" type="date"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" />
                     </div>
 
                     <!-- Date To -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Sale Date To</label>
-                        <input 
-                            v-model="filters.date_to"
-                            type="date"
-                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
-                        />
+                        <input v-model="filters.date_to" type="date"
+                            class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" />
                     </div>
 
                     <!-- Buttons -->
                     <div class="flex items-end gap-2">
-                        <button 
-                            @click="applyFilters"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
-                        >
+                        <button @click="applyFilters"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
                             Apply
                         </button>
-                        <button 
-                            @click="resetFilters"
-                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-300"
-                        >
+                        <button @click="resetFilters"
+                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-300">
                             Reset
                         </button>
                     </div>
@@ -153,7 +151,8 @@ watch(() => props.chillers, (newChillers) => {
             </div>
 
             <!-- Report Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-none">
+            <div
+                class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-none">
                 <!-- Print Header -->
                 <div class="hidden print:block p-4 border-b">
                     <h1 class="text-xl font-bold text-center">Chiller Report</h1>
@@ -166,24 +165,38 @@ watch(() => props.chillers, (newChillers) => {
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chiller Code</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Code</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Booker</th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sale</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Chiller Code</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Customer Code</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Customer Name</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Address</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Order Booker</th>
+                                <th scope="col"
+                                    class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Sale</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr v-for="item in chillers" :key="item.id" class="hover:bg-gray-50">
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="text-sm font-mono font-medium text-indigo-600">{{ item.chiller_code || '-' }}</span>
+                                    <span class="text-sm font-mono font-medium text-indigo-600">{{ item.chiller_code ||
+                                        '-' }}</span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <span class="text-sm font-mono">{{ item.customer?.customer_code || '-' }}</span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    <span class="text-sm font-medium text-gray-900">{{ item.customer?.shop_name || '-' }}</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ item.customer?.shop_name || '-'
+                                        }}</span>
                                 </td>
                                 <td class="px-4 py-3">
                                     <span class="text-sm text-gray-600">{{ item.customer?.address || '-' }}</span>
@@ -192,7 +205,8 @@ watch(() => props.chillers, (newChillers) => {
                                     <span class="text-sm text-gray-600">{{ item.order_booker?.name || '-' }}</span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-right">
-                                    <span class="text-sm font-medium text-green-600">{{ formatCurrency(item.total_sale) }}</span>
+                                    <span class="text-sm font-medium text-green-600">{{ formatCurrency(item.total_sale)
+                                        }}</span>
                                 </td>
                             </tr>
                             <tr v-if="chillers.length === 0">
@@ -219,7 +233,8 @@ watch(() => props.chillers, (newChillers) => {
                 <div v-if="chillers.length > 0" class="p-4 border-t border-gray-200 bg-gray-50 print:hidden">
                     <div class="flex justify-between items-center text-sm">
                         <span class="text-gray-600">Total Chillers: <strong>{{ chillers.length }}</strong></span>
-                        <span class="text-gray-600">Total Sale: <strong class="text-green-600">{{ formatCurrency(totalSale) }}</strong></span>
+                        <span class="text-gray-600">Total Sale: <strong class="text-green-600">{{
+                                formatCurrency(totalSale) }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -233,6 +248,7 @@ watch(() => props.chillers, (newChillers) => {
         size: landscape;
         margin: 1cm;
     }
+
     body {
         font-size: 12px;
     }

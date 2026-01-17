@@ -163,4 +163,8 @@ class ChillerController extends Controller
             'customers' => $customers,
         ]);
     }
+    public function exportReport(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ChillerReportExport($request->all()), 'chiller-report.xlsx');
+    }
 }

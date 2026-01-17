@@ -37,16 +37,26 @@ const totals = {
     credit: props.customerSummary.reduce((s, c) => s + c.total_credit, 0),
     recovered: props.customerSummary.reduce((s, c) => s + c.total_recovered, 0),
     pending: props.customerSummary.reduce((s, c) => s + c.pending, 0),
+    pending: props.customerSummary.reduce((s, c) => s + c.pending, 0),
+};
+
+const print = () => window.print();
+
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('credit-management.summary.export') + '?' + params.toString();
 };
 </script>
 
 <template>
+
     <Head title="Credit Summary" />
     <DashboardLayout>
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-xl shadow-lg">
                 <h1 class="text-xl font-bold">Credit Summary</h1>
-                <p class="text-purple-100 text-sm">Customer-wise credit summary for {{ getMonthName(filters.month) }} {{ filters.year }}</p>
+                <p class="text-purple-100 text-sm">Customer-wise credit summary for {{ getMonthName(filters.month) }} {{
+                    filters.year }}</p>
             </div>
 
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -64,6 +74,14 @@ const totals = {
                         </select>
                     </div>
                     <PrimaryButton @click="search" class="bg-purple-600 hover:bg-purple-700">Generate</PrimaryButton>
+                    <button @click="exportExcel"
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Export
+                    </button>
+                    <button @click="print"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Print
+                    </button>
                 </div>
             </div>
 
@@ -86,7 +104,8 @@ const totals = {
                             <td class="px-4 py-3 text-center">{{ c.invoice_count }}</td>
                             <td class="px-4 py-3 text-right">{{ formatCurrency(c.total_credit) }}</td>
                             <td class="px-4 py-3 text-right text-green-600">{{ formatCurrency(c.total_recovered) }}</td>
-                            <td class="px-4 py-3 text-right font-bold" :class="c.pending > 0 ? 'text-red-600' : 'text-green-600'">
+                            <td class="px-4 py-3 text-right font-bold"
+                                :class="c.pending > 0 ? 'text-red-600' : 'text-green-600'">
                                 {{ formatCurrency(c.pending) }}
                             </td>
                         </tr>
@@ -107,3 +126,66 @@ const totals = {
         </div>
     </DashboardLayout>
 </template>
+<style scoped>
+@media print {
+
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky,
+    button,
+    .no-print {
+        display: none !important;
+    }
+
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border,
+    .bg-gradient-to-r,
+    .shadow-lg {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: black !important;
+    }
+
+    .text-white {
+        color: black !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        padding: 4px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+</style>

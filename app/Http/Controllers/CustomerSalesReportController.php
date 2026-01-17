@@ -113,4 +113,8 @@ class CustomerSalesReportController extends Controller
                 ]),
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CustomerSalesExport($request->all()), 'customer-sales-report.xlsx');
+    }
 }

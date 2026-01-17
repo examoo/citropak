@@ -75,4 +75,8 @@ class CustomerWiseDiscountReportController extends Controller
                 ]),
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CustomerWiseDiscountExport($request->all()), 'customer-wise-discount-report.xlsx');
+    }
 }

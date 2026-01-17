@@ -70,4 +70,8 @@ class BrandWiseSalesReportController extends Controller
             'brands' => Brand::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\BrandWiseSalesExport($request->all()), 'brand-wise-sales-report.xlsx');
+    }
 }

@@ -68,4 +68,8 @@ class SalesReportController extends Controller
             'orderBookers' => User::where('role', 'order_booker')->get(['id', 'name']),
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SalesExport($request->all()), 'sales-report.xlsx');
+    }
 }

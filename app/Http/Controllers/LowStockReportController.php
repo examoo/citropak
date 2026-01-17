@@ -63,4 +63,8 @@ class LowStockReportController extends Controller
             'showDistributionColumn' => $inputDistributionId === null // True if "All" selected
         ]);
     }
+    public function export(Request $request) 
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\LowStockReportExport($request->all(), $request->user()), 'low-stock-report.xlsx');
+    }
 }
