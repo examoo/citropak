@@ -19,20 +19,21 @@ class ClosingStockController extends Controller
      */
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'status', 'month']);
-        $selectedMonth = $request->get('month', now()->format('Y-m'));
+        $filters = $request->only(['search', 'status', 'date']);
+        $selectedDate = $request->get('date', now()->format('Y-m-d'));
         
         $distributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if ($distributionId === 'all') $distributionId = null;
 
-        // Get stocks that don't have closing stock entries yet (for the current distribution)
+        // Get stocks that don't have closing stock entries yet for the SELECTED DATE
         $stockQuery = Stock::with(['product', 'distribution'])
-            ->whereNotIn('id', function ($query) use ($distributionId) {
+            ->whereNotIn('id', function ($query) use ($distributionId, $selectedDate) {
                 $query->select('stocks.id')
                     ->from('stocks')
-                    ->join('closing_stocks', function ($join) {
+                    ->join('closing_stocks', function ($join) use ($selectedDate) {
                         $join->on('stocks.product_id', '=', 'closing_stocks.product_id')
-                            ->on('stocks.distribution_id', '=', 'closing_stocks.distribution_id');
+                            ->on('stocks.distribution_id', '=', 'closing_stocks.distribution_id')
+                            ->whereDate('closing_stocks.date', '=', $selectedDate);
                     });
             });
         
@@ -43,6 +44,7 @@ class ClosingStockController extends Controller
         $availableStocks = $stockQuery->get()->map(function ($stock) {
             return [
                 'id' => $stock->id,
+                // ... (rest of mapping same)
                 'name' => $stock->product->name . ' (' . $stock->quantity . ' pcs)',
                 'product_id' => $stock->product_id,
                 'distribution_id' => $stock->distribution_id,
@@ -54,10 +56,14 @@ class ClosingStockController extends Controller
                 'unit_cost' => $stock->unit_cost,
             ];
         });
+        
+        // Ensure filters has default date if not provided, for the view to use
+        if (!isset($filters['date'])) {
+            $filters['date'] = $selectedDate;
+        }
 
         return Inertia::render('ClosingStocks/Index', [
             'closingStocks' => $this->service->getAll($filters, $distributionId),
-            'selectedMonth' => $selectedMonth,
             'filters' => $filters,
             'availableStocks' => $availableStocks,
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name', 'code']),

@@ -38,7 +38,7 @@ const isEditing = ref(false);
 const editingId = ref(null);
 const search = ref(props.filters?.search || '');
 const statusFilter = ref(props.filters?.status || '');
-const monthFilter = ref(props.filters?.month || new Date().toISOString().slice(0, 7));
+const dateFilter = ref(props.filters?.date || new Date().toISOString().split('T')[0]);
 
 // NEW SIMPLIFIED FORM STRUCTURE
 const form = useForm({
@@ -120,16 +120,16 @@ watch(() => form.stock_id, (newId) => {
 });
 
 const applyFilters = debounce(() => {
-    router.get(route('closing-stocks.index'), { 
+    router.get(route('closing-stocks.index'), {
         search: search.value,
         status: statusFilter.value,
-        month: monthFilter.value
+        date: dateFilter.value
     }, {
         preserveState: true, preserveScroll: true, replace: true
     });
 }, 300);
 
-watch([search, statusFilter, monthFilter], applyFilters);
+watch([search, statusFilter, dateFilter], applyFilters);
 
 const openModal = (item = null) => {
     isEditing.value = !!item;
@@ -262,6 +262,7 @@ const convertFromStocks = () => {
 </script>
 
 <template>
+
     <Head title="Closing Stocks" />
     <DashboardLayout>
         <div class="space-y-6">
@@ -272,21 +273,36 @@ const convertFromStocks = () => {
                 </div>
                 <div class="flex items-center gap-3 flex-wrap">
                     <div class="relative">
-                        <input v-model="search" type="text" placeholder="Search products..." class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 w-52 shadow-sm">
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <input v-model="search" type="text" placeholder="Search products..."
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 w-52 shadow-sm">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
-                    <select v-model="statusFilter" class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm">
+                    <select v-model="statusFilter"
+                        class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm">
                         <option value="">All Status</option>
                         <option value="draft">Draft</option>
                         <option value="posted">Posted</option>
                     </select>
-                    <input v-model="monthFilter" type="month" class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm">
-                    <button @click="convertFromStocks" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-medium shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <input v-model="dateFilter" type="date"
+                        class="py-2.5 px-4 rounded-xl border-gray-200 text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm">
+                    <button @click="convertFromStocks"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-medium shadow-lg shadow-orange-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
                         Convert Available Stocks
                     </button>
-                    <button @click="openModal()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-medium shadow-lg shadow-amber-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    <button @click="openModal()"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-medium shadow-lg shadow-amber-500/30 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
                         Add Closing Stock
                     </button>
                 </div>
@@ -311,53 +327,74 @@ const convertFromStocks = () => {
                                 <div class="text-xs text-gray-500">{{ item.product?.dms_code }}</div>
                             </td>
                             <td v-if="!currentDistribution?.id" class="px-6 py-4">
-                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">{{ item.distribution?.code }}</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">{{
+                                    item.distribution?.code }}</span>
                             </td>
                             <td class="px-6 py-4 text-xs">{{ formatDate(item.date) }}</td>
                             <td class="px-6 py-4 font-bold text-amber-600">{{ item.quantity }}</td>
                             <td class="px-6 py-4">
-                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', item.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700']">
+                                <span
+                                    :class="['px-2 py-1 rounded-full text-xs font-medium', item.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700']">
                                     {{ item.status.toUpperCase() }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
-                                    <button v-if="item.status === 'draft'" @click="postStock(item)" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Post">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    <button v-if="item.status === 'draft'" @click="postStock(item)"
+                                        class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Post">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7" />
+                                        </svg>
                                     </button>
-                                    <button v-if="item.status === 'draft'" @click="openModal(item)" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    <button v-if="item.status === 'draft'" @click="openModal(item)"
+                                        class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
                                     </button>
-                                    <button v-if="item.status === 'draft'" @click="deleteItem(item)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <button v-if="item.status === 'draft'" @click="deleteItem(item)"
+                                        class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                         <tr v-if="closingStocks.data.length === 0">
-                            <td :colspan="!currentDistribution?.id ? 7 : 6" class="px-6 py-12 text-center text-gray-500">No closing stocks found.</td>
+                            <td :colspan="!currentDistribution?.id ? 7 : 6"
+                                class="px-6 py-12 text-center text-gray-500">No closing stocks found.</td>
                         </tr>
                     </tbody>
                 </table>
-                <div class="p-4 border-t border-gray-100 bg-gray-50/50"><Pagination :links="closingStocks.links" /></div>
+                <div class="p-4 border-t border-gray-100 bg-gray-50/50">
+                    <Pagination :links="closingStocks.links" />
+                </div>
             </div>
         </div>
 
         <!-- Closing Stock Modal -->
         <Modal :show="isModalOpen" @close="closeModal" maxWidth="4xl">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'New' }} Closing Stock</h2>
+                <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">{{ isEditing ? 'Edit' : 'New' }}
+                    Closing Stock</h2>
                 <form @submit.prevent="submit" class="space-y-4">
                     <!-- Stock Selection & Date -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div v-if="!isEditing">
                             <InputLabel value="Select Stock" />
-                            <SearchableSelect v-model="form.stock_id" :options="availableStocks" option-value="id" option-label="name" placeholder="Select from available stocks..." class="mt-1" />
-                            <p v-if="availableStocks.length === 0" class="text-xs text-amber-600 mt-1">No stocks available. All stocks already have closing stock entries.</p>
+                            <SearchableSelect v-model="form.stock_id" :options="availableStocks" option-value="id"
+                                option-label="name" placeholder="Select from available stocks..." class="mt-1" />
+                            <p v-if="availableStocks.length === 0" class="text-xs text-amber-600 mt-1">No stocks
+                                available. All stocks already have closing stock entries.</p>
                         </div>
                         <div v-if="isEditing">
                             <InputLabel value="Product" />
-                            <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md text-gray-700">{{ selectedProduct?.name || 'N/A' }}</div>
+                            <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md text-gray-700">{{ selectedProduct?.name ||
+                                'N/A' }}</div>
                         </div>
                         <div>
                             <InputLabel value="Closing Date" />
@@ -374,12 +411,16 @@ const convertFromStocks = () => {
                                 <TextInput v-model="form.cartons" type="number" min="0" class="block w-full" />
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 mb-1 block">× {{ form.pieces_per_carton }} pcs</label>
-                                <TextInput v-model="form.pieces" type="number" min="0" class="block w-full" placeholder="Extra pieces" />
+                                <label class="text-xs text-gray-500 mb-1 block">× {{ form.pieces_per_carton }}
+                                    pcs</label>
+                                <TextInput v-model="form.pieces" type="number" min="0" class="block w-full"
+                                    placeholder="Extra pieces" />
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Total Qty</label>
-                                <div class="px-3 py-2 bg-amber-100 text-amber-700 font-bold text-center rounded-md text-lg">{{ form.quantity }}</div>
+                                <div
+                                    class="px-3 py-2 bg-amber-100 text-amber-700 font-bold text-center rounded-md text-lg">
+                                    {{ form.quantity }}</div>
                             </div>
                             <div>
                                 <label class="text-xs text-gray-500 mb-1 block">Batch #</label>
@@ -398,7 +439,8 @@ const convertFromStocks = () => {
 
                     <!-- Product Pricing Preview - NEW SIMPLIFIED -->
                     <div v-if="selectedProduct" class="bg-white rounded-lg p-4 border">
-                        <h5 class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Product Pricing Info</h5>
+                        <h5 class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Product Pricing
+                            Info</h5>
                         <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-xs">
                             <div class="p-2 bg-gray-50 rounded">
                                 <div class="text-gray-500">DMS Code</div>
@@ -414,7 +456,8 @@ const convertFromStocks = () => {
                             </div>
                             <div class="p-2 bg-orange-50 rounded">
                                 <div class="text-gray-500">Sales Tax %</div>
-                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_sales_tax || 0 }}%</div>
+                                <div class="font-semibold text-orange-600">{{ selectedProduct.fed_sales_tax || 0 }}%
+                                </div>
                             </div>
                             <div class="p-2 bg-gray-50 rounded">
                                 <div class="text-gray-500">Retail Margin %</div>
@@ -438,7 +481,8 @@ const convertFromStocks = () => {
                             </div>
                             <div class="p-2 bg-amber-50 rounded">
                                 <div class="text-gray-500">Total Value</div>
-                                <div class="font-semibold text-amber-600">{{ (form.quantity * form.unit_cost).toFixed(2) }}</div>
+                                <div class="font-semibold text-amber-600">{{ (form.quantity * form.unit_cost).toFixed(2)
+                                    }}</div>
                             </div>
                         </div>
                     </div>
@@ -446,12 +490,15 @@ const convertFromStocks = () => {
                     <!-- Notes -->
                     <div>
                         <InputLabel value="Notes" />
-                        <textarea v-model="form.notes" rows="2" class="mt-1 block w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500 rounded-md shadow-sm" placeholder="Optional notes..."></textarea>
+                        <textarea v-model="form.notes" rows="2"
+                            class="mt-1 block w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500 rounded-md shadow-sm"
+                            placeholder="Optional notes..."></textarea>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
-                        <PrimaryButton :disabled="form.processing" class="bg-gradient-to-r from-amber-600 to-orange-600 border-0">
+                        <PrimaryButton :disabled="form.processing"
+                            class="bg-gradient-to-r from-amber-600 to-orange-600 border-0">
                             {{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Save as Draft') }}
                         </PrimaryButton>
                     </div>
