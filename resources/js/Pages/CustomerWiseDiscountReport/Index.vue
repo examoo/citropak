@@ -47,7 +47,6 @@ const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-
 };
 
 const print = () => window.print();
@@ -159,9 +158,9 @@ const exportExcel = () => {
                                 <td class="px-4 py-3 text-right">{{ totals.free_quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ formatCurrency(totals.gross_amount) }}</td>
                                 <td class="px-4 py-3 text-right text-red-700">{{ formatCurrency(totals.discount_amount)
-                                }}</td>
+                                    }}</td>
                                 <td class="px-4 py-3 text-right text-emerald-700">{{ formatCurrency(totals.net_amount)
-                                }}</td>
+                                    }}</td>
                             </tr>
                         </tfoot>
                     </table>
