@@ -17,6 +17,7 @@ class GoodIssueNoteItem extends Model
         'product_id',
         'stock_id',
         'quantity',
+        'returned_quantity',
         'unit_price',
         'total_price',
     ];

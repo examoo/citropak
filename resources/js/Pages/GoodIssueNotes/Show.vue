@@ -67,6 +67,8 @@ const mergedItems = computed(() => {
 
         if (parent) {
             parent.free_quantity += freeQty;
+            // Also merge returned quantity for free items if any (though logic handles them separately mostly)
+            parent.returned_quantity = (parent.returned_quantity || 0) + (freeItem.returned_quantity || 0);
         } else {
             // Orphan free item (e.g. different batch or purely free gift)
             // Show as separate row, set its free_quantity to its actual quantity
@@ -221,6 +223,7 @@ const printGin = () => {
                             <th class="border border-gray-200 px-3 py-2">Batch</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Quantity</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Free</th>
+                            <th class="border border-gray-200 px-3 py-2 text-right text-red-600">Returned</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Unit Price</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Total</th>
                         </tr>
@@ -241,6 +244,9 @@ const printGin = () => {
                             <td class="border border-gray-200 px-3 py-2 text-right font-medium text-emerald-600">
                                 {{ item.free_quantity > 0 ? item.free_quantity : '-' }}
                             </td>
+                            <td class="border border-gray-200 px-3 py-2 text-right font-medium text-red-600">
+                                {{ item.returned_quantity > 0 ? item.returned_quantity : '-' }}
+                            </td>
                             <td class="border border-gray-200 px-3 py-2 text-right">Rs. {{ formatAmount(item.unit_price)
                                 }}</td>
                             <td class="border border-gray-200 px-3 py-2 text-right font-semibold">Rs. {{
@@ -249,7 +255,7 @@ const printGin = () => {
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-100 font-bold">
-                            <td colspan="6" class="border border-gray-200 px-3 py-3 text-right">GRAND TOTAL:</td>
+                            <td colspan="7" class="border border-gray-200 px-3 py-3 text-right">GRAND TOTAL:</td>
                             <td class="border border-gray-200 px-3 py-3 text-right text-lg text-emerald-600">Rs. {{
                                 formatAmount(totalAmount) }}</td>
                         </tr>

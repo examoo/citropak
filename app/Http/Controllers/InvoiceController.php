@@ -457,7 +457,41 @@ class InvoiceController extends Controller
                 $this->stockOutService->reverseAndDelete($stockOut);
             }
 
-            // 3. Delete Invoice
+            // 3. Update Good Issue Note (if exists)
+            // Find GIN for this Van + Date (any status)
+            $gin = \App\Models\GoodIssueNote::where('van_id', $invoice->van_id)
+                ->whereDate('issue_date', $invoice->invoice_date)
+                ->first();
+
+            if ($gin) {
+                foreach ($invoice->items as $invItem) {
+                    $ginItem = \App\Models\GoodIssueNoteItem::where('good_issue_note_id', $gin->id)
+                        ->where('product_id', $invItem->product_id)
+                        ->first();
+                    
+                    if ($ginItem) {
+                        // Decrease quantity, Increase returned_quantity
+                        $ginItem->quantity = max(0, $ginItem->quantity - $invItem->total_pieces);
+                        $ginItem->returned_quantity = $ginItem->returned_quantity + $invItem->total_pieces;
+                        
+                        // Recalculate total price based on new quantity
+                        $ginItem->total_price = $ginItem->quantity * $ginItem->unit_price;
+                        
+                        $ginItem->save();
+
+                        // IF GIN IS ISSUED: We must restore the stock for the returned items
+                        // Because when GIN was issued, stock was deducted. Now we are "returning" it.
+                        if ($gin->status === 'issued' && $ginItem->stock_id) {
+                            $stock = \App\Models\Stock::find($ginItem->stock_id);
+                            if ($stock) {
+                                $stock->increment('quantity', $invItem->total_pieces);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Delete Invoice
             $invoice->delete();
         });
 
