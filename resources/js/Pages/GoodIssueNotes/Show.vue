@@ -10,9 +10,9 @@ const props = defineProps({
 
 // Format amount
 const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-PK', { 
+    return new Intl.NumberFormat('en-PK', {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
+        maximumFractionDigits: 2
     }).format(amount || 0);
 };
 
@@ -28,7 +28,7 @@ const formatDate = (date) => {
 
 // Status badge classes
 const getStatusClass = (status) => {
-    switch(status) {
+    switch (status) {
         case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
         case 'issued': return 'bg-green-100 text-green-800 border-green-300';
         case 'cancelled': return 'bg-red-100 text-red-800 border-red-300';
@@ -36,7 +36,48 @@ const getStatusClass = (status) => {
     }
 };
 
-// Calculate total
+// Calculate merged items (grouping free items with paid items of same product/batch)
+const mergedItems = computed(() => {
+    if (!props.gin.items) return [];
+
+    const merged = [];
+    const freeItems = [];
+
+    // Separate paid and free items
+    props.gin.items.forEach(item => {
+        // Create a copy to avoid mutating original props
+        const itemCopy = { ...item, free_quantity: 0 };
+
+        if (parseFloat(item.unit_price) > 0) {
+            merged.push(itemCopy);
+        } else {
+            freeItems.push(itemCopy);
+        }
+    });
+
+    // Merge free items into paid items where possible
+    freeItems.forEach(freeItem => {
+        const freeQty = parseFloat(freeItem.quantity);
+
+        // Find matching paid item (Same Product AND Same Batch)
+        const parent = merged.find(p =>
+            p.product_id === freeItem.product_id &&
+            p.stock_id === freeItem.stock_id
+        );
+
+        if (parent) {
+            parent.free_quantity += freeQty;
+        } else {
+            // Orphan free item (e.g. different batch or purely free gift)
+            // Show as separate row, set its free_quantity to its actual quantity
+            freeItem.free_quantity = freeQty;
+            merged.push(freeItem);
+        }
+    });
+
+    return merged;
+});
+
 const totalAmount = computed(() => {
     return props.gin.items?.reduce((sum, item) => sum + parseFloat(item.total_price || 0), 0) || 0;
 });
@@ -89,6 +130,7 @@ const printGin = () => {
 </script>
 
 <template>
+
     <Head :title="`GIN: ${gin.gin_number}`" />
 
     <DashboardLayout>
@@ -100,51 +142,47 @@ const printGin = () => {
                     <p class="text-gray-500 mt-1">Good Issue Note Details</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <Link 
-                        :href="route('good-issue-notes.index')"
-                        class="text-gray-500 hover:text-gray-700"
-                    >
+                    <Link :href="route('good-issue-notes.index')" class="text-gray-500 hover:text-gray-700">
                         ← Back to list
                     </Link>
-                    
-                    <button 
-                        @click="printGin"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+
+                    <button @click="printGin"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
                         Print
                     </button>
 
-                    <button 
-                        v-if="gin.status === 'draft'"
-                        @click="issueGin"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <button v-if="gin.status === 'draft'" @click="issueGin"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
                         Issue GIN
                     </button>
 
-                    <button 
-                        v-if="gin.status === 'draft'"
-                        @click="cancelGin"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button v-if="gin.status === 'draft'" @click="cancelGin"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                         Cancel
                     </button>
                 </div>
             </div>
 
             <!-- GIN Document -->
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-0 print:p-4">
+            <div
+                class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-0 print:p-4">
                 <!-- Document Header -->
                 <div class="text-center mb-8 border-b pb-6">
                     <h1 class="text-3xl font-bold text-gray-900 uppercase">GOOD ISSUE NOTE</h1>
                     <h2 class="text-xl font-semibold text-emerald-600 mt-2">{{ gin.gin_number }}</h2>
-                    <span 
-                        class="inline-block mt-3 px-4 py-1 border rounded-full text-sm font-medium uppercase"
-                        :class="getStatusClass(gin.status)"
-                    >
+                    <span class="inline-block mt-3 px-4 py-1 border rounded-full text-sm font-medium uppercase"
+                        :class="getStatusClass(gin.status)">
                         {{ gin.status }}
                     </span>
                 </div>
@@ -182,27 +220,38 @@ const printGin = () => {
                             <th class="border border-gray-200 px-3 py-2">Product</th>
                             <th class="border border-gray-200 px-3 py-2">Batch</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Quantity</th>
+                            <th class="border border-gray-200 px-3 py-2 text-right">Free</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Unit Price</th>
                             <th class="border border-gray-200 px-3 py-2 text-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(item, index) in gin.items" :key="item.id">
+                        <tr v-for="(item, index) in mergedItems" :key="index">
                             <td class="border border-gray-200 px-3 py-2">{{ index + 1 }}</td>
                             <td class="border border-gray-200 px-3 py-2">
                                 <div class="font-medium">{{ item.product?.name }}</div>
-                                <div class="text-xs text-gray-500">{{ item.product?.dms_code || item.product?.sku }}</div>
+                                <div class="text-xs text-gray-500">{{ item.product?.dms_code || item.product?.sku }}
+                                </div>
                             </td>
                             <td class="border border-gray-200 px-3 py-2">{{ item.stock?.batch_number || '-' }}</td>
-                            <td class="border border-gray-200 px-3 py-2 text-right font-medium">{{ item.quantity }}</td>
-                            <td class="border border-gray-200 px-3 py-2 text-right">Rs. {{ formatAmount(item.unit_price) }}</td>
-                            <td class="border border-gray-200 px-3 py-2 text-right font-semibold">Rs. {{ formatAmount(item.total_price) }}</td>
+                            <td class="border border-gray-200 px-3 py-2 text-right font-medium">
+                                <span v-if="parseFloat(item.unit_price) > 0">{{ item.quantity }}</span>
+                                <span v-else>-</span>
+                            </td>
+                            <td class="border border-gray-200 px-3 py-2 text-right font-medium text-emerald-600">
+                                {{ item.free_quantity > 0 ? item.free_quantity : '-' }}
+                            </td>
+                            <td class="border border-gray-200 px-3 py-2 text-right">Rs. {{ formatAmount(item.unit_price)
+                                }}</td>
+                            <td class="border border-gray-200 px-3 py-2 text-right font-semibold">Rs. {{
+                                formatAmount(item.total_price) }}</td>
                         </tr>
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-100 font-bold">
-                            <td colspan="5" class="border border-gray-200 px-3 py-3 text-right">GRAND TOTAL:</td>
-                            <td class="border border-gray-200 px-3 py-3 text-right text-lg text-emerald-600">Rs. {{ formatAmount(totalAmount) }}</td>
+                            <td colspan="6" class="border border-gray-200 px-3 py-3 text-right">GRAND TOTAL:</td>
+                            <td class="border border-gray-200 px-3 py-3 text-right text-lg text-emerald-600">Rs. {{
+                                formatAmount(totalAmount) }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -236,22 +285,26 @@ const printGin = () => {
         margin: 10mm;
     }
 
-    :deep(aside), :deep(nav), :deep(header) {
+    :deep(aside),
+    :deep(nav),
+    :deep(header) {
         display: none !important;
     }
-    
+
     :deep(main) {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
     }
-    
+
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
-    table, th, td {
+    table,
+    th,
+    td {
         border-color: #000 !important;
     }
 }
