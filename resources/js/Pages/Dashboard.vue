@@ -86,29 +86,6 @@ const quickActions = computed(() => {
 
     <DashboardLayout>
         <div class="space-y-6">
-            <!-- Notices Marquee -->
-            <div v-if="notices.length > 0"
-                class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-3 shadow-lg shadow-blue-500/20 mb-2 overflow-hidden relative">
-                <div class="flex items-center gap-3 text-white">
-                    <div class="flex-shrink-0 bg-white/20 p-1.5 rounded-lg backdrop-blur-sm animate-pulse">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                        </svg>
-                    </div>
-                    <div class="flex-1 overflow-hidden relative h-6">
-                        <div class="animate-marquee whitespace-nowrap absolute top-0">
-                            <span v-for="(notice, index) in notices" :key="notice.id"
-                                class="inline-flex items-center mr-12">
-                                <span class="font-bold bg-white/20 px-2 py-0.5 rounded text-xs mr-2">{{ notice.title
-                                    }}</span>
-                                <span class="text-sm font-medium opacity-90">{{ notice.content }}</span>
-                                <span v-if="index !== notices.length - 1" class="mx-4 text-white/40">|</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Welcome Section -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
