@@ -1346,7 +1346,7 @@ const submit = (andPrint = false) => {
                                     <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
                                         {{ scheme.name }} - {{ scheme.discount_type === 'amount_less' ? `Rs
                                         ${scheme.amount_less}` :
-                                        `${scheme.free_pieces} FREE` }}
+                                            `${scheme.free_pieces} FREE` }}
                                     </option>
                                 </select>
                             </div>
@@ -1378,7 +1378,8 @@ const submit = (andPrint = false) => {
                     </div>
 
                     <!-- Discount Scheme Banner (when applicable) -->
-                    <div v-if="newItem.product_id && discountSchemes.length > 0" class="mb-4 p-3 rounded-lg border-2"
+                    <!-- Discount Scheme Banner (when applicable) -->
+                    <div v-if="newItem.product_id && newItem.discount_scheme_id" class="mb-4 p-3 rounded-lg border-2"
                         :class="newItem.free_product ? 'bg-green-50 border-green-300' : 'bg-orange-50 border-orange-300'">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
@@ -1387,7 +1388,9 @@ const submit = (andPrint = false) => {
                                 <div>
                                     <p class="font-bold"
                                         :class="newItem.free_product ? 'text-green-700' : 'text-orange-700'">
-                                        {{ discountSchemes[0]?.name || 'Discount Scheme Applied' }}
+                                        {{discountSchemes.find(s => s.id == newItem.discount_scheme_id)?.name ||
+                                        'Discount Scheme Applied'
+                                        }}
                                     </p>
                                     <p class="text-sm"
                                         :class="newItem.free_product ? 'text-green-600' : 'text-orange-600'">
@@ -1402,11 +1405,11 @@ const submit = (andPrint = false) => {
                             </div>
                             <select v-if="discountSchemes.length > 1"
                                 @change="applyDiscountScheme(discountSchemes.find(s => s.id == $event.target.value))"
-                                class="text-sm rounded-md border-gray-300">
+                                :value="newItem.discount_scheme_id" class="text-sm rounded-md border-gray-300">
                                 <option v-for="scheme in discountSchemes" :key="scheme.id" :value="scheme.id">
                                     {{ scheme.name }} ({{ scheme.discount_type === 'amount_less' ? `Rs
                                     ${scheme.amount_less}` :
-                                    `${scheme.free_pieces} FREE` }})
+                                        `${scheme.free_pieces} FREE` }})
                                 </option>
                             </select>
                         </div>
@@ -1495,7 +1498,7 @@ const submit = (andPrint = false) => {
                                     </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
                                         {{ formatAmount(item.gross_amount - getItemDiscount(item) -
-                                        (item.trade_discount_amount || 0))
+                                            (item.trade_discount_amount || 0))
                                         }}
                                     </td>
                                     <td class="px-2 py-3">
