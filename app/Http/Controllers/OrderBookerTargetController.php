@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
 use App\Models\Distribution;
 use App\Models\OrderBooker;
 use App\Models\OrderBookerTarget;
@@ -38,6 +39,7 @@ class OrderBookerTargetController extends Controller
             'targets' => $targets,
             'orderBookers' => OrderBooker::with('distribution')->get(['id', 'name', 'code', 'distribution_id']),
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
+            'brands' => Brand::where('status', 'active')->orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'month']),
         ]);
     }
@@ -55,6 +57,8 @@ class OrderBookerTargetController extends Controller
             'month' => 'required|string|size:7|regex:/^\d{4}-\d{2}$/',
             'target_amount' => 'required|numeric|min:0',
             'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            'brand_targets' => 'nullable|array',
+            'brand_targets.*' => 'numeric|min:0',
         ]);
 
         $distId = $request->distribution_id ?? $userDistributionId;
@@ -73,6 +77,7 @@ class OrderBookerTargetController extends Controller
             'order_booker_id' => $validated['order_booker_id'],
             'month' => $validated['month'],
             'target_amount' => $validated['target_amount'],
+            'brand_targets' => $validated['brand_targets'] ?? [],
             'distribution_id' => $distId,
         ]);
 
@@ -92,6 +97,8 @@ class OrderBookerTargetController extends Controller
             'month' => 'required|string|size:7|regex:/^\d{4}-\d{2}$/',
             'target_amount' => 'required|numeric|min:0',
             'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            'brand_targets' => 'nullable|array',
+            'brand_targets.*' => 'numeric|min:0',
         ]);
 
         $distId = $request->distribution_id ?? $userDistributionId ?? $orderBookerTarget->distribution_id;
@@ -111,6 +118,7 @@ class OrderBookerTargetController extends Controller
             'order_booker_id' => $validated['order_booker_id'],
             'month' => $validated['month'],
             'target_amount' => $validated['target_amount'],
+            'brand_targets' => $validated['brand_targets'] ?? [],
             'distribution_id' => $distId,
         ]);
 

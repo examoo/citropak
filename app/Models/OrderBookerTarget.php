@@ -21,10 +21,12 @@ class OrderBookerTarget extends Model
         'order_booker_id',
         'month',
         'target_amount',
+        'brand_targets',
     ];
 
     protected $casts = [
         'target_amount' => 'decimal:2',
+        'brand_targets' => 'array',
     ];
 
     /**

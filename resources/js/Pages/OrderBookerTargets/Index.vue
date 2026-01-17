@@ -16,6 +16,10 @@ const props = defineProps({
     targets: Object,
     orderBookers: Array,
     distributions: Array,
+    brands: {
+        type: Array,
+        default: () => []
+    },
     filters: Object
 });
 
@@ -37,6 +41,7 @@ const form = useForm({
     order_booker_id: '',
     month: '',
     target_amount: '',
+    brand_targets: {},
     distribution_id: '',
 });
 
@@ -44,17 +49,29 @@ const form = useForm({
 const orderBookerOptions = computed(() => {
     return props.orderBookers.map(ob => ({
         ...ob,
-        displayLabel: !currentDistribution.value?.id && ob.distribution 
-            ? `${ob.name} (${ob.distribution.name})` 
+        displayLabel: !currentDistribution.value?.id && ob.distribution
+            ? `${ob.name} (${ob.distribution.name})`
             : `${ob.name} - ${ob.code}`
     }));
 });
 
+// Watch brand targets and update total amount
+watch(() => form.brand_targets, (newTargets) => {
+    let total = 0;
+    for (const brandId in newTargets) {
+        total += Number(newTargets[brandId] || 0);
+    }
+    // Only update if total > 0 to allow manual override if needed (though we'll make it readonly if brands exist)
+    if (props.brands.length > 0) {
+        form.target_amount = total;
+    }
+}, { deep: true });
+
 // Format amount with commas
 const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-PK', { 
+    return new Intl.NumberFormat('en-PK', {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
+        maximumFractionDigits: 2
     }).format(amount);
 };
 
@@ -68,9 +85,9 @@ const formatMonth = (month) => {
 
 // Search Watcher
 watch(search, debounce((value) => {
-    router.get(route('order-booker-targets.index'), { 
-        search: value, 
-        month: monthFilter.value 
+    router.get(route('order-booker-targets.index'), {
+        search: value,
+        month: monthFilter.value
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -80,9 +97,9 @@ watch(search, debounce((value) => {
 
 // Month Filter Watcher
 watch(monthFilter, (value) => {
-    router.get(route('order-booker-targets.index'), { 
-        search: search.value, 
-        month: value 
+    router.get(route('order-booker-targets.index'), {
+        search: search.value,
+        month: value
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -93,12 +110,20 @@ watch(monthFilter, (value) => {
 const openModal = (item = null) => {
     isEditing.value = !!item;
     editingId.value = item?.id;
-    
+
     if (item) {
         form.order_booker_id = item.order_booker_id;
         form.month = item.month;
         form.target_amount = item.target_amount;
         form.distribution_id = item.distribution_id;
+        // Initialize brand targets from item or defaults
+        const existingTargets = item.brand_targets || {};
+        const targets = {};
+        props.brands.forEach(brand => {
+            targets[brand.id] = existingTargets[brand.id] || 0;
+        });
+        form.brand_targets = targets;
+
     } else {
         form.reset();
         // Auto-select distribution if a specific distribution is selected
@@ -107,11 +132,18 @@ const openModal = (item = null) => {
         } else {
             form.distribution_id = '';
         }
+        // Initialize brand targets with 0
+        const targets = {};
+        props.brands.forEach(brand => {
+            targets[brand.id] = 0;
+        });
+        form.brand_targets = targets;
+
         // Default to current month
         const now = new Date();
         form.month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     }
-    
+
     isModalOpen.value = true;
 };
 
@@ -189,6 +221,7 @@ const clearFilters = () => {
 </script>
 
 <template>
+
     <Head title="Set Targets" />
 
     <DashboardLayout>
@@ -199,46 +232,38 @@ const clearFilters = () => {
                     <h1 class="text-2xl font-bold text-gray-900">Set Targets</h1>
                     <p class="text-gray-500 mt-1">Manage monthly sales targets for Order Bookers.</p>
                 </div>
-                
+
                 <div class="flex items-center gap-3 flex-wrap">
                     <!-- Search -->
                     <div class="relative">
-                        <input 
-                            v-model="search"
-                            type="text" 
-                            placeholder="Search booker..." 
-                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 w-48 shadow-sm"
-                        >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <input v-model="search" type="text" placeholder="Search booker..."
+                            class="pl-10 pr-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 w-48 shadow-sm">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
 
                     <!-- Month Filter -->
-                    <input 
-                        v-model="monthFilter"
-                        type="month" 
-                        class="px-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 shadow-sm"
-                    >
+                    <input v-model="monthFilter" type="month"
+                        class="px-4 py-2.5 rounded-xl border-gray-200 text-sm focus:border-emerald-500 focus:ring-emerald-500 shadow-sm">
 
                     <!-- Clear Filters -->
-                    <button 
-                        v-if="search || monthFilter"
-                        @click="clearFilters"
+                    <button v-if="search || monthFilter" @click="clearFilters"
                         class="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
-                        title="Clear filters"
-                    >
+                        title="Clear filters">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
 
-                    <button 
-                        @click="openModal()"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
-                    >
+                    <button @click="openModal()"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         Add Target
                     </button>
@@ -259,42 +284,49 @@ const clearFilters = () => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="item in targets.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                            <tr v-for="item in targets.data" :key="item.id"
+                                class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-gray-900">{{ item.order_booker?.name }}</div>
                                     <div class="text-xs text-gray-500">{{ item.order_booker?.code }}</div>
                                 </td>
                                 <td class="px-6 py-4 text-gray-600">{{ formatMonth(item.month) }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <span class="font-semibold text-emerald-600">Rs. {{ formatAmount(item.target_amount) }}</span>
+                                    <span class="font-semibold text-emerald-600">Rs. {{ formatAmount(item.target_amount)
+                                        }}</span>
                                 </td>
                                 <td v-if="!currentDistribution?.id" class="px-6 py-4 text-gray-500">
                                     {{ item.order_booker?.distribution?.name || 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button 
-                                            @click="openModal(item)"
+                                        <button @click="openModal(item)"
                                             class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            title="Edit"
-                                        >
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            title="Edit">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
                                         </button>
-                                        <button 
-                                            @click="deleteTarget(item)"
+                                        <button @click="deleteTarget(item)"
                                             class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete"
-                                        >
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            title="Delete">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="targets.data.length === 0">
-                                <td :colspan="!currentDistribution?.id ? 5 : 4" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="!currentDistribution?.id ? 5 : 4"
+                                    class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center gap-3">
-                                        <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                         </svg>
                                         <span>No targets found. Click "Add Target" to create one.</span>
                                     </div>
@@ -303,7 +335,7 @@ const clearFilters = () => {
                         </tbody>
                     </table>
                 </div>
-                
+
                 <div class="p-4 border-t border-gray-100 bg-gray-50/50">
                     <Pagination :links="targets.links" />
                 </div>
@@ -311,74 +343,73 @@ const clearFilters = () => {
         </div>
 
         <!-- Modal -->
-        <Modal :show="isModalOpen" @close="closeModal" maxWidth="md">
+        <Modal :show="isModalOpen" @close="closeModal" maxWidth="4xl">
             <div class="p-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">
                     {{ isEditing ? 'Edit' : 'Add New' }} Target
                 </h2>
 
                 <form @submit.prevent="submit" class="space-y-4">
-                    <!-- Distribution Select (Only when "All Distributions" is selected) -->
-                    <div v-if="!currentDistribution?.id">
-                        <SearchableSelect 
-                            v-model="form.distribution_id"
-                            label="Distribution"
-                            :options="distributions"
-                            option-value="id"
-                            option-label="name"
-                            placeholder="Select a distribution"
-                            :error="form.errors.distribution_id"
-                            required
-                        />
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                        <!-- Distribution Select (Only when "All Distributions" is selected) -->
+                        <div v-if="!currentDistribution?.id">
+                            <SearchableSelect v-model="form.distribution_id" label="Distribution"
+                                :options="distributions" option-value="id" option-label="name"
+                                placeholder="Select a distribution" :error="form.errors.distribution_id" required />
+                        </div>
+
+                        <!-- Order Booker Select -->
+                        <div
+                            :class="{ 'lg:col-span-1': !currentDistribution?.id, 'lg:col-span-2': currentDistribution?.id }">
+                            <SearchableSelect v-model="form.order_booker_id" label="Order Booker"
+                                :options="orderBookerOptions" option-value="id" option-label="displayLabel"
+                                placeholder="Select an Order Booker" :error="form.errors.order_booker_id" required />
+                        </div>
+
+                        <!-- Month Input -->
+                        <div>
+                            <InputLabel value="Target Month" />
+                            <input v-model="form.month" type="month"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.month }" />
+                            <div v-if="form.errors.month" class="text-xs text-red-600 mt-1">{{ form.errors.month }}
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Order Booker Select -->
-                    <div>
-                        <SearchableSelect 
-                            v-model="form.order_booker_id"
-                            label="Order Booker"
-                            :options="orderBookerOptions"
-                            option-value="id"
-                            option-label="displayLabel"
-                            placeholder="Select an Order Booker"
-                            :error="form.errors.order_booker_id"
-                            required
-                        />
+                    <!-- Brand Targets -->
+                    <div v-if="brands.length > 0" class="border rounded-xl p-4 bg-gray-50 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-medium text-gray-700">Brand Targets</h3>
+                        </div>
+                        <div
+                            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                            <div v-for="brand in brands" :key="brand.id">
+                                <label class="block text-xs font-medium text-gray-600 mb-1 truncate"
+                                    :title="brand.name">{{ brand.name }}</label>
+                                <input v-model="form.brand_targets[brand.id]" type="number" step="0.01" min="0"
+                                    placeholder="0"
+                                    class="w-full text-sm px-2 py-1 rounded-md border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Month Input -->
+                    <!-- Target Amount (Total) -->
                     <div>
-                        <InputLabel value="Target Month" />
-                        <input 
-                            v-model="form.month"
-                            type="month" 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.month }"
-                        />
-                        <div v-if="form.errors.month" class="text-xs text-red-600 mt-1">{{ form.errors.month }}</div>
-                    </div>
-
-                    <!-- Target Amount -->
-                    <div>
-                        <InputLabel value="Target Amount (Rs.)" />
-                        <TextInput 
-                            v-model="form.target_amount" 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            class="mt-1 block w-full" 
+                        <InputLabel value="Total Target (Rs.)" />
+                        <TextInput v-model="form.target_amount" type="number" step="0.01" min="0"
+                            class="mt-1 block w-full bg-gray-50"
                             :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.target_amount }"
-                            placeholder="e.g., 50000.00"
-                        />
-                        <div v-if="form.errors.target_amount" class="text-xs text-red-600 mt-1">{{ form.errors.target_amount }}</div>
+                            placeholder="0.00" readonly />
+                        <div v-if="form.errors.target_amount" class="text-xs text-red-600 mt-1">{{
+                            form.errors.target_amount }}</div>
                     </div>
+
 
                     <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                         <SecondaryButton @click="closeModal">Cancel</SecondaryButton>
-                        <PrimaryButton 
-                            :disabled="form.processing"
-                            class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0"
-                        >
+                        <PrimaryButton :disabled="form.processing"
+                            class="bg-gradient-to-r from-emerald-600 to-teal-600 border-0">
                             {{ form.processing ? 'Saving...' : (isEditing ? 'Update' : 'Create') }}
                         </PrimaryButton>
                     </div>
