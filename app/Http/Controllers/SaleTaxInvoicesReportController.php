@@ -80,4 +80,12 @@ class SaleTaxInvoicesReportController extends Controller
             ],
         ]);
     }
+
+    public function export(Request $request)
+    {
+        $month = $request->input('month', now()->format('m'));
+        $year = $request->input('year', now()->format('Y'));
+
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\SaleTaxInvoicesExport($month, $year), 'sale-tax-invoices-report.xlsx');
+    }
 }

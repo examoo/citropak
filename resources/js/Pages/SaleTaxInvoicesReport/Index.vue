@@ -43,6 +43,11 @@ const search = () => {
     });
 };
 
+const exportExcel = () => {
+    const params = new URLSearchParams(form.value);
+    window.location.href = route('sale-tax-invoices-reports.export') + '?' + params.toString();
+};
+
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-PK', { style: 'decimal', minimumFractionDigits: 2 }).format(value);
 };
@@ -91,9 +96,13 @@ const getMonthName = (monthNum) => {
                     <PrimaryButton @click="search" class="bg-blue-600 hover:bg-blue-700">
                         Generate Report
                     </PrimaryButton>
+                    <button @click="exportExcel"
+                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Export Excel
+                    </button>
                     <button onclick="window.print()"
-                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
-                        Print Report
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150">
+                        Print / PDF
                     </button>
                 </div>
             </div>
@@ -143,7 +152,7 @@ const getMonthName = (monthNum) => {
                                     formatCurrency(inv.total_value) }}</td>
                             </tr>
                             <tr v-if="invoices.length === 0">
-                                <td colspan="15" class="px-6 py-12 text-center text-gray-400">
+                                <td colspan="16" class="px-6 py-12 text-center text-gray-400">
                                     No invoices found for this month.
                                 </td>
                             </tr>
@@ -151,7 +160,7 @@ const getMonthName = (monthNum) => {
                         <tfoot v-if="invoices.length > 0"
                             class="bg-gray-50 font-bold text-gray-800 border-t-2 border-gray-200">
                             <tr>
-                                <td colspan="9" class="px-3 py-3 text-right uppercase">Total</td>
+                                <td colspan="10" class="px-3 py-3 text-right uppercase">Total</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.subtotal) }}</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.discount) }}</td>
                                 <td class="px-3 py-3 text-right">{{ formatCurrency(totals.taxable_value) }}</td>
@@ -169,8 +178,69 @@ const getMonthName = (monthNum) => {
 
 <style scoped>
 @media print {
-    .no-print {
+
+    /* Hide non-printable elements */
+    .no-print,
+    nav,
+    header,
+    aside,
+    .fixed,
+    .sticky {
         display: none !important;
+    }
+
+    /* Reset layout for print */
+    body,
+    #app,
+    main,
+    .min-h-screen {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Overwrite container styles */
+    .bg-white,
+    .shadow-sm,
+    .rounded-xl,
+    .border {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Ensure table fits */
+    .overflow-x-auto,
+    .overflow-hidden {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+        /* Smaller font to fit many columns */
+    }
+
+    th,
+    td {
+        white-space: normal !important;
+        /* Allow wrapping */
+        padding: 4px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    thead th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }
 </style>
