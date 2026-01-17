@@ -88,7 +88,7 @@ const exportExcel = () => {
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <span class="px-2 py-1 bg-gray-100 rounded text-xs font-semibold">{{ item.min_qty
-                                    }}</span>
+                                }}</span>
                             </td>
                             <td class="px-6 py-4 text-center font-bold text-rose-600">
                                 {{ item.available }}
@@ -107,7 +107,6 @@ const exportExcel = () => {
             </div>
         </div>
     </DashboardLayout>
-</template>
 </template>
 <style scoped>
 @media print {

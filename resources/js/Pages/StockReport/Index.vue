@@ -132,7 +132,6 @@ const exportExcel = () => {
         </div>
     </DashboardLayout>
 </template>
-</template>
 
 <style scoped>
 @media print {
