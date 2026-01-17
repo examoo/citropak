@@ -591,7 +591,7 @@ const addItem = () => {
         return;
     }
 
-    // Check if quantity exceeds available stock
+    // Check if quantity exceeds available stock (Paid Product)
     if (newItem.value.stock_id && newItem.value.available_qty > 0) {
         if (newItem.value.total_pieces > newItem.value.available_qty) {
             Swal.fire({
@@ -603,6 +603,58 @@ const addItem = () => {
             return;
         }
     }
+
+    // Validate Free Product Stock
+    if (newItem.value.free_product && newItem.value.free_pieces > 0) {
+        const freeProdId = newItem.value.free_product.id;
+        const paidProdId = parseInt(newItem.value.product_id);
+
+        // CASE 1: Free product is SAME as paid product
+        // We must check if (Paid Qty + Free Qty) <= Available Stock of selected batch
+        if (freeProdId === paidProdId) {
+            const totalRequired = newItem.value.total_pieces + newItem.value.free_pieces;
+            if (newItem.value.stock_id && newItem.value.available_qty > 0) {
+                if (totalRequired > newItem.value.available_qty) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Insufficient Stock (Inc. Free)',
+                        text: `Total required (${newItem.value.total_pieces} paid + ${newItem.value.free_pieces} free = ${totalRequired}) exceeds available stock (${newItem.value.available_qty}) in this batch.`,
+                        confirmButtonColor: '#059669'
+                    });
+                    return;
+                }
+            }
+        }
+        // CASE 2: Free product is DIFFERENT from paid product
+        // We must check if Free Qty <= Total Available Stock across all batches/locations for that product
+        else {
+            // Calculate total available stock for the free product from props.availableStocks
+            // We filter props.availableStocks by freeProdId
+            // Note: availableStocks should contain data for all products loaded in props.products
+            // If the free product is not in availableStocks (e.g. out of stock), total is 0
+            const distId = form.distribution_id || currentDistribution.value?.id;
+
+            const freeProductStock = props.availableStocks
+                .filter(s => {
+                    const matchesProduct = Number(s.product_id) === Number(freeProdId);
+                    // Also respect distribution filter if set
+                    const matchesDist = distId ? Number(s.distribution_id) === Number(distId) : true;
+                    return matchesProduct && matchesDist;
+                })
+                .reduce((sum, s) => sum + (parseFloat(s.quantity) || 0), 0);
+
+            if (newItem.value.free_pieces > freeProductStock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Insufficient Free Stock',
+                    text: `Free product "${newItem.value.free_product.name}" requires ${newItem.value.free_pieces} pcs, but only ${freeProductStock} pcs available in stock.`,
+                    confirmButtonColor: '#059669'
+                });
+                return;
+            }
+        }
+    }
+
     const scheme = productSchemes.value.find(s => s.id === parseInt(newItem.value.scheme_id));
 
     // Calculate all amounts for storage
@@ -1389,7 +1441,7 @@ const submit = (andPrint = false) => {
                                     <p class="font-bold"
                                         :class="newItem.free_product ? 'text-green-700' : 'text-orange-700'">
                                         {{discountSchemes.find(s => s.id == newItem.discount_scheme_id)?.name ||
-                                        'Discount Scheme Applied'
+                                            'Discount Scheme Applied'
                                         }}
                                     </p>
                                     <p class="text-sm"
