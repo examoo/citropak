@@ -591,13 +591,27 @@ const addItem = () => {
         return;
     }
 
+    // Calculate existing usage of this batch in the current invoice
+    const existingBatchUsage = form.items
+        .filter(item => item.stock_id === newItem.value.stock_id)
+        .reduce((sum, item) => {
+            let itemUsage = parseFloat(item.total_pieces) || 0;
+            // If the item also has free pieces of the SAME product being utilized from this batch
+            if (item.free_product && item.free_product.id === item.product_id) {
+                itemUsage += parseFloat(item.free_pieces) || 0;
+            }
+            return sum + itemUsage;
+        }, 0);
+
     // Check if quantity exceeds available stock (Paid Product)
     if (newItem.value.stock_id && newItem.value.available_qty > 0) {
-        if (newItem.value.total_pieces > newItem.value.available_qty) {
+        const totalRequested = newItem.value.total_pieces + existingBatchUsage;
+
+        if (totalRequested > newItem.value.available_qty) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Insufficient Stock',
-                text: `Requested quantity (${newItem.value.total_pieces}) exceeds available stock (${newItem.value.available_qty}).`,
+                text: `Requested (${newItem.value.total_pieces}) + Added (${existingBatchUsage}) = ${totalRequested}. Exceeds available (${newItem.value.available_qty}).`,
                 confirmButtonColor: '#059669'
             });
             return;
@@ -610,15 +624,16 @@ const addItem = () => {
         const paidProdId = parseInt(newItem.value.product_id);
 
         // CASE 1: Free product is SAME as paid product
-        // We must check if (Paid Qty + Free Qty) <= Available Stock of selected batch
         if (freeProdId === paidProdId) {
-            const totalRequired = newItem.value.total_pieces + newItem.value.free_pieces;
+            const currentItemTotal = newItem.value.total_pieces + newItem.value.free_pieces;
+            const totalRequired = currentItemTotal + existingBatchUsage;
+
             if (newItem.value.stock_id && newItem.value.available_qty > 0) {
                 if (totalRequired > newItem.value.available_qty) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Insufficient Stock (Inc. Free)',
-                        text: `Total required (${newItem.value.total_pieces} paid + ${newItem.value.free_pieces} free = ${totalRequired}) exceeds available stock (${newItem.value.available_qty}) in this batch.`,
+                        text: `Total required (${currentItemTotal} here + ${existingBatchUsage} added = ${totalRequired}) exceeds available stock (${newItem.value.available_qty}).`,
                         confirmButtonColor: '#059669'
                     });
                     return;
@@ -626,28 +641,36 @@ const addItem = () => {
             }
         }
         // CASE 2: Free product is DIFFERENT from paid product
-        // We must check if Free Qty <= Total Available Stock across all batches/locations for that product
         else {
-            // Calculate total available stock for the free product from props.availableStocks
-            // We filter props.availableStocks by freeProdId
-            // Note: availableStocks should contain data for all products loaded in props.products
-            // If the free product is not in availableStocks (e.g. out of stock), total is 0
             const distId = form.distribution_id || currentDistribution.value?.id;
 
-            const freeProductStock = props.availableStocks
+            // Total physical stock available
+            const funcTotalStock = props.availableStocks
                 .filter(s => {
                     const matchesProduct = Number(s.product_id) === Number(freeProdId);
-                    // Also respect distribution filter if set
                     const matchesDist = distId ? Number(s.distribution_id) === Number(distId) : true;
                     return matchesProduct && matchesDist;
                 })
                 .reduce((sum, s) => sum + (parseFloat(s.quantity) || 0), 0);
 
-            if (newItem.value.free_pieces > freeProductStock) {
+            // Calculate how many of this free product are ALREADY promised in form.items
+            // 1. As free gifts on other lines
+            const existingFreeUsage = form.items.filter(i =>
+                i.free_product && i.free_product.id === freeProdId
+            ).reduce((sum, i) => sum + (parseFloat(i.free_pieces) || 0), 0);
+
+            // 2. As primary paid items (if they are just standard items)
+            const existingPaidUsage = form.items.filter(i =>
+                i.product_id === freeProdId
+            ).reduce((sum, i) => sum + (parseFloat(i.total_pieces) || 0), 0);
+
+            const totalExistingGlobal = existingFreeUsage + existingPaidUsage;
+
+            if ((newItem.value.free_pieces + totalExistingGlobal) > funcTotalStock) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Insufficient Free Stock',
-                    text: `Free product "${newItem.value.free_product.name}" requires ${newItem.value.free_pieces} pcs, but only ${freeProductStock} pcs available in stock.`,
+                    text: `Free product "${newItem.value.free_product.name}" requires ${newItem.value.free_pieces} pcs (plus ${totalExistingGlobal} used), but only ${funcTotalStock} available.`,
                     confirmButtonColor: '#059669'
                 });
                 return;
