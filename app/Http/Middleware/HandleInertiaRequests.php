@@ -83,6 +83,9 @@ class HandleInertiaRequests extends Middleware
                     'code' => $distribution->code,
                 ] : null;
             },
+            'activeNotices' => fn () => \App\Models\Notice::where('is_active', true)
+                ->latest()
+                ->get(['id', 'title', 'content', 'type']),
         ];
     }
 }

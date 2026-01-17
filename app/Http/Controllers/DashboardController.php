@@ -43,7 +43,6 @@ class DashboardController extends Controller
                     'invoice_type' => $invoice->invoice_type,
                     'created_by' => $invoice->createdBy?->name ?? 'System',
                     'created_at' => $invoice->created_at->diffForHumans(),
-                    'status' => $invoice->is_credit ? 'Credit' : 'Paid',
                 ];
             });
 

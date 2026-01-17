@@ -232,8 +232,8 @@ const navigation = [
     {
         name: 'FBR Settings',
         href: 'fbr-settings.show',
-        icon: 'settings', 
-        permission: 'users.view', 
+        icon: 'settings',
+        permission: 'users.view',
         show: (props) => true,
     },
 
@@ -377,12 +377,13 @@ const handleClickOutside = (event) => {
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 <template v-for="item in filteredNavigation" :key="item.name">
                     <!-- Single Link -->
-                    <Link v-if="!item.children" :href="item.resolveHref ? route(item.resolveHref($page.props)) : route(item.href)" :class="[
-                        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
-                        route().current(item.href)
-                            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                            : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                    ]">
+                    <Link v-if="!item.children"
+                        :href="item.resolveHref ? route(item.resolveHref($page.props)) : route(item.href)" :class="[
+                            'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
+                            route().current(item.href)
+                                ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+                        ]">
                         <!-- Dashboard Icon -->
                         <svg v-if="item.icon === 'dashboard'" class="w-5 h-5 flex-shrink-0" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
@@ -488,7 +489,7 @@ const handleClickOutside = (event) => {
                                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                                 <span v-if="isSidebarOpen" class="text-sm font-medium whitespace-nowrap">{{ item.name
-                                }}</span>
+                                    }}</span>
                             </div>
                             <svg v-if="isSidebarOpen"
                                 :class="['w-4 h-4 transition-transform duration-200', isExpanded(item.name) ? 'rotate-180' : '']"
@@ -638,7 +639,7 @@ const handleClickOutside = (event) => {
                                 </svg>
                                 <span>{{ currentDistribution && currentDistribution.code ? currentDistribution.code :
                                     'ALL'
-                                }}</span>
+                                    }}</span>
                                 <svg v-if="!page.props.auth.user.distribution_id" class="w-3 h-3"
                                     :class="{ 'rotate-180': isDistributionDropdownOpen }" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
@@ -777,9 +778,17 @@ const handleClickOutside = (event) => {
                 <div
                     class="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white text-sm py-2 px-6 overflow-hidden">
                     <div class="animate-marquee whitespace-nowrap">
-                        <span class="mx-8">📢 <strong>Notice:</strong> No notices to display.</span>
-                        <span class="mx-8">🌤️ <strong>Weather:</strong> 16.79°C, overcast clouds</span>
-                        <span class="mx-8">📢 <strong>Notice:</strong> No notices to display.</span>
+                        <template v-if="$page.props.activeNotices && $page.props.activeNotices.length > 0">
+                            <span v-for="notice in $page.props.activeNotices" :key="notice.id" class="mx-8">
+                                📢 <strong>{{ notice.title }}:</strong> {{ notice.content }}
+                            </span>
+                            <span class="mx-8">🌤️ <strong>Weather:</strong> 16.79°C, overcast clouds</span>
+                        </template>
+                        <template v-else>
+                            <span class="mx-8">📢 <strong>Notice:</strong> No notices to display.</span>
+                            <span class="mx-8">🌤️ <strong>Weather:</strong> 16.79°C, overcast clouds</span>
+                            <span class="mx-8">📢 <strong>Notice:</strong> No notices to display.</span>
+                        </template>
                     </div>
                 </div>
             </header>
