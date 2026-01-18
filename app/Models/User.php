@@ -47,4 +47,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function orderBooker()
+    {
+        return $this->hasOne(OrderBooker::class);
+    }
 }
