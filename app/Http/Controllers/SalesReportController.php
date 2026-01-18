@@ -50,6 +50,7 @@ class SalesReportController extends Controller
             'customer_name' => $invoice->customer->shop_name ?? '-',
             'total_amount' => $invoice->total_amount,
             'is_credit' => $invoice->is_credit,
+            'type' => $invoice->invoice_type,
         ]);
 
         // Totals

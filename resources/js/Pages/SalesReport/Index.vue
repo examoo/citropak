@@ -124,7 +124,9 @@ const exportExcel = () => {
                                 <td class="px-4 py-3">{{ inv.customer_name }}</td>
                                 <td class="px-4 py-3 text-right font-bold">{{ formatCurrency(inv.total_amount) }}</td>
                                 <td class="px-4 py-3">
-                                    <span v-if="inv.is_credit"
+                                    <span v-if="inv.type === 'damage'"
+                                        class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700">Damage</span>
+                                    <span v-else-if="inv.is_credit"
                                         class="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700">Credit</span>
                                     <span v-else
                                         class="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700">Cash</span>
