@@ -55,20 +55,26 @@ class SalesSheetController extends Controller
                 
                 $pieces = $item->total_pieces ?? 0;
                 $isFreeItem = $item->is_free ?? false;
+                $isDamage = $invoice->invoice_type === 'damage';
                 
-                // Separate free items from regular qty
-                if ($isFreeItem) {
-                    $productAggregates[$productId]['free'] += $pieces;
+                if ($isDamage) {
+                    $productAggregates[$productId]['damages'] += $pieces;
                 } else {
-                    $productAggregates[$productId]['qty'] += $pieces;
-                    $productAggregates[$productId]['issued'] += $pieces;
-                    $productAggregates[$productId]['gross_sale'] += $item->line_total ?? 0;
-                    $productAggregates[$productId]['discount'] += $item->scheme_discount ?? 0;
-                    $productAggregates[$productId]['net_sale'] += ($item->line_total ?? 0) - ($item->scheme_discount ?? 0);
+                    // Separate free items from regular qty
+                    if ($isFreeItem) {
+                        $productAggregates[$productId]['free'] += $pieces;
+                    } else {
+                        $productAggregates[$productId]['qty'] += $pieces;
+                        $productAggregates[$productId]['issued'] += $pieces;
+                        $productAggregates[$productId]['gross_sale'] += $item->line_total ?? 0;
+                        $productAggregates[$productId]['discount'] += $item->scheme_discount ?? 0;
+                        $productAggregates[$productId]['net_sale'] += ($item->line_total ?? 0) - ($item->scheme_discount ?? 0);
+                    }
+                    
+                    // Accumulate advance tax (fed_amount + tax) - Only for sales? 
+                    // Assuming tax is only for sales. If damage acts as a return, logic might differ but user asked for "damage piece also".
+                    $totalAdvanceTax += ($item->fed_amount ?? 0) + ($item->tax ?? 0);
                 }
-                
-                // Accumulate advance tax (fed_amount + tax)
-                $totalAdvanceTax += ($item->fed_amount ?? 0) + ($item->tax ?? 0);
             }
         }
 
