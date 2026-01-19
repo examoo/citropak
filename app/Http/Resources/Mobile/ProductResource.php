@@ -12,15 +12,21 @@ class ProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'code' => $this->dms_code, // Use dms_code as code
+            'code' => $this->dms_code,
+            'packing_size' => $this->pieces_per_packing ?? 1,
             'sku' => $this->sku,
-            'brand' => $this->brand?->name,
-            'category' => $this->category?->name,
-            'unit_price' => $this->unit_price, // Final price
+            // Pricing
+            'list_price' => $this->list_price_before_tax, // Base Price
+            'retail_margin' => $this->retail_margin,
+            'tp_rate' => $this->tp_rate,
+            'dist_margin' => $this->distribution_margin,
             'invoice_price' => $this->invoice_price,
-            'tax_percent' => $this->fed_sales_tax,
-            'packing_size' => $this->pieces_per_packing,
-            'stock_qty' => $this->stocks->sum('balance'), // Sum from loaded stocks
+            'unit_price' => $this->unit_price, // Final Unit Price
+            // Taxes
+            'gst_percent' => $this->fed_sales_tax,
+            'fed_percent' => $this->fed_percent,
+            // Stock
+            'stock_qty' => $this->stocks->sum('balance'), // Simple sum for now
         ];
     }
 }

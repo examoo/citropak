@@ -11,6 +11,8 @@ use App\Models\OrderBooker;
 use App\Models\ShopVisit;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Channel;
+use App\Models\SubDistribution;
 use App\Http\Resources\Mobile\ProductResource;
 use App\Http\Resources\Mobile\CustomerResource;
 use App\Http\Resources\Mobile\TargetResource;
@@ -35,8 +37,7 @@ class SyncController extends Controller
         // 1. Products (with Stock for this Distribution)
         // Note: Assuming stock logic is handled via Stocks relationship or similar.
         // For now, loading active products.
-        $products = Product::active()
-            ->with(['stocks' => function($q) use ($distributionId) {
+        $products = Product::with(['stocks' => function($q) use ($distributionId) {
                 // Filter stocks by distribution if relation allows, 
                 // or load all and filter in Resource if needed.
                 // Assuming 'stocks' has distribution_id logic or we take all.
@@ -55,6 +56,10 @@ class SyncController extends Controller
             ->latest('month') // Get latest target for now
             ->first();
 
+        // 4. Reference Data
+        $channels = Channel::all(); // Fetch all channels for now
+        $subDistributions = SubDistribution::where('distribution_id', $distributionId)->get();
+
         return response()->json([
             'meta' => [
                 'sync_time' => now()->toIso8601String(),
@@ -63,6 +68,8 @@ class SyncController extends Controller
             'products' => ProductResource::collection($products),
             'customers' => CustomerResource::collection($customers),
             'targets' => $targets ? new TargetResource($targets) : null,
+            'channels' => $channels,
+            'sub_distributions' => $subDistributions,
         ]);
     }
 
@@ -86,15 +93,46 @@ class SyncController extends Controller
 
         $syncedIds = [
             'visits' => [],
-            'invoices' => []
+            'invoices' => [],
+            'customers' => [], // Added for customers
         ];
 
         DB::beginTransaction();
         try {
-            // 1. Process Visits
+            // 1. Process New Customers
+            if ($request->has('customers')) {
+                foreach ($request->customers as $custData) {
+                    $customer = Customer::updateOrCreate(
+                        ['id' => $custData['server_id'] ?? null], // If server_id exists, update
+                        [
+                            'shop_name' => $custData['shop_name'],
+                            'name' => $custData['owner_name'],
+                            'phone' => $custData['phone'],
+                            'address' => $custData['address'],
+                            'cnic' => $custData['cnic'],
+                            'ntn_number' => $custData['ntn'],
+                            'lat' => $custData['lat'],
+                            'lng' => $custData['lng'],
+                            'distribution_id' => $user->distribution_id, // Assign to user's dist
+                            'created_by' => $user->id,
+                            'status' => 'active',
+                            // Admin Parity Fields
+                            'channel_id' => $custData['channel_id'] ?? null,
+                            'sub_distribution_id' => $custData['sub_distribution_id'] ?? null,
+                            'category' => $custData['category'] ?? null,
+                            'sub_address' => $custData['sub_address'] ?? null,
+                            'contact' => $custData['contact'] ?? null,
+                        ]
+                    );
+                    $syncedIds['customers'][] = $custData['local_id'] ?? $customer->id;
+                }
+            }
+
+            // 2. Process Visits
             if ($request->has('visits')) {
                 foreach ($request->visits as $visitData) {
                     $visit = ShopVisit::create([
+                        'user_id' => $user->id, // Added user_id
                         'order_booker_id' => $orderBooker->id,
                         'customer_id' => $visitData['customer_id'],
                         'check_in_at' => $visitData['check_in_at'], // Expecting ISO8601
