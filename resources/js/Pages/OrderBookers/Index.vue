@@ -46,6 +46,8 @@ const form = useForm({
     code: '',
     van_id: '',
     distribution_id: '',
+    email: '',
+    password: '',
 });
 
 // Format vans to show distribution name only if All Distributions is selected
@@ -76,6 +78,9 @@ const openModal = (item = null) => {
         form.code = item.code;
         form.van_id = item.van_id || '';
         form.distribution_id = item.distribution_id;
+        // Populate email if user exists
+        form.email = item.user ? item.user.email : '';
+        form.password = ''; // Always blank on edit
     } else {
         form.reset();
         // Auto-select distribution if a specific distribution is selected
@@ -85,6 +90,8 @@ const openModal = (item = null) => {
             form.distribution_id = '';
         }
         form.van_id = '';
+        form.email = '';
+        form.password = '';
     }
     
     isModalOpen.value = true;
@@ -291,6 +298,37 @@ const deleteBooker = (item) => {
                             :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': form.errors.code }"
                         />
                          <div v-if="form.errors.code" class="text-xs text-red-600 mt-1">{{ form.errors.code }}</div>
+                    </div>
+
+                     <!-- Login Details -->
+                     <div class="pt-4 border-t border-gray-100 mt-4">
+                        <h3 class="text-sm font-medium text-gray-900 mb-3">Login Details</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <InputLabel value="Email (Login ID)" />
+                                <TextInput 
+                                    v-model="form.email" 
+                                    type="email" 
+                                    class="mt-1 block w-full" 
+                                    :class="{ 'border-red-500 focus:border-red-500': form.errors.email }"
+                                    placeholder="e.g. booker1@citropak.com"
+                                />
+                                <div v-if="form.errors.email" class="text-xs text-red-600 mt-1">{{ form.errors.email }}</div>
+                            </div>
+
+                            <div>
+                                <InputLabel :value="isEditing ? 'Password (Leave blank to keep current)' : 'Password'" />
+                                <TextInput 
+                                    v-model="form.password" 
+                                    type="password" 
+                                    class="mt-1 block w-full" 
+                                    :class="{ 'border-red-500 focus:border-red-500': form.errors.password }"
+                                    placeholder="********"
+                                />
+                                <div v-if="form.errors.password" class="text-xs text-red-600 mt-1">{{ form.errors.password }}</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- VAN Select -->

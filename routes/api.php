@@ -8,24 +8,28 @@ use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\InvoiceController;
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::prefix('v1')->group(function () {
+    Route::post('/auth/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'user']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::get('/user', [AuthController::class, 'user']); // Maybe standard auth/user
 
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+        // Dashboard
+        Route::get('/dashboard', [DashboardController::class, 'index']);
 
-    Route::get('/customers', [CustomerController::class, 'index']);
-    Route::prefix('visits')->group(function () {
-        Route::post('/check-in', [CustomerController::class, 'checkIn']);
-        Route::post('/check-out', [CustomerController::class, 'checkOut']);
+        // Sync Routes
+        Route::prefix('sync')->group(function () {
+            Route::get('/master', [SyncController::class, 'masterData']); 
+            Route::post('/push', [SyncController::class, 'pushTransactions']);
+        });
+
+        // Other Resources (Customer, Visits, Invoices - kept for direct access if needed)
+        Route::get('/customers', [CustomerController::class, 'index']);
+        Route::prefix('visits')->group(function () {
+            Route::post('/check-in', [CustomerController::class, 'checkIn']);
+            Route::post('/check-out', [CustomerController::class, 'checkOut']);
+        });
+        Route::post('/invoices', [InvoiceController::class, 'store']);
     });
-
-    Route::prefix('sync')->group(function () {
-        Route::get('/products', [SyncController::class, 'products']);
-        Route::get('/schemas', [SyncController::class, 'schemas']);
-    });
-
-    Route::post('/invoices', [InvoiceController::class, 'store']);
 });

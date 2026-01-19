@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Distribution;
 use App\Models\OrderBooker;
 use App\Models\Van;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class OrderBookerController extends Controller
@@ -18,7 +21,7 @@ class OrderBookerController extends Controller
         $search = $request->query('search');
         
         $bookers = OrderBooker::query()
-            ->with(['distribution', 'van']) // Load relations for display
+            ->with(['distribution', 'van', 'user']) // Load user for display
             ->when($search, function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%");
@@ -31,7 +34,7 @@ class OrderBookerController extends Controller
         return Inertia::render('OrderBookers/Index', [
             'bookers' => $bookers,
             'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
-            'vans' => Van::active()->with('distribution')->get(['id', 'code', 'distribution_id']), // Load distribution for display
+            'vans' => Van::active()->with('distribution')->get(['id', 'code', 'distribution_id']),
             'filters' => $request->only(['search']),
         ]);
     }
@@ -41,9 +44,6 @@ class OrderBookerController extends Controller
      */
     public function store(Request $request)
     {
-        // Infer distribution_id from user if not provided (e.g. regular user)
-        // If super admin (distribution_id is null), they MUST provide it.
-        
         $userDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
         if($userDistributionId === 'all') $userDistributionId = null;
 
@@ -52,11 +52,14 @@ class OrderBookerController extends Controller
             'code' => 'required|string|max:50',
             'van_id' => 'nullable|exists:vans,id',
             'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            // Login details
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
         ]);
 
         $distId = $request->distribution_id ?? $userDistributionId;
 
-        // Manually check uniqueness because unique rule with two columns is complex
+        // Check code uniqueness manually
         $exists = OrderBooker::where('distribution_id', $distId)
                     ->where('code', $validated['code'])
                     ->exists();
@@ -65,14 +68,29 @@ class OrderBookerController extends Controller
             return redirect()->back()->withErrors(['code' => 'The code has already been taken for this distribution.']);
         }
 
-        OrderBooker::create([
-            'name' => $validated['name'],
-            'code' => $validated['code'],
-            'van_id' => $validated['van_id'] ?? null,
-            'distribution_id' => $distId,
-        ]);
+        DB::transaction(function() use ($validated, $distId) {
+            // Create User Login
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'distribution_id' => $distId,
+                'role' => 'order_booker', // Assuming simplified role column or similar logic
+            ]);
 
-        return redirect()->back()->with('success', 'Order Booker created successfully.');
+            // Assign role via Spatie if used
+            // $user->assignRole('order_booker'); 
+
+            OrderBooker::create([
+                'name' => $validated['name'],
+                'code' => $validated['code'],
+                'van_id' => $validated['van_id'] ?? null,
+                'distribution_id' => $distId,
+                'user_id' => $user->id,
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Order Booker and Login created successfully.');
     }
 
     /**
@@ -88,11 +106,13 @@ class OrderBookerController extends Controller
             'code' => 'required|string|max:50',
             'van_id' => 'nullable|exists:vans,id',
             'distribution_id' => $userDistributionId ? 'nullable' : 'required|exists:distributions,id',
+            // Login details (optional on update)
+            'email' => 'nullable|email|unique:users,email,' . optional($orderBooker->user)->id,
+            'password' => 'nullable|string|min:6',
         ]);
 
         $distId = $request->distribution_id ?? $userDistributionId ?? $orderBooker->distribution_id;
 
-         // Check uniqueness excluding current record
         $exists = OrderBooker::where('distribution_id', $distId)
                     ->where('code', $validated['code'])
                     ->where('id', '!=', $orderBooker->id)
@@ -102,12 +122,37 @@ class OrderBookerController extends Controller
             return redirect()->back()->withErrors(['code' => 'The code has already been taken for this distribution.']);
         }
 
-        $orderBooker->update([
-             'name' => $validated['name'],
-             'code' => $validated['code'],
-             'van_id' => $validated['van_id'] ?? null,
-             'distribution_id' => $distId,
-        ]);
+        DB::transaction(function() use ($validated, $orderBooker, $distId) {
+            $orderBooker->update([
+                'name' => $validated['name'],
+                'code' => $validated['code'],
+                'van_id' => $validated['van_id'] ?? null,
+                'distribution_id' => $distId,
+            ]);
+
+            // Handle User Update or Creation
+            if ($orderBooker->user) {
+                $user = $orderBooker->user;
+                $user->name = $validated['name'];
+                if ($validated['email']) $user->email = $validated['email'];
+                if ($validated['password']) $user->password = Hash::make($validated['password']);
+                $user->save();
+            } else {
+                // If no user exists, create one if email provided
+                if (!empty($validated['email']) && !empty($validated['password'])) {
+                    $user = User::create([
+                        'name' => $validated['name'],
+                        'email' => $validated['email'],
+                        'password' => Hash::make($validated['password']),
+                        'distribution_id' => $distId,
+                        'role' => 'order_booker',
+                    ]);
+                    
+                    $orderBooker->user_id = $user->id;
+                    $orderBooker->save();
+                }
+            }
+        });
 
         return redirect()->back()->with('success', 'Order Booker updated successfully.');
     }
@@ -117,8 +162,17 @@ class OrderBookerController extends Controller
      */
     public function destroy(OrderBooker $orderBooker)
     {
-        $orderBooker->delete();
+        DB::transaction(function() use ($orderBooker) {
+            $user = $orderBooker->user;
+            $orderBooker->delete();
+            
+            // Optionally delete the user too? 
+            // Better to soft delete or keep it, but typically we want to remove access.
+            if ($user && !$user->is_admin) { // Safety check
+                $user->delete();
+            }
+        });
 
-        return redirect()->back()->with('success', 'Order Booker deleted successfully.');
+        return redirect()->back()->with('success', 'Order Booker and Login deleted successfully.');
     }
 }

@@ -21,6 +21,7 @@ class OrderBooker extends Model
         'van_id',
         'code',
         'name',
+        'user_id',
     ];
 
     /**
@@ -29,6 +30,14 @@ class OrderBooker extends Model
     public function van(): BelongsTo
     {
         return $this->belongsTo(Van::class);
+    }
+
+    /**
+     * Get the user linked to this order booker.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**
