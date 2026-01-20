@@ -175,11 +175,11 @@ class SyncController extends Controller
                         foreach ($invoiceData['items'] as $itemData) {
                              InvoiceItem::create([
                                 'invoice_id' => $invoice->id,
+                                'distribution_id' => $invoice->distribution_id, // Added this
                                 'product_id' => $itemData['product_id'],
                                 'quantity' => $itemData['quantity'],
                                 'unit_price' => $itemData['unit_price'],
-                                'line_total' => $itemData['line_total'], // Trusted from app or recalculate? 
-                                // Ideally recalculate unit_price * quantity
+                                'line_total' => $itemData['line_total'], 
                                 'discount' => $itemData['discount'] ?? 0,
                                 'tax' => $itemData['tax'] ?? 0,
                                 'total' => $itemData['total'],
