@@ -108,6 +108,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::post('customers/bulk-destroy', [CustomerController::class, 'bulkDestroy'])->name('customers.bulk-destroy');
     Route::post('customers/delete-all', [CustomerController::class, 'deleteAll'])->name('customers.delete-all');
+    Route::get('customers/{customer}/discounts', [CustomerController::class, 'discounts'])->name('customers.discounts');
+    Route::post('customers/{customer}/discounts', [CustomerController::class, 'saveDiscounts'])->name('customers.save-discounts');
+    Route::get('customer-discounts', [CustomerController::class, 'discountsIndex'])->name('customer-discounts.index');
     Route::resource('customers', CustomerController::class);
     Route::resource('customer-attributes', \App\Http\Controllers\CustomerAttributeController::class);
     Route::resource('order-bookers', \App\Http\Controllers\OrderBookerController::class);

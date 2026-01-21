@@ -30,6 +30,20 @@ class CustomerController extends Controller
     }
 
     /**
+     * Display the customer brand discounts page.
+     */
+    public function discountsIndex(Request $request): Response
+    {
+        $customers = \App\Models\Customer::select('id', 'shop_name', 'customer_code')
+            ->orderBy('shop_name')
+            ->get();
+
+        return Inertia::render('CustomerDiscounts/Index', [
+            'customers' => $customers,
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(\App\Http\Requests\CustomerRequest $request)
@@ -108,4 +122,29 @@ class CustomerController extends Controller
     {
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CustomersTemplateExport, 'customers_template.xlsx');
     }
+
+    /**
+     * Get customer's brand discounts.
+     */
+    public function discounts(int $customer)
+    {
+        return response()->json($this->service->getBrandDiscounts($customer));
+    }
+
+    /**
+     * Save customer's brand discounts.
+     */
+    public function saveDiscounts(\Illuminate\Http\Request $request, int $customer)
+    {
+        $request->validate([
+            'discounts' => 'required|array',
+            'discounts.*.brand_id' => 'required|integer|exists:brands,id',
+            'discounts.*.percentage' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $this->service->saveBrandDiscounts($customer, $request->discounts);
+
+        return response()->json(['success' => true, 'message' => 'Discounts saved successfully.']);
+    }
 }
+

@@ -166,6 +166,7 @@ const navigation = [
         permission: 'customers.view',
         children: [
             { name: 'Customers', href: 'customers.index', icon: 'users', permission: 'customers.view' },
+            { name: 'Brand Discounts', href: 'customer-discounts.index', icon: 'percent', permission: 'customers.view' },
             { name: 'Routes', href: 'routes.index', icon: 'map', permission: 'customers.view' },
             { name: 'Channels', href: 'channels.index', icon: 'globe', permission: 'customers.view' },
             { name: 'Categories', href: 'categories.index', icon: 'tag', permission: 'customers.view' },

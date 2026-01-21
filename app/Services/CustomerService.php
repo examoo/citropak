@@ -182,4 +182,65 @@ class CustomerService
 
         return $query->delete();
     }
+
+    /**
+     * Get all brands with discount percentages for a customer
+     */
+    public function getBrandDiscounts(int $customerId): array
+    {
+        $customer = Customer::with(['brandPercentages', 'distribution'])->findOrFail($customerId);
+        
+        // Get all active brands
+        $brands = \App\Models\Brand::where('status', 'active')->orderBy('name')->get();
+        
+        // Get existing discounts for this customer
+        $existingDiscounts = $customer->brandPercentages->keyBy('brand_id');
+        
+        // Map brands with their discount percentages
+        $brandsWithDiscounts = $brands->map(function($brand) use ($existingDiscounts) {
+            $discount = $existingDiscounts->get($brand->id);
+            return [
+                'brand_id' => $brand->id,
+                'brand_name' => $brand->name,
+                'percentage' => $discount ? (float) $discount->percentage : 0,
+            ];
+        });
+        
+        return [
+            'customer' => [
+                'id' => $customer->id,
+                'shop_name' => $customer->shop_name,
+                'customer_code' => $customer->customer_code,
+                'distribution_id' => $customer->distribution_id,
+            ],
+            'brands' => $brandsWithDiscounts->toArray(),
+        ];
+    }
+
+    /**
+     * Save brand discount percentages for a customer
+     */
+    public function saveBrandDiscounts(int $customerId, array $discounts): bool
+    {
+        $customer = Customer::findOrFail($customerId);
+        
+        foreach ($discounts as $discount) {
+            $brandId = $discount['brand_id'];
+            $percentage = floatval($discount['percentage'] ?? 0);
+            
+            \App\Models\CustomerBrandPercentage::updateOrCreate(
+                [
+                    'distribution_id' => $customer->distribution_id,
+                    'customer_id' => $customerId,
+                    'brand_id' => $brandId,
+                ],
+                [
+                    'percentage' => $percentage,
+                ]
+            );
+        }
+        
+        return true;
+    }
 }
+
