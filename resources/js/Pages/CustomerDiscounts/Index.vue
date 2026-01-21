@@ -104,6 +104,7 @@ watch(selectedCustomerId, () => {
                     <SearchableSelect
                         v-model="selectedCustomerId"
                         :options="customerOptions"
+                        option-label="value"
                         placeholder="Search and select a customer..."
                         :disabled="loading"
                     />
