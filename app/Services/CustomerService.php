@@ -224,13 +224,29 @@ class CustomerService
     {
         $customer = Customer::findOrFail($customerId);
         
+        // Get distribution_id: customer → session → first distribution in DB
+        $distributionId = $customer->distribution_id;
+        
+        if (!$distributionId || $distributionId === 'all') {
+            $distributionId = session('current_distribution_id');
+        }
+        
+        if (!$distributionId || $distributionId === 'all') {
+            // Fallback to first distribution in database
+            $distributionId = \App\Models\Distribution::first()?->id;
+        }
+        
+        if (!$distributionId) {
+            throw new \Exception('Cannot save brand discounts: No distribution available.');
+        }
+        
         foreach ($discounts as $discount) {
             $brandId = $discount['brand_id'];
             $percentage = floatval($discount['percentage'] ?? 0);
             
             \App\Models\CustomerBrandPercentage::updateOrCreate(
                 [
-                    'distribution_id' => $customer->distribution_id,
+                    'distribution_id' => $distributionId,
                     'customer_id' => $customerId,
                     'brand_id' => $brandId,
                 ],

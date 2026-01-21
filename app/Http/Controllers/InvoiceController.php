@@ -688,6 +688,30 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Get customer's brand discount for a product.
+     */
+    public function getCustomerBrandDiscount(Request $request, $customerId, $productId)
+    {
+        $customer = Customer::find($customerId);
+        $product = Product::find($productId);
+        
+        if (!$customer || !$product) {
+            return response()->json(['percentage' => 0]);
+        }
+        
+        // Get brand discount for this customer and product's brand
+        $brandDiscount = \App\Models\CustomerBrandPercentage::where('customer_id', $customerId)
+            ->where('brand_id', $product->brand_id)
+            ->first();
+        
+        return response()->json([
+            'percentage' => $brandDiscount ? (float) $brandDiscount->percentage : 0,
+            'brand_id' => $product->brand_id,
+            'brand_name' => $product->brand?->name,
+        ]);
+    }
+
+    /**
      * Get product by code.
      */
     public function getProductByCode($code)

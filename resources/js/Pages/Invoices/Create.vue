@@ -387,6 +387,7 @@ watch(() => newItem.value.product_id, (productId, oldProductId) => {
             }
 
             loadProductSchemes(productId);
+            loadBrandDiscount(productId);
             productCode.value = product.dms_code || product.sku || '';
 
             // FIFO: Auto-select the first (oldest) available batch
@@ -436,11 +437,16 @@ watch(() => selectedCustomer.value, (customer) => {
         newItem.value.adv_tax_percent = customer.adv_tax_percent || 0;
         handleTaxChange(); // Use smart handler to preserve net or forward calc
 
+        // Reload brand discount for current product with new customer
+        loadBrandDiscount(newItem.value.product_id);
+
         // Reload schemes for current product with new customer's sub_distribution_id
         if (newItem.value.total_pieces > 0) {
             const selectedProduct = products.value.find(p => p.id === newItem.value.product_id);
             loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces, selectedProduct?.brand_id);
         }
+    } else {
+        newItem.value.manual_discount_percent = 0;
     }
 });
 
@@ -451,6 +457,26 @@ const loadProductSchemes = async (productId) => {
         productSchemes.value = response.data;
     } catch (e) {
         productSchemes.value = [];
+    }
+};
+
+// Load customer's brand discount for a product
+const loadBrandDiscount = async (productId) => {
+    if (!selectedCustomer.value?.id || !productId) {
+        // Only reset if we are programmatically loading (simplification: if user sets manual, we don't want to auto-reset unless product changes. 
+        // But here this is called on product/customer change, so exact overwrite is expected behavior for "default" brand discount)
+        newItem.value.manual_discount_percent = 0;
+        return;
+    }
+    try {
+        const response = await axios.get(route('api.customer-brand-discount', {
+            customer: selectedCustomer.value.id,
+            product: productId
+        }));
+        // Set manual_discount_percent directly
+        newItem.value.manual_discount_percent = response.data.percentage || 0;
+    } catch (e) {
+        newItem.value.manual_discount_percent = 0;
     }
 };
 
@@ -695,9 +721,13 @@ const addItem = () => {
     // Calculate trade discount amount (Gross Amount is inclusive of Margin, so we reverse calculate)
     // Formula: Gross / (1 + Rate%) * Rate%
     // Example: 1100 / 1.1 * 0.1 = 100
+    // Calculate trade discount amount (Gross Amount is inclusive of Margin, so we reverse calculate)
+    // Formula: Gross / (1 + Rate%) * Rate%
+    // Example: 1100 / 1.1 * 0.1 = 100
     const tradeDiscountAmount = (grossAmount / (1 + newItem.value.trade_discount_percent / 100)) * (newItem.value.trade_discount_percent / 100);
 
     // Calculate total discount (scheme + manual)
+    // Manual discount is now used for Brand Discount as well
     const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
     const totalDiscountAmount = (newItem.value.scheme_discount || 0) + totalManualDiscount;
@@ -735,6 +765,7 @@ const addItem = () => {
         discount_scheme_id: newItem.value.discount_scheme_id || null,
         free_product: newItem.value.free_product,
         free_pieces: newItem.value.free_pieces,
+
         manual_discount_percent: newItem.value.manual_discount_percent,
         manual_discount_amount: newItem.value.manual_discount_amount,
         total_discount: newItem.value.scheme_discount + totalManualDiscount,
@@ -1408,6 +1439,8 @@ const submit = (andPrint = false) => {
                                 <TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.00001"
                                     class="mt-1 w-full text-sm text-center bg-amber-50 text-amber-700" readonly />
                             </div>
+
+
 
                             <!-- Discount Scheme Dropdown -->
                             <div class="col-span-3 lg:col-span-2">
