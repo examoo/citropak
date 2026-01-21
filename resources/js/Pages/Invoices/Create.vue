@@ -462,20 +462,27 @@ const loadProductSchemes = async (productId) => {
 
 // Load customer's brand discount for a product
 const loadBrandDiscount = async (productId) => {
+    console.log('loadBrandDiscount called for product:', productId, 'Customer:', selectedCustomer.value?.id);
     if (!selectedCustomer.value?.id || !productId) {
-        // Only reset if we are programmatically loading (simplification: if user sets manual, we don't want to auto-reset unless product changes. 
-        // But here this is called on product/customer change, so exact overwrite is expected behavior for "default" brand discount)
+        // Only reset if we are programmatically loading
         newItem.value.manual_discount_percent = 0;
         return;
     }
     try {
-        const response = await axios.get(route('api.customer-brand-discount', {
+        const url = route('api.customer-brand-discount', {
             customer: selectedCustomer.value.id,
             product: productId
-        }));
+        });
+        console.log('Fetching brand discount from:', url);
+        
+        const response = await axios.get(url);
+        console.log('Brand discount response:', response.data);
+        
         // Set manual_discount_percent directly
         newItem.value.manual_discount_percent = response.data.percentage || 0;
+        console.log('Set manual_discount_percent to:', newItem.value.manual_discount_percent);
     } catch (e) {
+        console.error('Error loading brand discount:', e);
         newItem.value.manual_discount_percent = 0;
     }
 };
