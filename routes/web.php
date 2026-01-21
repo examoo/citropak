@@ -143,6 +143,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('customer-wise-discount-reports', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'index'])->name('customer-wise-discount-reports.index');
     Route::get('brand-wise-sales-reports/export', [\App\Http\Controllers\BrandWiseSalesReportController::class, 'export'])->name('brand-wise-sales-reports.export');
     Route::get('brand-wise-sales-reports', [\App\Http\Controllers\BrandWiseSalesReportController::class, 'index'])->name('brand-wise-sales-reports.index');
+    Route::get('sub-distributor-brand-sales-reports', [\App\Http\Controllers\SubDistributorBrandSalesReportController::class, 'index'])->name('sub-distributor-brand-sales-reports.index');
+    Route::get('sub-distributor-stock-sales-reports', [\App\Http\Controllers\SubDistributorStockSalesReportController::class, 'index'])->name('sub-distributor-stock-sales-reports.index');
     Route::get('api/order-bookers-by-van/{van}', [\App\Http\Controllers\InvoiceController::class, 'getOrderBookersByVan'])->name('api.bookers-by-van');
     Route::get('api/customers-by-booker/{booker}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByBooker'])->name('api.customers-by-booker');
     Route::get('api/customers-by-van/{vanCode}', [\App\Http\Controllers\InvoiceController::class, 'getCustomersByVan'])->name('api.customers-by-van');

@@ -4,20 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\InvoiceItem;
+use App\Models\SubDistribution;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
-class BrandWiseSalesReportController extends Controller
+class SubDistributorStockSalesReportController extends Controller
 {
     public function index(Request $request)
     {
         $dateFrom = $request->input('date_from', now()->startOfMonth()->format('Y-m-d'));
         $dateTo = $request->input('date_to', now()->endOfMonth()->format('Y-m-d'));
+        $subDistributionId = $request->input('sub_distribution_id');
         $brandIds = (array) $request->input('brand_ids', []);
 
         $query = InvoiceItem::query()
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->join('customers', 'invoices.customer_id', '=', 'customers.id')
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->join('brands', 'products.brand_id', '=', 'brands.id')
             ->where('invoices.invoice_type', 'sale')
@@ -26,13 +29,22 @@ class BrandWiseSalesReportController extends Controller
             ->select(
                 'brands.id as brand_id',
                 'brands.name as brand_name',
+                'products.id as product_id',
+                'products.dms_code as product_code',
+                'products.name as product_name',
                 DB::raw('SUM(invoice_items.total_pieces) as total_quantity'),
                 DB::raw('SUM(invoice_items.gross_amount) as total_gross_amount'),
                 DB::raw('SUM(invoice_items.discount) as total_discount_amount'),
                 DB::raw('SUM(invoice_items.line_total) as total_net_amount'),
                 DB::raw('SUM(CASE WHEN invoice_items.is_free = 1 THEN invoice_items.total_pieces ELSE 0 END) as free_quantity')
             )
-            ->groupBy('brands.id', 'brands.name');
+            ->groupBy('brands.id', 'brands.name', 'products.id', 'products.dms_code', 'products.name')
+            ->orderBy('brands.name')
+            ->orderBy('products.name');
+
+        if ($subDistributionId) {
+            $query->where('customers.sub_distribution_id', $subDistributionId);
+        }
 
         if (!empty($brandIds)) {
             $query->whereIn('brands.id', $brandIds);
@@ -42,6 +54,9 @@ class BrandWiseSalesReportController extends Controller
             return [
                 'brand_id' => $item->brand_id,
                 'brand_name' => $item->brand_name,
+                'product_id' => $item->product_id,
+                'product_code' => $item->product_code,
+                'product_name' => $item->product_name,
                 'total_quantity' => (int) $item->total_quantity,
                 'total_gross_amount' => (float) $item->total_gross_amount,
                 'total_discount_amount' => (float) $item->total_discount_amount,
@@ -50,7 +65,10 @@ class BrandWiseSalesReportController extends Controller
             ];
         });
 
-        // Calculate Totals
+        // Group by Brand for easier viewing
+        $groupedData = $reportData->groupBy('brand_name');
+
+        // Totals
         $totals = [
             'quantity' => $reportData->sum('total_quantity'),
             'gross_amount' => $reportData->sum('total_gross_amount'),
@@ -58,20 +76,25 @@ class BrandWiseSalesReportController extends Controller
             'net_amount' => $reportData->sum('total_net_amount'),
             'free_quantity' => $reportData->sum('free_quantity'),
         ];
+        
+        $currentDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
+        $subDistributionsQuery = SubDistribution::query();
+        if ($currentDistributionId && $currentDistributionId !== 'all') {
+            $subDistributionsQuery->forDistribution($currentDistributionId);
+        }
+        $subDistributions = $subDistributionsQuery->active()->orderBy('name')->get(['id', 'name']);
 
-        return Inertia::render('BrandWiseSalesReport/Index', [
-            'reportData' => $reportData,
+        return Inertia::render('SubDistributorStockSalesReport/Index', [
+            'groupedData' => $groupedData,
             'totals' => $totals,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
+                'sub_distribution_id' => $subDistributionId,
                 'brand_ids' => (array) $brandIds,
             ],
             'brands' => Brand::select('id', 'name')->orderBy('name')->get(),
+            'subDistributions' => $subDistributions,
         ]);
-    }
-    public function export(Request $request) 
-    {
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\BrandWiseSalesExport($request->all()), 'brand-wise-sales-report.xlsx');
     }
 }
