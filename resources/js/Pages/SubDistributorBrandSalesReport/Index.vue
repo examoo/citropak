@@ -1,7 +1,7 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -20,8 +20,15 @@ const filters = ref({
     date_from: props.filters.date_from,
     date_to: props.filters.date_to,
     sub_distribution_id: props.filters.sub_distribution_id,
-    brand_ids: props.filters.brand_ids || [],
+    brand_ids: (Array.isArray(props.filters.brand_ids) ? props.filters.brand_ids : []) || [],
 });
+
+watch(() => props.filters, (newFilters) => {
+    filters.value.date_from = newFilters.date_from;
+    filters.value.date_to = newFilters.date_to;
+    filters.value.sub_distribution_id = newFilters.sub_distribution_id;
+    filters.value.brand_ids = (Array.isArray(newFilters.brand_ids) ? newFilters.brand_ids : []) || [];
+}, { deep: true });
 
 const applyFilters = () => {
     router.get(route('sub-distributor-brand-sales-reports.index'), filters.value, {
@@ -53,7 +60,7 @@ const formatCurrency = (amount) => {
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 <!-- Filters -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                <div class="bg-white overflow-visible shadow-sm sm:rounded-lg p-6">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div class="md:col-span-1">
                             <InputLabel value="Sub Distributor" class="text-indigo-700 font-bold mb-1" />
@@ -71,9 +78,9 @@ const formatCurrency = (amount) => {
                             <InputLabel value="Date To" />
                             <TextInput v-model="filters.date_to" type="date" class="mt-1 block w-full" />
                         </div>
-                        <div>
+                        <div class="relative z-50">
                             <InputLabel value="Brands" />
-                            <div class="mt-1 relative">
+                            <div class="mt-1">
                                 <SearchableSelect
                                     v-model="filters.brand_ids"
                                     :options="brands"

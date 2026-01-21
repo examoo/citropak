@@ -18,14 +18,16 @@ class SubDistributorStockSalesReportController extends Controller
         $subDistributionId = $request->input('sub_distribution_id');
         $brandIds = (array) $request->input('brand_ids', []);
 
-        $query = InvoiceItem::query()
-            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->join('customers', 'invoices.customer_id', '=', 'customers.id')
-            ->join('products', 'invoice_items.product_id', '=', 'products.id')
-            ->join('brands', 'products.brand_id', '=', 'brands.id')
-            ->where('invoices.invoice_type', 'sale')
-            ->whereDate('invoices.invoice_date', '>=', $dateFrom)
-            ->whereDate('invoices.invoice_date', '<=', $dateTo)
+        $query = Brand::query()
+            ->leftJoin('products', 'brands.id', '=', 'products.brand_id')
+            ->leftJoin('invoice_items', 'products.id', '=', 'invoice_items.product_id')
+            ->leftJoin('invoices', function($join) use ($dateFrom, $dateTo) {
+                $join->on('invoice_items.invoice_id', '=', 'invoices.id')
+                    ->where('invoices.invoice_type', 'sale')
+                    ->whereDate('invoices.invoice_date', '>=', $dateFrom)
+                    ->whereDate('invoices.invoice_date', '<=', $dateTo);
+            })
+            ->leftJoin('customers', 'invoices.customer_id', '=', 'customers.id')
             ->select(
                 'brands.id as brand_id',
                 'brands.name as brand_name',
@@ -43,25 +45,31 @@ class SubDistributorStockSalesReportController extends Controller
             ->orderBy('products.name');
 
         if ($subDistributionId) {
-            $query->where('customers.sub_distribution_id', $subDistributionId);
+            $query->where(function($q) use ($subDistributionId) {
+                $q->where('customers.sub_distribution_id', $subDistributionId)
+                  ->orWhereNull('invoices.id');
+            });
         }
 
         if (!empty($brandIds)) {
-            $query->whereIn('brands.id', $brandIds);
+            $query->whereIn('brands.id', (array) $brandIds);
         }
 
-        $reportData = $query->get()->map(function ($item) {
+        $reportData = $query->get()->filter(function($item) {
+            return $item->product_id !== null; // Filter out brands with NO products at all if desired, or keep them?
+            // Usually products report needs products.
+        })->map(function ($item) {
             return [
                 'brand_id' => $item->brand_id,
                 'brand_name' => $item->brand_name,
                 'product_id' => $item->product_id,
                 'product_code' => $item->product_code,
                 'product_name' => $item->product_name,
-                'total_quantity' => (int) $item->total_quantity,
-                'total_gross_amount' => (float) $item->total_gross_amount,
-                'total_discount_amount' => (float) $item->total_discount_amount,
-                'total_net_amount' => (float) $item->total_net_amount,
-                'free_quantity' => (int) $item->free_quantity,
+                'total_quantity' => (int) ($item->total_quantity ?? 0),
+                'total_gross_amount' => (float) ($item->total_gross_amount ?? 0),
+                'total_discount_amount' => (float) ($item->total_discount_amount ?? 0),
+                'total_net_amount' => (float) ($item->total_net_amount ?? 0),
+                'free_quantity' => (int) ($item->free_quantity ?? 0),
             ];
         });
 
