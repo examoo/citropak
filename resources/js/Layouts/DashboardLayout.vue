@@ -204,6 +204,7 @@ const navigation = [
             { name: 'Day Closing', href: 'day-closing.index', permission: 'reports.view' },
             { name: 'Customer Discount Report', href: 'customer-wise-discount-reports.index', permission: 'reports.view' },
             { name: 'Brand Wise Sales Report', href: 'brand-wise-sales-reports.index', permission: 'reports.view' },
+            { name: 'Productivity Report', href: 'productivity-report.index', permission: 'reports.view' },
         ]
     },
     {
