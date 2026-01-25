@@ -194,9 +194,15 @@ class InvoiceController extends Controller
                 $advTaxAmount = $itemData['adv_tax_amount'] ?? 0;
                 $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount);
                 
-                // Scheme + Manual discounts go in discount field
-                $schemeDiscount = $itemData['scheme_discount'] ?? 0;
-                $totalDiscount = $itemData['total_discount'] ?? $schemeDiscount;
+                // Scheme + Manual discounts go in discount field (Total)
+                $schemeDiscount = $itemData['scheme_discount'] ?? 0; // Legacy field usage
+                $schemeDiscountAmount = $schemeDiscount ?? 0;
+                $manualDiscountAmount = $itemData['manual_discount_amount'] ?? 0;
+                $manualDiscountPercentage = $itemData['manual_discount_percentage'] ?? 0;
+                
+                // If frontend sends total_discount, trust it. Otherwise sum up.
+                // Ideally: discount column = scheme_discount_amount + manual_discount_amount
+                $totalDiscount = $itemData['total_discount'] ?? ($schemeDiscountAmount + $manualDiscountAmount);
                 
                 // Trade discount (retail margin) goes separately
                 $tradeDiscountPercent = $itemData['trade_discount_percent'] ?? 0;
@@ -217,6 +223,9 @@ class InvoiceController extends Controller
                     'list_price_before_tax' => $exclusivePrice,
                     'exclusive_amount' => $exclusiveAmount,
                     'fed_percent' => $itemData['fed_percent'] ?? 0,
+                    'manual_discount_amount' => $manualDiscountAmount,
+                    'manual_discount_percentage' => $manualDiscountPercentage,
+                    'scheme_discount_amount' => $schemeDiscountAmount,
                     'fed_amount' => $fedAmount,
                     'tax_percent' => $itemData['sales_tax_percent'] ?? 0,
                     'tax' => $salesTaxAmount,
