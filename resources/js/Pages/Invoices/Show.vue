@@ -65,7 +65,7 @@ const getItemSchemeDiscount = (item) => {
     // If no explicit manual, and total discount exists, assume legacy scheme discount
     if (manualAmt === 0 && totalDisc > 0) return totalDisc;
 
-    return 0;
+    return schemeAmt;
 };
 
 // Totals
@@ -250,9 +250,9 @@ const resyncFbr = () => {
                                 <div>{{ invoice.distribution?.address || invoice.distribution?.business_address || '' }}
                                 </div>
                                 <div v-if="invoice.distribution?.ntn_number">NTN No: {{ invoice.distribution.ntn_number
-                                    }}</div>
+                                }}</div>
                                 <div v-if="invoice.distribution?.stn_number">STN No: {{ invoice.distribution.stn_number
-                                    }}</div>
+                                }}</div>
                                 <div v-if="invoice.distribution?.phone_number">Contact#: {{
                                     invoice.distribution.phone_number }}</div>
                                 <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
@@ -314,18 +314,18 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExclusive(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSalesTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.retail_margin
                                     /
                                     getItemGross(item) * 100) || 0) }}%</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin)
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSchemeDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
@@ -343,13 +343,13 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-center">{{ regularTotalQty }}</td>
                             <td class="border border-black px-1 py-1"></td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExclusive)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalFed) }}
                             </td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalSalesTax)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExtraTax)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalGross) }}
                             </td>
                             <td class="border border-black px-1 py-1"></td>
@@ -374,7 +374,7 @@ const resyncFbr = () => {
                             </tr>
                             <tr v-for="(item, index) in freeItems" :key="'free-' + item.id">
                                 <td class="border border-black px-1 py-1 text-center">{{ regularItems.length + index + 1
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code ||
                                     item.product?.sku }}</td>
                                 <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
@@ -384,18 +384,18 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExclusive(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSalesTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.retail_margin
                                     /
                                     getItemGross(item) * 100) || 0) }}%</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin)
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSchemeDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
