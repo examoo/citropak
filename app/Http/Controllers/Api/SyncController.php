@@ -97,7 +97,7 @@ class SyncController extends Controller
                       SubDistribution::where('distribution_id', $distributionId)->pluck('id')
                   );
             })
-            ->where('is_active', true)
+            ->where('status', 'active')
             ->where(function($q) {
                 $q->whereNull('end_date')
                   ->orWhere('end_date', '>=', now());

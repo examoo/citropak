@@ -19,7 +19,7 @@ class CustomerResource extends JsonResource
             'ntn' => $this->ntn_number,
             'cnic' => $this->cnic,
             'sales_tax_status' => $this->sales_tax_status, // filer/non-filer
-            'balance' => $this->balance ?? 0.0,
+            'balance' => $this->opening_balance ?? 0.0,
             'route_id' => $this->route_id, // If strictly mapped
             'visit_day' => $this->day,
             'channel_id' => $this->channel_id,

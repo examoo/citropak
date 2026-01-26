@@ -34,7 +34,7 @@ class ProductResource extends JsonResource
             'gst_percent' => $this->fed_sales_tax,
             'fed_percent' => $this->fed_percent,
             // Stock
-            'stock_qty' => $this->stocks->sum('balance'),
+            'stock_qty' => $this->stocks->sum('quantity'),
         ];
     }
 }
