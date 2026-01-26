@@ -13,12 +13,37 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Channel;
 use App\Models\SubDistribution;
+use App\Models\Stock;
+use App\Models\DiscountScheme;
+use App\Models\ProductType;
 use App\Http\Resources\Mobile\ProductResource;
 use App\Http\Resources\Mobile\CustomerResource;
 use App\Http\Resources\Mobile\TargetResource;
 
 class SyncController extends Controller
 {
+    /**
+     * Download Stocks (Dedicated Endpoint)
+     */
+    public function getStocks(Request $request) 
+    {
+        $user = $request->user();
+        $distributionId = $user->distribution_id;
+        
+        $stocks = Stock::where('distribution_id', $distributionId)
+            ->where('quantity', '>', 0)
+            ->get([
+                'id', 'product_id', 'batch_number', 'expiry_date', 'quantity', 'unit_cost', 
+                'min_quantity', 'max_quantity', 'location', 'notes'
+            ]);
+            
+        return response()->json([
+            'stocks' => $stocks,
+            'count' => $stocks->count(),
+            'sync_time' => now()->toIso8601String(),
+        ]);
+    }
+
     /**
      * Download Master Data (Down-Sync)
      */
@@ -35,12 +60,10 @@ class SyncController extends Controller
         $distributionId = $user->distribution_id;
 
         // 1. Products (with Stock for this Distribution)
-        // Note: Assuming stock logic is handled via Stocks relationship or similar.
-        // For now, loading active products.
-        $products = Product::with(['stocks' => function($q) use ($distributionId) {
-                // Filter stocks by distribution if relation allows, 
-                // or load all and filter in Resource if needed.
-                // Assuming 'stocks' has distribution_id logic or we take all.
+        $products = Product::with(['productType', 'stocks' => function($q) use ($distributionId) {
+                if ($distributionId) {
+                    $q->where('distribution_id', $distributionId);
+                }
             }])
             ->get();
 
@@ -52,13 +75,40 @@ class SyncController extends Controller
         // 3. Targets (Current Month)
         $currentMonth = now()->format('Y-m');
         $targets = $orderBooker->targets()
-            // ->where('month', $currentMonth) // Depending on date format in DB
-            ->latest('month') // Get latest target for now
+            ->latest('month')
             ->first();
 
         // 4. Reference Data
-        $channels = Channel::all(); // Fetch all channels for now
+        $channels = Channel::all();
         $subDistributions = SubDistribution::where('distribution_id', $distributionId)->get();
+        
+        // 5. Product Types (for Food vs Non-Food calculation)
+        $productTypes = ProductType::all(['id', 'name', 'extra_tax']);
+        
+        // 6. Stocks (for this Distribution)
+        $stocks = Stock::where('distribution_id', $distributionId)
+            ->where('quantity', '>', 0)
+            ->get(['id', 'product_id', 'batch_number', 'expiry_date', 'quantity', 'unit_cost']);
+            
+        // 7. Discount Schemes (Active and applicable to this Distribution)
+        $schemes = DiscountScheme::where(function($q) use ($distributionId) {
+                $q->whereNull('sub_distribution_id')
+                  ->orWhereIn('sub_distribution_id', 
+                      SubDistribution::where('distribution_id', $distributionId)->pluck('id')
+                  );
+            })
+            ->where('is_active', true)
+            ->where(function($q) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', now());
+            })
+            ->with('freeProduct:id,name,dms_code')
+            ->get();
+
+        // 8. Customer Brand Percentages (Optimized Fetch)
+        $customerIds = $customers->pluck('id');
+        $brandDiscounts = \App\Models\CustomerBrandPercentage::whereIn('customer_id', $customerIds)
+            ->get(['id', 'customer_id', 'brand_id', 'percentage']);
 
         return response()->json([
             'meta' => [
@@ -70,6 +120,10 @@ class SyncController extends Controller
             'targets' => $targets ? new TargetResource($targets) : null,
             'channels' => $channels,
             'sub_distributions' => $subDistributions,
+            'product_types' => $productTypes,
+            'stocks' => $stocks,
+            'schemes' => $schemes,
+            'brand_discounts' => $brandDiscounts,
         ]);
     }
 
