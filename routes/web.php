@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('van-comparison', [\App\Http\Controllers\VanComparisonController::class, 'index'])->name('van-comparison.index');
     Route::get('sale-tax-invoices-reports/export', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'export'])->name('sale-tax-invoices-reports.export');
     Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
+    Route::get('productivity-report', [\App\Http\Controllers\ProductivityReportController::class, 'index'])->name('productivity-report.index');
     Route::get('day-closing', [\App\Http\Controllers\DayClosingController::class, 'index'])->name('day-closing.index');
     Route::get('customer-wise-discount-reports', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'index'])->name('customer-wise-discount-reports.index');
     Route::get('brand-wise-sales-reports/export', [\App\Http\Controllers\BrandWiseSalesReportController::class, 'export'])->name('brand-wise-sales-reports.export');

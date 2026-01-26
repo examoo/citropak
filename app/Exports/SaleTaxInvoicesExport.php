@@ -27,6 +27,10 @@ class SaleTaxInvoicesExport implements FromCollection, WithHeadings, WithMapping
     {
         return Invoice::query()
             ->with(['customer'])
+            ->withSum('items', 'extra_tax_amount')
+            ->withSum('items', 'adv_tax_amount')
+            ->withSum('items', 'retail_margin')
+            ->withSum('items', 'exclusive_amount')
             ->whereYear('invoice_date', $this->year)
             ->whereMonth('invoice_date', $this->month)
             ->orderBy('invoice_date')
@@ -38,7 +42,12 @@ class SaleTaxInvoicesExport implements FromCollection, WithHeadings, WithMapping
     {
         $buyerName = $invoice->customer->shop_name ?? $invoice->customer_name ?? 'Walk-in Customer';
         $buyerNtn = $invoice->customer->ntn_number ?? $invoice->customer->cnic ?? '';
-        $taxableValue = $invoice->subtotal - $invoice->discount_amount; // Net Taxable
+        
+        $exclValue = $invoice->items_sum_exclusive_amount ?? 0;
+        $tradeDiscount = $invoice->items_sum_retail_margin ?? 0;
+        $extraTax = $invoice->items_sum_extra_tax_amount ?? 0;
+        $advTax = $invoice->items_sum_adv_tax_amount ?? 0;
+        $grossAmount = $exclValue + $invoice->tax_amount + $invoice->fed_amount + $extraTax;
 
         return [
             $invoice->invoice_date->format('d-m-Y'),
@@ -50,12 +59,16 @@ class SaleTaxInvoicesExport implements FromCollection, WithHeadings, WithMapping
             $invoice->customer->ntn_number ?? '', // NTN
             $invoice->customer->cnic ?? '', // CNIC
             $invoice->customer->sales_tax_number ?? '', // STN
-            $invoice->subtotal,
-            $invoice->discount_amount,
-            $taxableValue,
-            $invoice->tax_amount,
+            $exclValue,
             $invoice->fed_amount,
-            $invoice->total_amount,
+            $invoice->tax_amount,
+            $extraTax,
+            $grossAmount,
+            $tradeDiscount,
+            $invoice->discount_amount, // Scheme Disc
+            $invoice->subtotal, // Net Value
+            $advTax,
+            $invoice->total_amount, // Total Value
         ];
     }
 
@@ -71,12 +84,16 @@ class SaleTaxInvoicesExport implements FromCollection, WithHeadings, WithMapping
             'NTN',
             'CNIC',
             'STN',
-            'Gross Amount',
-            'Discount',
-            'Value Excl. Tax',
+            'Excl. Value',
+            'FED',
             'Sales Tax',
-            'Further Tax',
-            'Value Incl. Tax',
+            'Extra Tax',
+            'Gross Amount',
+            'Trade Disc.',
+            'Scheme Disc.',
+            'Net Value',
+            'Adv. Tax',
+            'Total Value',
         ];
     }
 
