@@ -22,7 +22,8 @@ Route::prefix('v1')->group(function () {
         // Sync Routes
         Route::prefix('sync')->group(function () {
             Route::get('/master', [SyncController::class, 'masterData']); 
-            Route::get('/stocks', [SyncController::class, 'getStocks']); // New Endpoint
+            Route::get('/stocks', [SyncController::class, 'getStocks']);
+            Route::get('/schemes', [SyncController::class, 'getSchemes']); // New Endpoint
             Route::post('/push', [SyncController::class, 'pushTransactions']);
         });
 
