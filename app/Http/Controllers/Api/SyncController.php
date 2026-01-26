@@ -305,4 +305,41 @@ class SyncController extends Controller
             return response()->json(['error' => 'Sync failed: ' . $e->getMessage()], 500);
         }
     }
+
+
+    /**
+     * Download Schemes & Brands (Dedicated Endpoint)
+     */
+    public function getSchemes(Request $request)
+    {
+        $user = $request->user();
+        $distributionId = $user->distribution_id;
+
+        // 1. Brands (All brands)
+        $brands = \App\Models\Brand::all(['id', 'name']);
+
+        // 2. Schemes (Scoped to Distribution)
+        // Ensure DiscountScheme model is imported or use full path if needed.
+        // Assuming App\Models\DiscountScheme is used.
+        $schemes = \App\Models\DiscountScheme::where(function($q) use ($distributionId) {
+                $q->whereNull('sub_distribution_id')
+                  ->orWhereIn('sub_distribution_id', 
+                      \App\Models\SubDistribution::where('distribution_id', $distributionId)->pluck('id')
+                  );
+            })
+            ->where('status', 'active')
+            ->where(function($q) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', now()->toDateString());
+            })
+            ->with(['freeProduct:id,name,dms_code', 'products:id', 'brands:id'])
+            ->get();
+
+        return response()->json([
+            'brands' => $brands,
+            'schemes' => $schemes,
+            'count' => $schemes->count(),
+            'sync_time' => now()->toIso8601String(),
+        ]);
+    }
 }
