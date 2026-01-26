@@ -175,4 +175,83 @@ class StockOutService
             return true;
         });
     }
+    /**
+     * Create and post a StockOut record for the invoice.
+     * Shared logic for Web and API.
+     */
+    public function createFromInvoice(\App\Models\Invoice $invoice)
+    {
+        // Group items by product to handle allocation
+        $itemsByProduct = $invoice->items->groupBy('product_id');
+        $distributionId = $invoice->distribution_id;
+
+        $stockOutItems = [];
+
+        foreach ($itemsByProduct as $productId => $items) {
+            $totalQuantity = $items->sum('total_pieces');
+            $remainingQty = $totalQuantity;
+
+            // FIFO: Get oldest stocks first
+            $stocks = Stock::where('product_id', $productId)
+                ->where('distribution_id', $distributionId)
+                ->where('quantity', '>', 0)
+                ->orderBy('created_at', 'asc') // FIFO by creation date
+                ->get();
+
+            foreach ($stocks as $stock) {
+                if ($remainingQty <= 0) break;
+
+                $takeQty = min($remainingQty, $stock->quantity);
+
+                $stockOutItems[] = [
+                    'stock_id' => $stock->id,
+                    'product_id' => $productId,
+                    'quantity' => $takeQty,
+                    'batch_number' => $stock->batch_number,
+                    'expiry_date' => $stock->expiry_date,
+                    'location' => $stock->location,
+                    'unit_cost' => $stock->unit_cost,
+                ];
+
+                $remainingQty -= $takeQty;
+            }
+
+            // If we still have remaining quantity (insufficient stock),
+            // we create an item without a stock_id
+            if ($remainingQty > 0) {
+                $stockOutItems[] = [
+                    'stock_id' => null, 
+                    'product_id' => $productId,
+                    'quantity' => $remainingQty,
+                    'batch_number' => null,
+                    'expiry_date' => null,
+                    'location' => null,
+                    'unit_cost' => 0, 
+                ];
+            }
+        }
+
+        if (!empty($stockOutItems)) {
+            $stockOutData = [
+                'distribution_id' => $distributionId,
+                'bilty_number' => $invoice->invoice_number,
+                'date' => $invoice->invoice_date,
+                'status' => 'posted', // Auto-post on invoice creation
+                'gate_pass_number' => null,
+                'vehicle_number' => null,
+                'builty_number_2' => null,
+                'notes' => 'Auto-generated from Invoice #' . $invoice->invoice_number,
+                'created_by' => $invoice->created_by ?? auth()->id(),
+            ];
+
+            $stockOut = StockOut::create($stockOutData);
+
+            foreach ($stockOutItems as $item) {
+                $stockOut->items()->create($item);
+            }
+
+            // Auto-post: deduct stock immediately
+            $this->post($stockOut);
+        }
+    }
 }

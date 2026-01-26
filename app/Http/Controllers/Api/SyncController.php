@@ -214,38 +214,82 @@ class SyncController extends Controller
                         'order_booker_id' => $orderBooker->id,
                         'customer_id' => $invoiceData['customer_id'],
                         'invoice_date' => $invoiceData['invoice_date'] ?? now(),
-                        'invoice_type' => 'sale', // Default to sale
+                        'invoice_type' => 'sale', 
                         'created_by' => $user->id,
                         'van_id' => $orderBooker->van_id,
-                        'subtotal' => 0, // Will recalculate
+                        'subtotal' => 0, 
                         'discount_amount' => 0,
                         'tax_amount' => 0,
                         'total_amount' => 0,
                         'notes' => $invoiceData['notes'] ?? null,
                         'is_credit' => $invoiceData['is_credit'] ?? false,
+                        // Mobile App specific fields if needed
+                        'lat' => $invoiceData['lat'] ?? null,
+                        'lng' => $invoiceData['lng'] ?? null,
                     ]);
 
                     if (!empty($invoiceData['items']) && is_array($invoiceData['items'])) {
                         foreach ($invoiceData['items'] as $itemData) {
                              InvoiceItem::create([
                                 'invoice_id' => $invoice->id,
-                                'distribution_id' => $invoice->distribution_id, // Added this
+                                'distribution_id' => $invoice->distribution_id,
                                 'product_id' => $itemData['product_id'],
-                                'quantity' => $itemData['quantity'],
-                                'unit_price' => $itemData['unit_price'],
-                                'line_total' => $itemData['line_total'], 
-                                'discount' => $itemData['discount'] ?? 0,
-                                'tax' => $itemData['tax'] ?? 0,
-                                'total' => $itemData['total'],
+                                'quantity' => $itemData['quantity'], // Total pieces (cartons * packing + pieces)
+                                'cartons' => $itemData['cartons'] ?? 0,
+                                'pieces' => $itemData['pieces'] ?? 0,
+                                'total_pieces' => $itemData['quantity'], // Ensure consistency
+                                
+                                // Pricing
+                                'list_price_before_tax' => $itemData['list_price'] ?? 0, 
+                                'price' => $itemData['unit_price'] ?? 0, // Net Unit Price
+
+                                // Amounts
+                                'exclusive_amount' => $itemData['exclusive_amount'] ?? 0,
+                                'gross_amount' => $itemData['gross_amount'] ?? 0,
+                                
+                                // Taxes
+                                'fed_percent' => $itemData['fed_percent'] ?? 0,
+                                'fed_amount' => $itemData['fed_amount'] ?? 0,
+                                'tax_percent' => $itemData['gst_percent'] ?? 0,
+                                'tax' => $itemData['tax_amount'] ?? 0,
+                                'extra_tax_percent' => $itemData['extra_tax_percent'] ?? 0,
+                                'extra_tax_amount' => $itemData['extra_tax_amount'] ?? 0,
+                                'adv_tax_percent' => $itemData['adv_tax_percent'] ?? 0,
+                                'adv_tax_amount' => $itemData['adv_tax_amount'] ?? 0,
+
+                                // Discounts
+                                'scheme_id' => $itemData['scheme_id'] ?? null,
+                                'scheme_discount' => $itemData['scheme_discount'] ?? 0,
+                                'scheme_discount_amount' => $itemData['scheme_discount_amount'] ?? 0,
+                                'manual_discount_percentage' => $itemData['manual_discount_percentage'] ?? 0,
+                                'manual_discount_amount' => $itemData['manual_discount_amount'] ?? 0,
+                                'discount' => $itemData['discount'] ?? 0, // Total Discount usually
+                                
+                                // Trade Discount / Margin
+                                'retail_margin' => $itemData['retail_margin'] ?? 0,
+                                'trade_discount_percent' => $itemData['trade_discount_percent'] ?? 0,
+                                'trade_discount_amount' => $itemData['trade_discount_amount'] ?? 0,
+
+                                'line_total' => $itemData['line_total'],
+                                'total' => $itemData['total'] ?? $itemData['line_total'], 
+                                'is_free' => !empty($itemData['is_free']) ? 1 : 0,
                             ]);
                         }
                     }
                     
-                    // Recalculate totals to ensure accuracy
+                    // Recalculate totals
                     $invoice->recalculateTotals();
+
+                    // Populate buyer info
+                    $invoice->populateBuyerInfo();
+
+                    // Generate Stock Out (Deduct Stock)
+                    // We need to resolve the service instance since we are in a static context or inside a loop
+                    app(\App\Services\StockOutService::class)->createFromInvoice($invoice);
 
                     $syncedIds['invoices'][] = $invoiceData['local_id'] ?? $invoice->id;
                 }
+
             }
 
             DB::commit();
