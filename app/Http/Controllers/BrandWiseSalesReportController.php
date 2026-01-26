@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
+
 class BrandWiseSalesReportController extends Controller
 {
     public function index(Request $request)
