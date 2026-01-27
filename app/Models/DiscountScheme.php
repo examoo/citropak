@@ -82,6 +82,14 @@ class DiscountScheme extends Model
     }
 
     /**
+     * Get the free product for this scheme.
+     */
+    public function freeProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'free_product_code', 'dms_code');
+    }
+
+    /**
      * Scope to active schemes only.
      * Uses date-only comparison to ensure schemes are active for the entire day.
      */
