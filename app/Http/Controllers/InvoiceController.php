@@ -377,6 +377,18 @@ class InvoiceController extends Controller
             $wasDamage = $invoice->invoice_type === 'damage';
             $isBecomingDamage = $validated['invoice_type'] === 'damage' && !$wasDamage;
 
+            // 1. REVERSE EXISTING STOCK OUT (Restoring Stock)
+            // Find associated StockOut
+            $stockOut = \App\Models\StockOut::where('bilty_number', $invoice->invoice_number)
+                ->where('distribution_id', $invoice->distribution_id)
+                ->first();
+
+            // Reverse StockOut if exists
+            if ($stockOut) {
+                // This restores the stock quantities to the batches they came from (or best guess)
+                $this->stockOutService->reverseAndDelete($stockOut);
+            }
+
             // Update invoice
             $invoice->update([
                 'invoice_type' => $validated['invoice_type'],
@@ -518,6 +530,12 @@ class InvoiceController extends Controller
             // Recalculate totals
             $invoice->refresh();
             $invoice->recalculateTotals();
+
+            // 2. RE-CREATE STOCK OUT (Deducting New Stock)
+            // Auto-generate StockOut (Deduct stock) - this handles FIFO based on new item quantities
+            if (!$isDamage) { // Only for sale invoices
+               $this->stockOutService->createFromInvoice($invoice);
+            }
 
             DB::commit();
             return redirect()->route('invoices.show', $invoice->id)
