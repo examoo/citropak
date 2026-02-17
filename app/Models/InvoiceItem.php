@@ -100,11 +100,11 @@ class InvoiceItem extends Model
     }
 
     /**
-     * Get the scheme.
+     * Get the scheme (from discount_schemes table).
      */
     public function scheme(): BelongsTo
     {
-        return $this->belongsTo(Scheme::class);
+        return $this->belongsTo(DiscountScheme::class, 'scheme_id');
     }
 
     /**
