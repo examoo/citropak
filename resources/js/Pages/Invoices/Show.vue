@@ -17,8 +17,6 @@ const formatAmount = (amount) => {
     }).format(amount || 0);
 };
 
-// ... existing code ...
-
 // Customer QR Data
 const customerQrData = computed(() => {
     const customerName = props.invoice.customer?.shop_name || 'Unknown';
@@ -26,8 +24,6 @@ const customerQrData = computed(() => {
     const totalAmount = grandTotalNet.value + totalAdvTax.value;
     return `Customer: ${customerName} | Inv: ${invoiceNum} | Amt: ${totalAmount.toFixed(2)}`;
 });
-
-// ... existing code ...
 
 // Format date
 const formatDate = (date) => {
@@ -54,7 +50,6 @@ const getItemGross = (item) => {
 const getItemNet = (item) => parseFloat(item.line_total) || 0;
 
 // Helper to handle legacy scheme discount
-// Helper to handle legacy scheme discount
 const getItemSchemeDiscount = (item) => {
     // Strictly show ONLY scheme discount (amount or legacy field)
     // Do NOT fallback to total discount, as that confuses the user
@@ -74,8 +69,6 @@ const groupedItems = computed(() => {
         if (!groups[brand]) groups[brand] = [];
         groups[brand].push(item);
     });
-    // Sort items within groups by product name/code if needed
-    // Object.values(groups).forEach(group => group.sort((a,b) => a.product?.name?.localeCompare(b.product?.name)));
     return groups;
 });
 
@@ -104,14 +97,6 @@ const totalExtraTax = computed(() => sumItems(props.invoice.items || [], getItem
 const totalAdvTax = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.adv_tax_amount || 0)));
 const totalGross = computed(() => sumItems(props.invoice.items || [], getItemGross));
 const totalRetailMargin = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.retail_margin || 0)));
-const totalTradeDiscount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.discount || 0))); // Note: In original code 'totalTradeDiscount' summed 'discount' col ??
-// Re-checking original variable names mapping:
-// Original: totalTradeDiscount sum(item.discount).
-// Original: totalRetailMargin sum(item.retail_margin).
-// The user image headers are "Trade Discount" (retail margin usually) and "Scheme Discount" (discount usually).
-// In database: retail_margin = Trade Discount Amount. discount = Scheme/Manual Discount.
-// So:
-const grandTotalTradeDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.retail_margin || 0))); // This is "Trade Discount" column sum
 const grandTotalSchemeDiscountAmount = computed(() => sumItems(props.invoice.items || [], getItemSchemeDiscount)); // This is "Scheme Discount" column sum
 const grandTotalManualDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.manual_discount_amount || 0))); // This is "Cust.Disc Amt" column sum
 const grandTotalNet = computed(() => sumItems(props.invoice.items || [], getItemNet));
@@ -236,16 +221,14 @@ const resyncFbr = () => {
                                 <div class="text-[8px] font-mono">{{ invoice.fbr_invoice_number }}</div>
                             </div>
 
-                            <!-- Removed Customer QR from here -->
-
                             <div class="text-right space-y-1">
                                 <div class="font-bold text-sm">{{ invoice.distribution?.name || 'CITROPAK LTD' }}</div>
                                 <div>{{ invoice.distribution?.address || invoice.distribution?.business_address || '' }}
                                 </div>
                                 <div v-if="invoice.distribution?.ntn_number">NTN No: {{ invoice.distribution.ntn_number
-                                    }}</div>
+                                }}</div>
                                 <div v-if="invoice.distribution?.stn_number">STN No: {{ invoice.distribution.stn_number
-                                    }}</div>
+                                }}</div>
                                 <div v-if="invoice.distribution?.phone_number">Contact#: {{
                                     invoice.distribution.phone_number }}</div>
                                 <div><span class="font-semibold">Invoice#:</span> {{ invoice.invoice_number }}</div>
@@ -277,7 +260,6 @@ const resyncFbr = () => {
                                 invoice.items?.[0]?.tax_percent || 18 }}%</th>
                             <th class="border border-black px-1 py-1 text-right">Extra<br />Tax</th>
                             <th class="border border-black px-1 py-1 text-right">Gross<br />Value</th>
-                            <th class="border border-black px-1 py-1 text-right">Trade<br />Disc %</th>
                             <th class="border border-black px-1 py-1 text-right">Trade<br />Discount</th>
                             <th class="border border-black px-1 py-1 text-right">Scheme<br />Discount</th>
                             <th class="border border-black px-1 py-1 text-right">Cust.Disc<br />%</th>
@@ -290,7 +272,7 @@ const resyncFbr = () => {
                         <template v-for="(group, groupName) in groupedItems" :key="groupName">
                             <!-- Group Header -->
                             <tr class="bg-gray-50 print:bg-white text-left break-inside-avoid">
-                                <td colspan="16" class="border border-black px-2 py-1 font-bold text-sm uppercase">
+                                <td colspan="15" class="border border-black px-2 py-1 font-bold text-sm uppercase">
                                     {{ groupName }}
                                 </td>
                             </tr>
@@ -307,18 +289,15 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExclusive(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSalesTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item))
-                                    }}</td>
-                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.retail_margin
-                                    /
-                                    getItemGross(item) * 100) || 0) }}%</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin)
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSchemeDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
@@ -336,16 +315,15 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-center">{{ regularTotalQty }}</td>
                             <td class="border border-black px-1 py-1"></td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExclusive)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalFed) }}
                             </td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalSalesTax)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalExtraTax)
-                                }}</td>
+                            }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(regularTotalGross) }}
                             </td>
-                            <td class="border border-black px-1 py-1"></td>
                             <td class="border border-black px-1 py-1 text-right">{{
                                 formatAmount(regularTotalTradeDiscount) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{
@@ -360,14 +338,14 @@ const resyncFbr = () => {
                         <!-- Free Scheme Section (Separate Group) -->
                         <template v-if="freeItems.length > 0">
                             <tr class="break-inside-avoid">
-                                <td colspan="16"
+                                <td colspan="15"
                                     class="border border-black px-2 py-1 font-bold text-sm uppercase bg-gray-50 print:bg-white">
                                     Free Items
                                 </td>
                             </tr>
                             <tr v-for="(item, index) in freeItems" :key="'free-' + item.id">
                                 <td class="border border-black px-1 py-1 text-center">{{ regularItems.length + index + 1
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-center">{{ item.product?.dms_code ||
                                     item.product?.sku }}</td>
                                 <td class="border border-black px-1 py-1 text-left">{{ item.product?.name }}</td>
@@ -377,18 +355,15 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExclusive(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemFed(item))
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSalesTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item))
-                                    }}</td>
-                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount((item.retail_margin
-                                    /
-                                    getItemGross(item) * 100) || 0) }}%</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin)
-                                    }}</td>
+                                }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(getItemSchemeDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
@@ -410,7 +385,6 @@ const resyncFbr = () => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalSalesTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalExtraTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalGross) }}</td>
-                            <td class="border border-black px-1 py-1"></td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(totalRetailMargin) }}
                             </td>
                             <td class="border border-black px-1 py-1 text-right">{{

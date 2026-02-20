@@ -33,7 +33,7 @@ const newItem = ref({
     adv_tax_percent: selectedCustomer.value?.adv_tax_percent || 0, net_unit_price: 0,
     scheme_id: '', scheme_discount: 0, discount_scheme_id: '',
     free_product: null, free_pieces: 0,
-    manual_discount_percent: 0, manual_discount_amount: 0,
+    manual_discount_percentage: 0, manual_discount_amount: 0,
     batch_number: '', available_qty: 0, trade_discount_percent: 0, is_net_fixed: false
 });
 
@@ -59,7 +59,7 @@ const form = useForm({
         gross_amount: parseFloat(item.gross_amount), net_unit_price: parseFloat(item.price),
         scheme_id: item.scheme_id, scheme_name: item.scheme?.name || (item.is_free ? 'FREE' : null),
         scheme_discount: parseFloat(item.scheme_discount), discount_scheme_id: item.scheme_id,
-        manual_discount_percent: 0, manual_discount_amount: parseFloat(item.discount) - parseFloat(item.scheme_discount),
+        manual_discount_percentage: 0, manual_discount_amount: parseFloat(item.discount) - parseFloat(item.scheme_discount),
         total_discount: parseFloat(item.discount), trade_discount_amount: parseFloat(item.retail_margin),
         trade_discount_percent: 0, is_free: Boolean(item.is_free), brand_scheme_brand_id: null
     }))
@@ -83,15 +83,15 @@ const availableBatches = computed(() => {
 const isStockExceeded = computed(() => newItem.value.stock_id && newItem.value.available_qty > 0 && newItem.value.total_pieces > newItem.value.available_qty);
 
 const calculateNetUnitPrice = () => {
-    const e = parseFloat(newItem.value.exclusive_price) || 0, f = parseFloat(newItem.value.fed_percent)/100 || 0;
-    const s = parseFloat(newItem.value.sales_tax_percent)/100 || 0, x = parseFloat(newItem.value.extra_tax_percent)/100 || 0;
+    const e = parseFloat(newItem.value.exclusive_price) || 0, f = parseFloat(newItem.value.fed_percent) / 100 || 0;
+    const s = parseFloat(newItem.value.sales_tax_percent) / 100 || 0, x = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
     const isFood = (selectedProduct.value?.product_type?.name || '').toLowerCase() === 'food';
     newItem.value.net_unit_price = isFood ? e * (1 + s + x) : e * (1 + f) * (1 + s);
 };
 
 const calculateReversePrice = () => {
-    const n = parseFloat(newItem.value.net_unit_price) || 0, f = parseFloat(newItem.value.fed_percent)/100 || 0;
-    const s = parseFloat(newItem.value.sales_tax_percent)/100 || 0, x = parseFloat(newItem.value.extra_tax_percent)/100 || 0;
+    const n = parseFloat(newItem.value.net_unit_price) || 0, f = parseFloat(newItem.value.fed_percent) / 100 || 0;
+    const s = parseFloat(newItem.value.sales_tax_percent) / 100 || 0, x = parseFloat(newItem.value.extra_tax_percent) / 100 || 0;
     const isFood = (selectedProduct.value?.product_type?.name || '').toLowerCase() === 'food';
     const d = isFood ? (1 + s + x) : (1 + f) * (1 + s);
     newItem.value.exclusive_price = d <= 1 ? n : n / d;
@@ -165,7 +165,7 @@ const addItem = () => {
     const xTax = excl * ((newItem.value.extra_tax_percent || 0) / 100);
     const gross = excl + fed + sTax + xTax;
     const tradeDis = (gross / (1 + newItem.value.trade_discount_percent / 100)) * (newItem.value.trade_discount_percent / 100);
-    const manDis = gross * (newItem.value.manual_discount_percent / 100) + newItem.value.manual_discount_amount;
+    const manDis = gross * (newItem.value.manual_discount_percentage / 100) + newItem.value.manual_discount_amount;
     const totalDis = (newItem.value.scheme_discount || 0) + manDis;
     const advTax = (gross - tradeDis - totalDis) * (newItem.value.adv_tax_percent / 100);
     form.items.push({
@@ -180,7 +180,7 @@ const addItem = () => {
         scheme_name: discountSchemes.value.find(s => s.id == newItem.value.scheme_id)?.name,
         scheme_discount: newItem.value.scheme_discount, discount_scheme_id: newItem.value.discount_scheme_id,
         free_product: newItem.value.free_product, free_pieces: newItem.value.free_pieces,
-        manual_discount_percent: newItem.value.manual_discount_percent, manual_discount_amount: newItem.value.manual_discount_amount,
+        manual_discount_percentage: newItem.value.manual_discount_percentage, manual_discount_amount: newItem.value.manual_discount_amount,
         total_discount: totalDis, trade_discount_percent: newItem.value.trade_discount_percent, trade_discount_amount: tradeDis, is_free: false
     });
     if (newItem.value.free_product && newItem.value.free_pieces > 0) addFreeItem(newItem.value.free_product, newItem.value.free_pieces);
@@ -197,13 +197,13 @@ const addFreeItem = (fp, qty) => {
         cartons: 0, pieces: qty, total_pieces: qty, exclusive_price: exP,
         fed_percent: fedP, fed_amount: fd, sales_tax_percent: sP, sales_tax_amount: st,
         extra_tax_percent: xP, extra_tax_amount: xt, adv_tax_percent: 0, adv_tax_amount: 0,
-        gross_amount: gr, net_unit_price: exP * (1 + fedP/100) * (1 + sP/100),
+        gross_amount: gr, net_unit_price: exP * (1 + fedP / 100) * (1 + sP / 100),
         scheme_name: 'FREE', total_discount: 0, trade_discount_amount: gr, is_free: true
     });
 };
 
 const resetNewItem = () => {
-    newItem.value = { product_id: '', stock_id: '', cartons: 0, pieces: 0, total_pieces: 0, exclusive_price: 0, fed_percent: 0, sales_tax_percent: 0, extra_tax_percent: 0, adv_tax_percent: selectedCustomer.value?.adv_tax_percent || 0, net_unit_price: 0, scheme_id: '', scheme_discount: 0, discount_scheme_id: '', free_product: null, free_pieces: 0, manual_discount_percent: 0, manual_discount_amount: 0, batch_number: '', available_qty: 0, trade_discount_percent: 0, is_net_fixed: false };
+    newItem.value = { product_id: '', stock_id: '', cartons: 0, pieces: 0, total_pieces: 0, exclusive_price: 0, fed_percent: 0, sales_tax_percent: 0, extra_tax_percent: 0, adv_tax_percent: selectedCustomer.value?.adv_tax_percent || 0, net_unit_price: 0, scheme_id: '', scheme_discount: 0, discount_scheme_id: '', free_product: null, free_pieces: 0, manual_discount_percentage: 0, manual_discount_amount: 0, batch_number: '', available_qty: 0, trade_discount_percent: 0, is_net_fixed: false };
     selectedProduct.value = null; productCode.value = ''; discountSchemes.value = [];
     setTimeout(() => productCodeRef.value?.focus(), 100);
 };
@@ -240,119 +240,333 @@ const submit = () => {
 </script>
 
 <template>
-<Head title="Edit Invoice" />
-<DashboardLayout>
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <div><h1 class="text-2xl font-bold text-gray-900">Edit Invoice #{{ invoice.invoice_number }}</h1><p class="text-gray-500 mt-1">Modify invoice. Press F2 to save.</p></div>
-        <Link :href="route('invoices.show', invoice.id)" class="text-gray-500 hover:text-gray-700">← Back</Link>
-    </div>
-    <form @submit.prevent="submit" class="space-y-6">
-        <!-- Invoice Details (Read-Only Context) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Invoice Details</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div><InputLabel value="VAN" /><div class="mt-1 px-3 py-2 bg-gray-100 rounded-md font-medium">{{ invoice.van?.code }}</div></div>
-                <div><InputLabel value="Order Booker" /><div class="mt-1 px-3 py-2 bg-gray-100 rounded-md font-medium">{{ invoice.order_booker?.name }}</div></div>
-                <div><InputLabel value="Invoice Date" /><TextInput v-model="form.invoice_date" type="date" class="mt-1 block w-full" required /></div>
-                <div><InputLabel value="Invoice Type" /><select v-model="form.invoice_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"><option value="sale">Sale</option><option value="damage">Damage</option><option value="shelf_rent">Shelf Rent</option></select></div>
-                <div class="flex items-center gap-2 pt-6"><input type="checkbox" v-model="form.is_credit" id="is_credit" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"><label for="is_credit" class="text-sm text-gray-700">Credit Sale</label></div>
-            </div>
-        </div>
-        <!-- Customer Info -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Customer</h2>
-            <div v-if="selectedCustomer" class="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div><span class="text-gray-500">Code:</span><span class="font-medium ml-2">{{ selectedCustomer.customer_code }}</span></div>
-                    <div><span class="text-gray-500">Shop:</span><span class="font-medium ml-2">{{ selectedCustomer.shop_name }}</span></div>
-                    <div><span class="text-gray-500">Address:</span><span class="font-medium ml-2">{{ selectedCustomer.address }}</span></div>
-                    <div><span class="text-gray-500">Phone:</span><span class="font-medium ml-2">{{ selectedCustomer.phone }}</span></div>
-                    <div><span class="text-gray-500">NTN:</span><span class="font-medium ml-2">{{ selectedCustomer.ntn_number || 'N/A' }}</span></div>
-                    <div><span class="text-gray-500">CNIC:</span><span class="font-medium ml-2">{{ selectedCustomer.cnic || 'N/A' }}</span></div>
-                    <div><span class="text-gray-500">Day:</span><span class="font-medium ml-2">{{ selectedCustomer.day }}</span></div>
-                    <div><span class="text-gray-500">ATL:</span><span class="font-medium ml-2" :class="selectedCustomer.atl ? 'text-green-600' : 'text-red-600'">{{ selectedCustomer.atl ? 'Yes' : 'No' }}</span></div>
+
+    <Head title="Edit Invoice" />
+    <DashboardLayout>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Edit Invoice #{{ invoice.invoice_number }}</h1>
+                    <p class="text-gray-500 mt-1">Modify invoice. Press F2 to save.</p>
                 </div>
+                <Link :href="route('invoices.show', invoice.id)" class="text-gray-500 hover:text-gray-700">← Back</Link>
             </div>
-        </div>
-        <!-- Product Entry -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
-            <div class="grid grid-cols-6 lg:grid-cols-12 gap-3 items-end mb-4">
-                <div class="col-span-2 lg:col-span-2"><InputLabel value="Product Code" /><div class="flex items-stretch mt-1"><TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code" class="flex-1 !rounded-r-none !border-r-0 min-w-0" @keyup.enter="searchProductByCode" /><button type="button" @click="searchProductByCode" class="px-3 flex items-center justify-center bg-emerald-600 text-white rounded-r-md hover:bg-emerald-700 border border-emerald-600 shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></button></div></div>
-                <div class="col-span-4 lg:col-span-3"><SearchableSelect v-model="newItem.product_id" label="Product" :options="productOptions" option-value="id" option-label="displayLabel" placeholder="Search product..." /></div>
-                <div class="col-span-3 lg:col-span-2"><InputLabel value="Batch / Stock" /><template v-if="newItem.product_id && availableBatches.length === 0"><div class="mt-1 px-3 py-2 bg-gray-100 rounded-md text-gray-500 text-sm font-medium">Batch N/A</div></template><template v-else><SearchableSelect v-model="newItem.stock_id" :options="availableBatches" option-value="id" option-label="label" placeholder="Select Batch" :disabled="!newItem.product_id" class="mt-1" /></template><div v-if="newItem.stock_id && newItem.available_qty > 0" class="text-xs text-emerald-600 mt-1 font-medium">Available: {{ newItem.available_qty }} pcs</div></div>
-                <div class="col-span-2 lg:col-span-2"><InputLabel value="Cartons" /><TextInput ref="cartonsRef" v-model.number="newItem.cartons" type="number" min="0" class="mt-1 w-full text-center font-medium" @keydown.enter.prevent="piecesRef?.focus()" /></div>
-                <div class="col-span-2 lg:col-span-1"><InputLabel value="Pieces" /><TextInput ref="piecesRef" v-model.number="newItem.pieces" type="number" min="0" class="mt-1 w-full text-center font-medium" @keydown.enter.prevent="schemeRef?.focus()" /></div>
-                <div class="col-span-2 lg:col-span-2"><InputLabel value="Total Pcs" /><TextInput :value="newItem.total_pieces" type="number" :class="['mt-1 w-full text-center font-bold', isStockExceeded ? 'bg-red-50 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700']" readonly /><div v-if="isStockExceeded" class="text-xs text-red-600 mt-1 font-medium">Exceeds available ({{ newItem.available_qty }})</div></div>
-            </div>
-            <div v-if="newItem.product_id" class="bg-gray-50 p-4 rounded-lg mb-4">
-                <div class="grid grid-cols-6 lg:grid-cols-10 gap-3 items-end">
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="Excl. Price" class="text-xs" /><TextInput v-model.number="newItem.exclusive_price" type="number" step="0.00001" class="mt-1 w-full text-sm text-center" @input="onExclusivePriceInput" /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="FED %" class="text-xs" /><TextInput v-model.number="newItem.fed_percent" type="number" step="0.00001" class="mt-1 w-full text-sm text-center" @input="handleTaxChange" /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="S.Tax %" class="text-xs" /><TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.00001" class="mt-1 w-full text-sm text-center" @input="handleTaxChange" /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="Extra Tax %" class="text-xs" /><TextInput v-model.number="newItem.extra_tax_percent" type="number" step="0.00001" class="mt-1 w-full text-sm text-center" @input="handleTaxChange" /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="Adv.Tax %" class="text-xs" /><TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.00001" class="mt-1 w-full text-sm text-center" @input="handleTaxChange" /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" /><TextInput :model-value="formatAmount(newItem.net_unit_price)" type="text" class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center" readonly /></div>
-                    <div class="col-span-2 lg:col-span-1"><InputLabel value="Trade Disc. %" class="text-xs" /><TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.00001" class="mt-1 w-full text-sm text-center bg-amber-50 text-amber-700" readonly /></div>
-                    <div class="col-span-3 lg:col-span-2"><InputLabel value="Scheme" class="text-xs" /><select ref="schemeRef" v-model="newItem.discount_scheme_id" @change="discountSchemes.length > 0 && applyDiscountScheme(discountSchemes.find(s => s.id == newItem.discount_scheme_id))" @keydown.enter.prevent="addItem" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm h-[42px]" :class="newItem.free_product ? 'bg-green-50 border-green-300' : (newItem.scheme_discount > 0 ? 'bg-orange-50 border-orange-300' : '')"><option value="">No Scheme</option><option v-for="s in discountSchemes" :key="s.id" :value="s.id">{{ s.name }} - {{ s.discount_type === 'amount_less' ? `Rs ${s.amount_less}` : `${s.free_pieces} FREE` }}</option></select></div>
-                    <div class="col-span-2 lg:col-span-1"><button type="button" @click="addItem" :disabled="!newItem.product_id || newItem.total_pieces <= 0" class="w-full mt-5 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">+ Add</button></div>
+            <form @submit.prevent="submit" class="space-y-6">
+                <!-- Invoice Details (Read-Only Context) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Invoice Details</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <InputLabel value="VAN" />
+                            <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md font-medium">{{ invoice.van?.code }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="Order Booker" />
+                            <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md font-medium">{{ invoice.order_booker?.name
+                                }}</div>
+                        </div>
+                        <div>
+                            <InputLabel value="Invoice Date" />
+                            <TextInput v-model="form.invoice_date" type="date" class="mt-1 block w-full" required />
+                        </div>
+                        <div>
+                            <InputLabel value="Invoice Type" /><select v-model="form.invoice_type"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                                <option value="sale">Sale</option>
+                                <option value="damage">Damage</option>
+                                <option value="shelf_rent">Shelf Rent</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 pt-6"><input type="checkbox" v-model="form.is_credit"
+                                id="is_credit"
+                                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"><label
+                                for="is_credit" class="text-sm text-gray-700">Credit Sale</label></div>
+                    </div>
                 </div>
-            </div>
-            <div v-else class="text-center py-4 text-gray-400 text-sm">Select a product to see pricing details</div>
-        </div>
-        <!-- Product Grid -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-4 border-b border-gray-100 bg-gray-50"><h2 class="text-lg font-medium text-gray-900">Items ({{ form.items.length }})</h2></div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500"><tr><th class="px-2 py-3">#</th><th class="px-2 py-3">Product</th><th class="px-2 py-3 text-right">Ctns</th><th class="px-2 py-3 text-right">Pcs</th><th class="px-2 py-3 text-right">Total</th><th class="px-2 py-3 text-right">Rate</th><th class="px-2 py-3 text-right">Excl. Amt</th><th class="px-2 py-3 text-right">FED</th><th class="px-2 py-3 text-right">S.Tax</th><th class="px-2 py-3 text-right">Extra Tax</th><th class="px-2 py-3 text-right">Adv.Tax</th><th class="px-2 py-3 text-right">Gross</th><th class="px-2 py-3 text-right">Trade Disc.</th><th class="px-2 py-3 text-right">Discount</th><th class="px-2 py-3 text-right">Net</th><th class="px-2 py-3"></th></tr></thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr v-for="(item, index) in form.items" :key="index" :class="{ 'bg-emerald-50/60': item.is_free }">
-                            <td class="px-2 py-3">{{ index + 1 }}</td>
-                            <td class="px-2 py-3"><div class="font-medium" :class="{ 'text-emerald-700': item.is_free }">{{ item.product_name }}<span v-if="item.is_free" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">FREE</span></div><div class="text-xs text-gray-500">{{ item.product_code }}</div></td>
-                            <td class="px-2 py-3 text-right">{{ item.cartons }}</td>
-                            <td class="px-2 py-3 text-right">{{ item.pieces }}</td>
-                            <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
-                            <td class="px-2 py-3 text-right">{{ formatAmount(item.exclusive_price) }}<span v-if="item.is_free" class="ml-1 text-[10px] font-bold text-emerald-600">(FREE)</span></td>
-                            <td class="px-2 py-3 text-right text-gray-600">{{ formatAmount(getItemExclusive(item)) }}</td>
-                            <td class="px-2 py-3 text-right text-gray-500">{{ formatAmount(getItemFed(item)) }}<div class="text-xs">({{ item.fed_percent }}%)</div></td>
-                            <td class="px-2 py-3 text-right text-gray-500">{{ formatAmount(getItemSalesTax(item)) }}<div class="text-xs">({{ item.sales_tax_percent }}%)</div></td>
-                            <td class="px-2 py-3 text-right text-purple-600">{{ formatAmount(getItemExtraTax(item)) }}<div class="text-xs">({{ item.extra_tax_percent || 0 }}%)</div></td>
-                            <td class="px-2 py-3 text-right text-gray-500">{{ formatAmount(getItemAdvTax(item)) }}<div class="text-xs">({{ item.adv_tax_percent }}%)</div></td>
-                            <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}</td>
-                            <td class="px-2 py-3 text-right text-amber-600">{{ formatAmount(item.trade_discount_amount || 0) }}</td>
-                            <td class="px-2 py-3 text-right text-red-600">-{{ formatAmount(getItemDiscount(item)) }}</td>
-                            <td class="px-2 py-3 text-right font-semibold text-emerald-600">{{ formatAmount(item.gross_amount - getItemDiscount(item) - (item.trade_discount_amount || 0)) }}</td>
-                            <td class="px-2 py-3"><button type="button" @click="removeItem(index)" class="text-red-600 hover:text-red-800"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td>
-                        </tr>
-                        <tr v-if="form.items.length === 0"><td colspan="16" class="px-4 py-8 text-center text-gray-500">No items added. Use the form above to add products.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Invoice Summary -->
-            <div v-if="form.items.length > 0" class="border-t border-gray-200 bg-gray-50 p-4">
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                    <div class="bg-white p-3 rounded-lg border"><div class="text-gray-500 text-xs uppercase">Total Exclusive</div><div class="font-bold text-lg">{{ formatAmount(totalExclusive) }}</div></div>
-                    <div class="bg-white p-3 rounded-lg border"><div class="text-gray-500 text-xs uppercase">Total FED</div><div class="font-bold text-lg">{{ formatAmount(totalFed) }}</div></div>
-                    <div class="bg-white p-3 rounded-lg border"><div class="text-gray-500 text-xs uppercase">Total Sales Tax</div><div class="font-bold text-lg">{{ formatAmount(totalSalesTax) }}</div></div>
-                    <div class="bg-purple-50 p-3 rounded-lg border border-purple-200"><div class="text-purple-500 text-xs uppercase">Total Extra Tax</div><div class="font-bold text-lg text-purple-700">{{ formatAmount(totalExtraTax) }}</div></div>
-                    <div class="bg-white p-3 rounded-lg border"><div class="text-gray-500 text-xs uppercase">Total Adv. Tax</div><div class="font-bold text-lg">{{ formatAmount(totalAdvTax) }}</div></div>
+                <!-- Customer Info -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Customer</h2>
+                    <div v-if="selectedCustomer" class="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div><span class="text-gray-500">Code:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.customer_code }}</span></div>
+                            <div><span class="text-gray-500">Shop:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.shop_name }}</span></div>
+                            <div><span class="text-gray-500">Address:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.address }}</span></div>
+                            <div><span class="text-gray-500">Phone:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.phone }}</span></div>
+                            <div><span class="text-gray-500">NTN:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.ntn_number || 'N/A' }}</span></div>
+                            <div><span class="text-gray-500">CNIC:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.cnic || 'N/A' }}</span></div>
+                            <div><span class="text-gray-500">Day:</span><span class="font-medium ml-2">{{
+                                selectedCustomer.day }}</span></div>
+                            <div><span class="text-gray-500">ATL:</span><span class="font-medium ml-2"
+                                    :class="selectedCustomer.atl ? 'text-green-600' : 'text-red-600'">{{
+                                        selectedCustomer.atl ? 'Yes' : 'No' }}</span></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
-                    <div class="bg-white p-3 rounded-lg border"><div class="text-gray-500 text-xs uppercase">Gross Amount</div><div class="font-bold text-lg">{{ formatAmount(totalGrossAmount) }}</div></div>
-                    <div class="bg-white p-3 rounded-lg border border-red-200"><div class="text-red-500 text-xs uppercase">Total Discount</div><div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div></div>
-                    <div class="bg-amber-50 p-3 rounded-lg border border-amber-200"><div class="text-amber-600 text-xs uppercase">Total Trade Discount</div><div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}</div></div>
-                    <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300"><div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div><div class="font-bold text-2xl text-emerald-700">Rs. {{ formatAmount(grandTotal) }}</div></div>
+                <!-- Product Entry -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
+                    <div class="grid grid-cols-6 lg:grid-cols-12 gap-3 items-end mb-4">
+                        <div class="col-span-2 lg:col-span-2">
+                            <InputLabel value="Product Code" />
+                            <div class="flex items-stretch mt-1">
+                                <TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code"
+                                    class="flex-1 !rounded-r-none !border-r-0 min-w-0"
+                                    @keyup.enter="searchProductByCode" /><button type="button"
+                                    @click="searchProductByCode"
+                                    class="px-3 flex items-center justify-center bg-emerald-600 text-white rounded-r-md hover:bg-emerald-700 border border-emerald-600 shrink-0"><svg
+                                        class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg></button>
+                            </div>
+                        </div>
+                        <div class="col-span-4 lg:col-span-3">
+                            <SearchableSelect v-model="newItem.product_id" label="Product" :options="productOptions"
+                                option-value="id" option-label="displayLabel" placeholder="Search product..." />
+                        </div>
+                        <div class="col-span-3 lg:col-span-2">
+                            <InputLabel value="Batch / Stock" /><template
+                                v-if="newItem.product_id && availableBatches.length === 0">
+                                <div class="mt-1 px-3 py-2 bg-gray-100 rounded-md text-gray-500 text-sm font-medium">
+                                    Batch N/A</div>
+                            </template><template v-else>
+                                <SearchableSelect v-model="newItem.stock_id" :options="availableBatches"
+                                    option-value="id" option-label="label" placeholder="Select Batch"
+                                    :disabled="!newItem.product_id" class="mt-1" />
+                            </template>
+                            <div v-if="newItem.stock_id && newItem.available_qty > 0"
+                                class="text-xs text-emerald-600 mt-1 font-medium">Available:
+                                {{ newItem.available_qty }} pcs</div>
+                        </div>
+                        <div class="col-span-2 lg:col-span-2">
+                            <InputLabel value="Cartons" />
+                            <TextInput ref="cartonsRef" v-model.number="newItem.cartons" type="number" min="0"
+                                class="mt-1 w-full text-center font-medium"
+                                @keydown.enter.prevent="piecesRef?.focus()" />
+                        </div>
+                        <div class="col-span-2 lg:col-span-1">
+                            <InputLabel value="Pieces" />
+                            <TextInput ref="piecesRef" v-model.number="newItem.pieces" type="number" min="0"
+                                class="mt-1 w-full text-center font-medium"
+                                @keydown.enter.prevent="schemeRef?.focus()" />
+                        </div>
+                        <div class="col-span-2 lg:col-span-2">
+                            <InputLabel value="Total Pcs" />
+                            <TextInput :value="newItem.total_pieces" type="number"
+                                :class="['mt-1 w-full text-center font-bold', isStockExceeded ? 'bg-red-50 text-red-700 border-red-300' : 'bg-emerald-50 text-emerald-700']"
+                                readonly />
+                            <div v-if="isStockExceeded" class="text-xs text-red-600 mt-1 font-medium">Exceeds available
+                                ({{
+                                    newItem.available_qty }})</div>
+                        </div>
+                    </div>
+                    <div v-if="newItem.product_id" class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="grid grid-cols-6 lg:grid-cols-10 gap-3 items-end">
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Excl. Price" class="text-xs" />
+                                <TextInput v-model.number="newItem.exclusive_price" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="onExclusivePriceInput" />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="FED %" class="text-xs" />
+                                <TextInput v-model.number="newItem.fed_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="S.Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.sales_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Extra Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.extra_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Adv.Tax %" class="text-xs" />
+                                <TextInput v-model.number="newItem.adv_tax_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center" @input="handleTaxChange" />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Net Price" class="text-xs font-bold text-indigo-600" />
+                                <TextInput :model-value="formatAmount(newItem.net_unit_price)" type="text"
+                                    class="mt-1 w-full bg-indigo-50 font-bold text-indigo-700 text-sm text-center"
+                                    readonly />
+                            </div>
+                            <div class="col-span-2 lg:col-span-1">
+                                <InputLabel value="Trade Disc. %" class="text-xs" />
+                                <TextInput v-model.number="newItem.trade_discount_percent" type="number" step="0.00001"
+                                    class="mt-1 w-full text-sm text-center bg-amber-50 text-amber-700" readonly />
+                            </div>
+                            <div class="col-span-3 lg:col-span-2">
+                                <InputLabel value="Scheme" class="text-xs" /><select ref="schemeRef"
+                                    v-model="newItem.discount_scheme_id"
+                                    @change="discountSchemes.length > 0 && applyDiscountScheme(discountSchemes.find(s => s.id == newItem.discount_scheme_id))"
+                                    @keydown.enter.prevent="addItem"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm h-[42px]"
+                                    :class="newItem.free_product ? 'bg-green-50 border-green-300' : (newItem.scheme_discount > 0 ? 'bg-orange-50 border-orange-300' : '')">
+                                    <option value="">No Scheme</option>
+                                    <option v-for="s in discountSchemes" :key="s.id" :value="s.id">{{ s.name }} - {{
+                                        s.discount_type ===
+                                            'amount_less' ? `Rs ${s.amount_less}` : `${s.free_pieces} FREE` }}</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2 lg:col-span-1"><button type="button" @click="addItem"
+                                    :disabled="!newItem.product_id || newItem.total_pieces <= 0"
+                                    class="w-full mt-5 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">+
+                                    Add</button></div>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-4 text-gray-400 text-sm">Select a product to see pricing details
+                    </div>
                 </div>
-            </div>
+                <!-- Product Grid -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 bg-gray-50">
+                        <h2 class="text-lg font-medium text-gray-900">Items ({{ form.items.length }})</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500">
+                                <tr>
+                                    <th class="px-2 py-3">#</th>
+                                    <th class="px-2 py-3">Product</th>
+                                    <th class="px-2 py-3 text-right">Ctns</th>
+                                    <th class="px-2 py-3 text-right">Pcs</th>
+                                    <th class="px-2 py-3 text-right">Total</th>
+                                    <th class="px-2 py-3 text-right">Rate</th>
+                                    <th class="px-2 py-3 text-right">Excl. Amt</th>
+                                    <th class="px-2 py-3 text-right">FED</th>
+                                    <th class="px-2 py-3 text-right">S.Tax</th>
+                                    <th class="px-2 py-3 text-right">Extra Tax</th>
+                                    <th class="px-2 py-3 text-right">Adv.Tax</th>
+                                    <th class="px-2 py-3 text-right">Gross</th>
+                                    <th class="px-2 py-3 text-right">Trade Disc.</th>
+                                    <th class="px-2 py-3 text-right">Discount</th>
+                                    <th class="px-2 py-3 text-right">Net</th>
+                                    <th class="px-2 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="(item, index) in form.items" :key="index"
+                                    :class="{ 'bg-emerald-50/60': item.is_free }">
+                                    <td class="px-2 py-3">{{ index + 1 }}</td>
+                                    <td class="px-2 py-3">
+                                        <div class="font-medium" :class="{ 'text-emerald-700': item.is_free }">{{
+                                            item.product_name
+                                            }}<span v-if="item.is_free"
+                                                class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-wide border border-emerald-200">FREE</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500">{{ item.product_code }}</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right">{{ item.cartons }}</td>
+                                    <td class="px-2 py-3 text-right">{{ item.pieces }}</td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ item.total_pieces }}</td>
+                                    <td class="px-2 py-3 text-right">{{ formatAmount(item.exclusive_price) }}<span
+                                            v-if="item.is_free"
+                                            class="ml-1 text-[10px] font-bold text-emerald-600">(FREE)</span></td>
+                                    <td class="px-2 py-3 text-right text-gray-600">{{
+                                        formatAmount(getItemExclusive(item)) }}</td>
+                                    <td class="px-2 py-3 text-right text-gray-500">{{ formatAmount(getItemFed(item)) }}
+                                        <div class="text-xs">({{ item.fed_percent }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-gray-500">{{
+                                        formatAmount(getItemSalesTax(item)) }}<div class="text-xs">({{
+                                            item.sales_tax_percent }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-purple-600">{{
+                                        formatAmount(getItemExtraTax(item)) }}<div class="text-xs">({{
+                                            item.extra_tax_percent || 0 }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-gray-500">{{ formatAmount(getItemAdvTax(item))
+                                        }}<div class="text-xs">({{ item.adv_tax_percent }}%)</div>
+                                    </td>
+                                    <td class="px-2 py-3 text-right font-medium">{{ formatAmount(item.gross_amount) }}
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-amber-600">{{
+                                        formatAmount(item.trade_discount_amount || 0) }}
+                                    </td>
+                                    <td class="px-2 py-3 text-right text-red-600">-{{
+                                        formatAmount(getItemDiscount(item)) }}</td>
+                                    <td class="px-2 py-3 text-right font-semibold text-emerald-600">{{
+                                        formatAmount(item.gross_amount -
+                                            getItemDiscount(item) - (item.trade_discount_amount || 0)) }}</td>
+                                    <td class="px-2 py-3"><button type="button" @click="removeItem(index)"
+                                            class="text-red-600 hover:text-red-800"><svg class="w-5 h-5" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg></button></td>
+                                </tr>
+                                <tr v-if="form.items.length === 0">
+                                    <td colspan="16" class="px-4 py-8 text-center text-gray-500">No items added. Use the
+                                        form above to
+                                        add products.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Invoice Summary -->
+                    <div v-if="form.items.length > 0" class="border-t border-gray-200 bg-gray-50 p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Exclusive</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalExclusive) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total FED</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalFed) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Sales Tax</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalSalesTax) }}</div>
+                            </div>
+                            <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                <div class="text-purple-500 text-xs uppercase">Total Extra Tax</div>
+                                <div class="font-bold text-lg text-purple-700">{{ formatAmount(totalExtraTax) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Total Adv. Tax</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalAdvTax) }}</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
+                            <div class="bg-white p-3 rounded-lg border">
+                                <div class="text-gray-500 text-xs uppercase">Gross Amount</div>
+                                <div class="font-bold text-lg">{{ formatAmount(totalGrossAmount) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-red-200">
+                                <div class="text-red-500 text-xs uppercase">Total Discount</div>
+                                <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div>
+                            </div>
+                            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                <div class="text-amber-600 text-xs uppercase">Total Trade Discount</div>
+                                <div class="font-bold text-lg text-amber-700">-{{ formatAmount(totalTradeDiscount) }}
+                                </div>
+                            </div>
+                            <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
+                                <div class="text-emerald-600 text-xs uppercase font-bold">Grand Total</div>
+                                <div class="font-bold text-2xl text-emerald-700">Rs. {{ formatAmount(grandTotal) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Submit -->
+                <div class="flex justify-end gap-3">
+                    <Link :href="route('invoices.show', invoice.id)">
+                        <SecondaryButton type="button">Cancel</SecondaryButton>
+                    </Link>
+                    <PrimaryButton :disabled="form.processing || form.items.length === 0">{{ form.processing ?
+                        'Saving...' : 'Update Invoice' }}</PrimaryButton>
+                </div>
+            </form>
         </div>
-        <!-- Submit -->
-        <div class="flex justify-end gap-3">
-            <Link :href="route('invoices.show', invoice.id)"><SecondaryButton type="button">Cancel</SecondaryButton></Link>
-            <PrimaryButton :disabled="form.processing || form.items.length === 0">{{ form.processing ? 'Saving...' : 'Update Invoice' }}</PrimaryButton>
-        </div>
-    </form>
-</div>
-</DashboardLayout>
+    </DashboardLayout>
 </template>

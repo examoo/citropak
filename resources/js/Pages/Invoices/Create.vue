@@ -71,7 +71,7 @@ const newItem = ref({
     discount_scheme_id: '',  // DiscountScheme (quantity-based)
     free_product: null,      // Free product from scheme
     free_pieces: 0,          // Free pieces quantity
-    manual_discount_percent: 0,  // Manual discount %
+    manual_discount_percentage: 0,  // Manual discount %
     manual_discount_amount: 0,   // Manual discount amount (Rs)
     batch_number: '',        // Selected batch number
     available_qty: 0,        // Available quantity in selected batch
@@ -446,7 +446,7 @@ watch(() => selectedCustomer.value, (customer) => {
             loadDiscountSchemes(newItem.value.product_id, newItem.value.total_pieces, selectedProduct?.brand_id);
         }
     } else {
-        newItem.value.manual_discount_percent = 0;
+        newItem.value.manual_discount_percentage = 0;
     }
 });
 
@@ -465,7 +465,7 @@ const loadBrandDiscount = async (productId) => {
     console.log('loadBrandDiscount called for product:', productId, 'Customer:', selectedCustomer.value?.id);
     if (!selectedCustomer.value?.id || !productId) {
         // Only reset if we are programmatically loading
-        newItem.value.manual_discount_percent = 0;
+        newItem.value.manual_discount_percentage = 0;
         return;
     }
     try {
@@ -479,11 +479,11 @@ const loadBrandDiscount = async (productId) => {
         console.log('Brand discount response:', response.data);
 
         // Set manual_discount_percent directly
-        newItem.value.manual_discount_percent = response.data.percentage || 0;
+        newItem.value.manual_discount_percentage = response.data.percentage || 0;
         console.log('Set manual_discount_percent to:', newItem.value.manual_discount_percent);
     } catch (e) {
         console.error('Error loading brand discount:', e);
-        newItem.value.manual_discount_percent = 0;
+        newItem.value.manual_discount_percentage = 0;
     }
 };
 
@@ -735,7 +735,7 @@ const addItem = () => {
 
     // Calculate total discount (scheme + manual)
     // Manual discount is now used for Brand Discount as well
-    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percent / 100);
+    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percentage / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
     const totalDiscountAmount = (newItem.value.scheme_discount || 0) + totalManualDiscount;
 
@@ -773,7 +773,7 @@ const addItem = () => {
         free_product: newItem.value.free_product,
         free_pieces: newItem.value.free_pieces,
 
-        manual_discount_percent: newItem.value.manual_discount_percent,
+        manual_discount_percentage: newItem.value.manual_discount_percentage,
         manual_discount_amount: newItem.value.manual_discount_amount,
         total_discount: newItem.value.scheme_discount + totalManualDiscount,
         trade_discount_percent: newItem.value.trade_discount_percent,
@@ -899,7 +899,7 @@ const addItem = () => {
                 discount_scheme_id: newItem.value.discount_scheme_id,
                 free_product: null,
                 free_pieces: 0,
-                manual_discount_percent: 0,
+                manual_discount_percentage: 0,
                 manual_discount_amount: 0,
                 total_discount: 0,
                 trade_discount_amount: freeTradeDiscountAmount,
@@ -939,7 +939,7 @@ const resetNewItem = () => {
         discount_scheme_id: '',
         free_product: null,
         free_pieces: 0,
-        manual_discount_percent: 0,
+        manual_discount_percentage: 0,
         manual_discount_amount: 0,
         batch_number: '',
         manual_discount_amount: 0,
@@ -1037,7 +1037,7 @@ const recalculateBrandSchemes = async (brandId) => {
 // Calculate item discount (scheme + manual)
 const getItemDiscount = (item) => {
     const grossAmount = item.total_pieces * item.net_unit_price;
-    const manualDiscountFromPercent = grossAmount * ((item.manual_discount_percent || 0) / 100);
+    const manualDiscountFromPercent = grossAmount * ((item.manual_discount_percentage || 0) / 100);
     return (item.scheme_discount || 0) + manualDiscountFromPercent + (item.manual_discount_amount || 0);
 };
 
@@ -1469,9 +1469,9 @@ const submit = (andPrint = false) => {
                             <!-- Manual Discount % -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. %" class="text-xs" />
-                                <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.00001"
-                                    min="0" max="100" class="mt-1 w-full text-sm text-center bg-gray-50" placeholder="0"
-                                    readonly />
+                                <TextInput v-model.number="newItem.manual_discount_percentage" type="number"
+                                    step="0.00001" min="0" max="100" class="mt-1 w-full text-sm text-center bg-gray-50"
+                                    placeholder="0" readonly />
                             </div>
 
                             <!-- Manual Discount Amount (Hidden) -->
