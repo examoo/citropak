@@ -474,10 +474,10 @@ const loadBrandDiscount = async (productId) => {
             product: productId
         });
         console.log('Fetching brand discount from:', url);
-        
+
         const response = await axios.get(url);
         console.log('Brand discount response:', response.data);
-        
+
         // Set manual_discount_percent directly
         newItem.value.manual_discount_percent = response.data.percentage || 0;
         console.log('Set manual_discount_percent to:', newItem.value.manual_discount_percent);
@@ -1470,11 +1470,12 @@ const submit = (andPrint = false) => {
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. %" class="text-xs" />
                                 <TextInput v-model.number="newItem.manual_discount_percent" type="number" step="0.00001"
-                                    min="0" max="100" class="mt-1 w-full text-sm text-center" placeholder="0" />
+                                    min="0" max="100" class="mt-1 w-full text-sm text-center bg-gray-50" placeholder="0"
+                                    readonly />
                             </div>
 
-                            <!-- Manual Discount Amount -->
-                            <div class="col-span-2 lg:col-span-1">
+                            <!-- Manual Discount Amount (Hidden) -->
+                            <div v-show="false" class="col-span-2 lg:col-span-1">
                                 <InputLabel value="Disc. Rs" class="text-xs" />
                                 <TextInput v-model.number="newItem.manual_discount_amount" type="number" step="0.00001"
                                     min="0" class="mt-1 w-full text-sm text-center" placeholder="0" />
