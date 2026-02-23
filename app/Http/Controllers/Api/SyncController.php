@@ -67,9 +67,9 @@ class SyncController extends Controller
             }])
             ->get();
 
-        // 2. Customers (Scoped to Distribution)
+        // 2. Customers (Scoped to Van associated with the Order Booker)
         $customers = Customer::where('distribution_id', $distributionId)
-        ->where('order_booker_id', $orderBooker->id)
+            ->where('van', $orderBooker->van?->code)
             ->active()
             ->get();
 
