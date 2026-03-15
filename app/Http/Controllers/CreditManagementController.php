@@ -468,7 +468,7 @@ class CreditManagementController extends Controller
         ]);
 
         $distributionId = auth()->user()->distribution_id
-            ?? session('distribution_id');
+            ?? session('current_distribution_id');
 
         if (!$distributionId) {
             return back()->with('error', 'Distribution not found. Please log in again.');
