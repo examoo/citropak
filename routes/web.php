@@ -177,6 +177,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('credit-management/daily-progress', [\App\Http\Controllers\CreditManagementController::class, 'dailyProgress'])->name('credit-management.daily-progress');
     Route::get('credit-management/search', [\App\Http\Controllers\CreditManagementController::class, 'search'])->name('credit-management.search');
     Route::get('credit-management/sales-sheet', [\App\Http\Controllers\CreditManagementController::class, 'salesSheet'])->name('credit-management.sales-sheet');
+    Route::get('credit-management/entries/import', [\App\Http\Controllers\CreditManagementController::class, 'showImport'])->name('credit-management.entries.import.show');
+    Route::post('credit-management/entries/import', [\App\Http\Controllers\CreditManagementController::class, 'importEntries'])->name('credit-management.entries.import');
+    Route::get('credit-management/entries/import-template', [\App\Http\Controllers\CreditManagementController::class, 'downloadImportTemplate'])->name('credit-management.entries.import.template');
     Route::resource('credit-bookers', \App\Http\Controllers\CreditBookerController::class)->except(['create', 'edit', 'show']);
     
     // Distribution-Based Modules

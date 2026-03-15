@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Recovery;
 use App\Models\Customer;
+use App\Imports\CreditEntriesImport;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CreditManagementController extends Controller
 {
@@ -445,5 +448,57 @@ class CreditManagementController extends Controller
     {
         $date = $request->input('date', date('Y-m-d'));
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\CreditDailyReportExport($date), 'credit-daily-report-' . $date . '.xlsx');
+    }
+
+    /**
+     * Show the import credit entries page.
+     */
+    public function showImport(): Response
+    {
+        return Inertia::render('CreditManagement/ImportEntries');
+    }
+
+    /**
+     * Handle Excel import of credit entries.
+     */
+    public function importEntries(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $distributionId = auth()->user()->distribution_id
+            ?? session('distribution_id');
+
+        if (!$distributionId) {
+            return back()->with('error', 'Distribution not found. Please log in again.');
+        }
+
+        $import = new CreditEntriesImport((int) $distributionId);
+
+        Excel::import($import, $request->file('file'));
+
+        $imported = $import->importedCount;
+        $skipped  = $import->skippedCount;
+
+        return redirect()->route('credit-management.entries.import.show')
+            ->with('success', "Import complete! {$imported} invoices created/processed, {$skipped} rows skipped.");
+    }
+
+    /**
+     * Download a blank Excel template for credit entries import.
+     */
+    public function downloadImportTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $csvPath = storage_path('app/credit_entries_template.csv');
+
+        if (!file_exists($csvPath)) {
+            $headers = ['Van', 'OrderBookers', 'Bill#', 'DATE', 'Customer Code', 'CUSTOMERS', 'ADDRESS', 'TYPE', 'BALANCE', 'Recovery'];
+            $fp = fopen($csvPath, 'w');
+            fputcsv($fp, $headers);
+            fclose($fp);
+        }
+
+        return response()->download($csvPath, 'credit_entries_template.csv');
     }
 }

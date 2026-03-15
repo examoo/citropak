@@ -68,6 +68,14 @@ const formatDate = (dateStr) => {
                     <PrimaryButton @click="search" class="bg-blue-600 hover:bg-blue-700">
                         Search
                     </PrimaryButton>
+                    <a :href="route('credit-management.entries.import.show')"
+                        class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-md hover:from-purple-700 hover:to-indigo-700 font-semibold text-xs uppercase tracking-widest shadow-md hover:shadow-lg transition-all">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import Entries
+                    </a>
                 </div>
             </div>
 
@@ -95,7 +103,8 @@ const formatDate = (dateStr) => {
                                 <td class="px-4 py-3">{{ inv.customer_name }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ inv.van }}</td>
                                 <td class="px-4 py-3 text-right font-medium">{{ formatCurrency(inv.amount) }}</td>
-                                <td class="px-4 py-3 text-right text-green-600 font-medium">{{ formatCurrency(inv.recovered) }}</td>
+                                <td class="px-4 py-3 text-right text-green-600 font-medium">{{
+                                    formatCurrency(inv.recovered) }}</td>
                                 <td class="px-4 py-3 text-right font-bold"
                                     :class="inv.pending > 0 ? 'text-red-600' : 'text-green-600'">
                                     {{ formatCurrency(inv.pending) }}
