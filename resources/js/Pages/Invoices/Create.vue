@@ -1330,7 +1330,8 @@ const submit = (andPrint = false) => {
                             <div class="flex items-stretch mt-1">
                                 <TextInput ref="productCodeRef" v-model="productCode" placeholder="Enter code"
                                     class="flex-1 !rounded-r-none !border-r-0 min-w-0"
-                                    @keyup.enter="searchProductByCode" />
+                                    @keyup.enter="searchProductByCode"
+                                    @keydown.tab.prevent="searchProductByCode" />
                                 <button type="button" @click="searchProductByCode"
                                     class="px-3 flex items-center justify-center bg-emerald-600 text-white rounded-r-md hover:bg-emerald-700 border border-emerald-600 shrink-0">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

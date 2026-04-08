@@ -166,7 +166,13 @@ const navigation = [
         permission: 'customers.view',
         children: [
             { name: 'Customers', href: 'customers.index', icon: 'users', permission: 'customers.view' },
-            { name: 'Brand Discounts', href: 'customer-discounts.index', icon: 'percent', permission: 'customers.view' },
+            { 
+                name: 'Brand Discounts', 
+                href: 'customer-discounts.index', 
+                icon: 'percent', 
+                permission: 'customers.view',
+                show: (props) => !props.currentDistribution?.id
+            },
             { name: 'Routes', href: 'routes.index', icon: 'map', permission: 'customers.view' },
             { name: 'Channels', href: 'channels.index', icon: 'globe', permission: 'customers.view' },
             { name: 'Categories', href: 'categories.index', icon: 'tag', permission: 'customers.view' },
@@ -278,9 +284,11 @@ const filteredNavigation = computed(() => {
 
         // Filter children if they exist
         if (item.children) {
-            const filteredChildren = item.children.filter(child =>
-                hasPermission(child.permission)
-            );
+            const filteredChildren = item.children.filter(child => {
+                const passesPermission = hasPermission(child.permission);
+                const passesShow = !child.show || child.show(page.props);
+                return passesPermission && passesShow;
+            });
             // Only show parent if at least one child is visible
             if (filteredChildren.length === 0) {
                 return false;

@@ -57,6 +57,17 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Export invoices to Excel.
+     */
+    public function export(Request $request)
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\InvoicesExport($request->only(['search', 'type', 'booker_id', 'date_from', 'date_to'])), 
+            'invoices-' . now()->format('Y-m-d-His') . '.xlsx'
+        );
+    }
+
+    /**
      * Display Van Invoice page - print all invoices for a van on a specific date.
      */
     public function vanInvoice(Request $request)
@@ -153,7 +164,6 @@ class InvoiceController extends Controller
             'items.*.gross_amount' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
-            'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.scheme_discount_amount' => 'nullable|numeric|min:0',
             'items.*.manual_discount_amount' => 'nullable|numeric|min:0',
             'items.*.manual_discount_percentage' => 'nullable|numeric|min:0',
@@ -165,6 +175,17 @@ class InvoiceController extends Controller
 
         $distId = $request->distribution_id ?? $userDistributionId;
         $isDamage = $validated['invoice_type'] === 'damage';
+
+        // Check for holidays
+        $isHoliday = \App\Models\Holiday::whereDate('date', $validated['invoice_date'])
+            ->forDistribution($distId)
+            ->exists();
+
+        if ($isHoliday) {
+            return redirect()->back()->withErrors([
+                'invoice_date' => 'Selected date is a holiday. Invoices cannot be created on holidays.'
+            ]);
+        }
 
         DB::beginTransaction();
         try {
@@ -358,7 +379,6 @@ class InvoiceController extends Controller
             'items.*.adv_tax_amount' => 'nullable|numeric|min:0',
             'items.*.gross_amount' => 'nullable|numeric|min:0',
             'items.*.scheme_id' => 'nullable|exists:schemes,id',
-            'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.scheme_discount' => 'nullable|numeric|min:0',
             'items.*.scheme_discount_amount' => 'nullable|numeric|min:0',
             'items.*.manual_discount_amount' => 'nullable|numeric|min:0',

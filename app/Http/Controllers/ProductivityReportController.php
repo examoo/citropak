@@ -18,7 +18,7 @@ class ProductivityReportController extends Controller
         $orderBookerId = $request->input('order_booker_id');
 
         $query = ShopVisit::query()
-            ->with(['orderBooker', 'customer'])
+            ->with(['orderBooker', 'customer' => fn($q) => $q->withTrashed()])
             ->whereDate('check_in_at', '>=', $dateFrom)
             ->whereDate('check_in_at', '<=', $dateTo)
             ->orderBy('check_in_at', 'desc');
@@ -46,11 +46,17 @@ class ProductivityReportController extends Controller
                 }
             }
 
+            $customer = $visit->customer;
+            $shopName = $customer ? $customer->shop_name : 'Unknown';
+            if ($customer && $customer->trashed()) {
+                $shopName .= ' (Deleted)';
+            }
+
             return [
                 'id' => $visit->id,
                 'order_booker_name' => $visit->orderBooker->name ?? 'Unknown',
-                'shop_name' => $visit->customer->shop_name ?? 'Unknown',
-                'shop_address' => $visit->customer->address ?? '',
+                'shop_name' => $shopName,
+                'shop_address' => $customer->address ?? '',
                 'check_in_time' => $checkIn ? $checkIn->format('d-m-Y h:i A') : '-',
                 'check_out_time' => $checkOut ? $checkOut->format('d-m-Y h:i A') : '-',
                 'duration' => $durationFormatted,

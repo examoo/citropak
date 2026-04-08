@@ -101,6 +101,63 @@ const grandTotalSchemeDiscountAmount = computed(() => sumItems(props.invoice.ite
 const grandTotalManualDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.manual_discount_amount || 0))); // This is "Cust.Disc Amt" column sum
 const grandTotalNet = computed(() => sumItems(props.invoice.items || [], getItemNet));
 
+// Extract unique schemes applied in this invoice
+const appliedSchemes = computed(() => {
+    if (!props.invoice.items) return [];
+    
+    const schemes = [];
+    const seenIds = new Set();
+    let hasGenericDiscount = false;
+    let hasFreeItems = false;
+    
+    props.invoice.items.forEach(item => {
+        // 1. Linked scheme object
+        if (item.scheme && !seenIds.has(item.scheme.id)) {
+            schemes.push({
+                id: item.scheme.id,
+                name: item.scheme.name,
+                type: item.scheme.scheme_type,
+                from: item.scheme.from_qty,
+                to: item.scheme.to_qty,
+                pieces: item.scheme.pieces,
+                amount: item.scheme.amount_less
+            });
+            seenIds.add(item.scheme.id);
+        } 
+        // 2. No linked scheme but has values
+        else if (!item.scheme) {
+            if (parseFloat(item.scheme_discount_amount) > 0 || parseFloat(item.scheme_discount) > 0) {
+                hasGenericDiscount = true;
+            }
+            if (item.is_free) {
+                hasFreeItems = true;
+            }
+        }
+    });
+
+    // Add generic entries if nothing was linked but values exist
+    if (schemes.length === 0) {
+        if (hasFreeItems) {
+            schemes.push({
+                id: 'free',
+                name: 'Free Goods Scheme',
+                isGeneric: true,
+                type: 'free'
+            });
+        }
+        if (hasGenericDiscount) {
+            schemes.push({
+                id: 'discount',
+                name: 'Promotional Discount',
+                isGeneric: true,
+                type: 'discount'
+            });
+        }
+    }
+    
+    return schemes;
+});
+
 const printInvoice = () => {
     window.print();
 };
@@ -175,16 +232,6 @@ const resyncFbr = () => {
                 <div class="grid grid-cols-2 gap-6 mb-4 text-xs">
                     <!-- Left: Customer Info -->
                     <div>
-                        <!-- Customer Info QR -->
-                        <div class="mb-2">
-                            <div class="flex flex-col items-center w-fit">
-                                <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
-                                    <QrcodeVue :value="customerQrData" :size="60" level="L" render-as="svg" />
-                                </div>
-                                <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
-                            </div>
-                        </div>
-
                         <div class="font-bold text-sm mb-1">Customer Detail:</div>
 
                         <div class="space-y-1">
@@ -235,6 +282,17 @@ const resyncFbr = () => {
                                 <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}
                                 </div>
                                 <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
+
+                                <!-- Invoice QR moved to right under Van# -->
+                                <div class="mt-2 flex justify-end">
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
+                                            <QrcodeVue :value="customerQrData" :size="60" level="L" render-as="svg" />
+                                        </div>
+                                        <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
+                                    </div>
+                                </div>
+
                                 <!-- FBR Info -->
                                 <div v-if="invoice.fbr_invoice_number"><span class="font-semibold">FBR Inv#:</span> {{
                                     invoice.fbr_invoice_number }}</div>
@@ -399,9 +457,23 @@ const resyncFbr = () => {
 
                 <!-- Footer Section -->
                 <div class="grid grid-cols-2 gap-6 text-xs">
-                    <!-- Left: Checked By -->
+                    <!-- Left: Checked By & Schemes -->
                     <div>
                         <div class="font-semibold underline">Checked By O.B.: {{ invoice.order_booker?.name }}</div>
+                        
+                        <!-- Applied Schemes Detail -->
+                        <div v-if="appliedSchemes.length > 0" class="mt-3 space-y-1">
+                            <div class="font-bold text-gray-800 underline uppercase text-[10px]">Schemes Detail:</div>
+                            <div v-for="scheme in appliedSchemes" :key="scheme.id" class="text-[9px] text-gray-700 leading-tight">
+                                • <span class="font-semibold">{{ scheme.name }}:</span> 
+                                <template v-if="!scheme.isGeneric">
+                                    {{ scheme.type === 'free_product' ? `Items ${scheme.from}-${scheme.to} => Free: ${scheme.pieces} pcs` : `Discount: Rs. ${scheme.amount}` }}
+                                </template>
+                                <template v-else>
+                                    {{ scheme.type === 'free' ? 'Free items included as per company policy.' : 'Promotional discounts applied to items.' }}
+                                </template>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Right: Summary Box -->
@@ -428,11 +500,10 @@ const resyncFbr = () => {
                     </div>
                 </div>
 
-                <!-- Urdu Note (optional) -->
-                <div class="mt-4 text-[9px] text-gray-600 font-urdu text-right" dir="rtl">
+                <!-- Urdu Note -->
+                <div class="mt-4 text-[12px] text-gray-900 font-urdu text-right font-bold" dir="rtl">
                     نوٹ: اپنا مال موقع پر چیک کر کے پورا کر لیں ۔ رقم کی ادائیگی نقد یا ادھار بل وصول کر کے کریں ۔ کمپنی
-                    نمائندے سے بل
-                    کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
+                    نمائندے سے بل کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
                 </div>
             </div>
         </div>
@@ -473,6 +544,6 @@ const resyncFbr = () => {
 }
 
 .font-urdu {
-    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+    font-family: 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', serif;
 }
 </style>

@@ -34,6 +34,11 @@ class CustomerController extends Controller
      */
     public function discountsIndex(Request $request): Response
     {
+        // Restrict access to global users only
+        if ($request->user()->distribution_id) {
+            abort(403, 'Unauthorized access. Only global distribution users can manage brand discounts.');
+        }
+
         $customers = \App\Models\Customer::select('id', 'shop_name', 'customer_code')
             ->orderBy('shop_name')
             ->get();

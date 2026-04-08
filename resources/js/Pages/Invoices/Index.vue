@@ -100,6 +100,15 @@ const deleteInvoice = (invoice) => {
         }
     });
 };
+const exportExcel = () => {
+    window.location.href = route('invoices.export', {
+        search: search.value,
+        type: typeFilter.value,
+        booker_id: bookerFilter.value,
+        date_from: dateFrom.value,
+        date_to: dateTo.value
+    });
+};
 </script>
 
 <template>
@@ -114,15 +123,27 @@ const deleteInvoice = (invoice) => {
                     <p class="text-gray-500 mt-1">Manage sales, damage, and shelf rent invoices.</p>
                 </div>
                 
-                <Link 
-                    :href="route('invoices.create')"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Create Invoice
-                </Link>
+                <div class="flex items-center gap-3">
+                    <button 
+                        @click="exportExcel"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl font-medium shadow-sm hover:bg-gray-50 transition-all duration-200"
+                    >
+                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export Excel
+                    </button>
+
+                    <Link 
+                        :href="route('invoices.create')"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 transition-all duration-200 hover:-translate-y-0.5"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Create Invoice
+                    </Link>
+                </div>
             </div>
 
             <!-- Filters -->

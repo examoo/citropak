@@ -125,6 +125,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('van-invoices', [\App\Http\Controllers\InvoiceController::class, 'vanInvoice'])->name('van-invoices.index');
     Route::post('invoices/{invoice}/mark-credit', [\App\Http\Controllers\InvoiceController::class, 'markAsCredit'])->name('invoices.mark-credit');
     Route::post('invoices/{invoice}/resync-fbr', [\App\Http\Controllers\InvoiceController::class, 'resyncFbr'])->name('invoices.resync-fbr');
+    Route::get('invoices/export', [\App\Http\Controllers\InvoiceController::class, 'export'])->name('invoices.export');
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     Route::resource('recoveries', \App\Http\Controllers\RecoveryController::class);
     Route::get('sales-accounts', [\App\Http\Controllers\SalesAccountController::class, 'index'])->name('sales-accounts.index');
