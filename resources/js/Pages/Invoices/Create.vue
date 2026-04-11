@@ -54,6 +54,9 @@ const productCodeRef = ref(null);
 const cartonsRef = ref(null);
 const piecesRef = ref(null);
 const schemeRef = ref(null);
+
+const editingIndex = ref(null);
+
 const newItem = ref({
     product_id: '',
     stock_id: '',            // Selected batch/stock
@@ -598,8 +601,9 @@ const addItem = () => {
     const product = props.products.find(p => p.id === parseInt(newItem.value.product_id));
 
     // Check for duplicate product (only for non-free items)
-    const isDuplicate = form.items.some(item =>
-        item.product_id === parseInt(newItem.value.product_id) && !item.is_free
+    // Don't treat as duplicate if we're editing the SAME item
+    const isDuplicate = form.items.some((item, index) =>
+        item.product_id === parseInt(newItem.value.product_id) && !item.is_free && index !== editingIndex.value
     );
 
     if (isDuplicate) {
@@ -743,6 +747,15 @@ const addItem = () => {
     const netAmountForTax = grossAmount - tradeDiscountAmount - totalDiscountAmount;
     const advTaxAmount = netAmountForTax * (newItem.value.adv_tax_percent / 100);
 
+    // If we're editing an existing item, remove it before adding the updated version
+    // This simplifies handling schemes, free items, and brand totals
+    let oldBrandId = null;
+    if (editingIndex.value !== null) {
+        const oldItem = form.items[editingIndex.value];
+        oldBrandId = oldItem.brand_id;
+        form.items.splice(editingIndex.value, 1);
+    }
+
     form.items.push({
         product_id: newItem.value.product_id,
         product_name: product?.name,
@@ -779,6 +792,11 @@ const addItem = () => {
         trade_discount_percent: newItem.value.trade_discount_percent,
         trade_discount_amount: tradeDiscountAmount
     });
+
+    // If product/brand changed during edit, recalculate for the old brand
+    if (oldBrandId && oldBrandId !== product?.brand_id) {
+        recalculateBrandSchemes(oldBrandId);
+    }
 
     // If there's a free product, add it or update existing free item quantity
     if (newItem.value.free_product && newItem.value.free_pieces > 0) {
@@ -947,6 +965,7 @@ const resetNewItem = () => {
         available_qty: 0,
         is_net_fixed: false
     };
+    editingIndex.value = null;
     selectedProduct.value = null;
     productCode.value = '';
     productSchemes.value = [];
@@ -955,6 +974,69 @@ const resetNewItem = () => {
     setTimeout(() => {
         productCodeRef.value?.focus();
     }, 100);
+};
+
+const editItem = async (index) => {
+    const item = form.items[index];
+    if (item.is_free) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Free Item',
+            text: 'Free items are automatically managed based on applied schemes. Please edit the main product item to change quantities or schemes.',
+            confirmButtonColor: '#059669'
+        });
+        return;
+    }
+
+    // Set scroll to top of product form
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+
+    // Load basic item data
+    editingIndex.value = index;
+    const product = props.products.find(p => p.id === parseInt(item.product_id));
+    selectedProduct.value = product;
+    productCode.value = item.product_code;
+
+    newItem.value = {
+        product_id: item.product_id,
+        stock_id: item.stock_id,
+        cartons: item.cartons,
+        pieces: item.pieces,
+        total_pieces: item.total_pieces,
+        exclusive_price: item.exclusive_price,
+        fed_percent: item.fed_percent,
+        sales_tax_percent: item.sales_tax_percent,
+        extra_tax_percent: item.extra_tax_percent || 0,
+        adv_tax_percent: item.adv_tax_percent,
+        net_unit_price: item.net_unit_price,
+        scheme_id: item.scheme_id || '',
+        scheme_discount: item.scheme_discount,
+        discount_scheme_id: item.discount_scheme_id || '',
+        free_product: item.free_product,
+        free_pieces: item.free_pieces,
+        manual_discount_percentage: item.manual_discount_percentage || 0,
+        manual_discount_amount: item.manual_discount_amount || 0,
+        batch_number: item.batch_number || '',
+        available_qty: 0, // Will be updated by watcher on stock_id or by API if needed
+        is_net_fixed: true
+    };
+
+    // Load schemes
+    await loadProductSchemes(item.product_id);
+    await loadDiscountSchemes(item.product_id, item.total_pieces, item.brand_id);
+
+    // Restore select values after async load
+    newItem.value.discount_scheme_id = item.discount_scheme_id || '';
+    
+    // Set available qty from existing stocks
+    const stock = props.availableStocks.find(s => Number(s.id) === Number(item.stock_id));
+    if (stock) {
+        newItem.value.available_qty = stock.quantity;
+    }
+};
+
+const cancelEdit = () => {
+    resetNewItem();
 };
 
 const removeItem = (index) => {
@@ -1485,11 +1567,20 @@ const submit = (andPrint = false) => {
                             <!-- Add Button -->
                             <div class="col-span-2 lg:col-span-1">
                                 <InputLabel value=" " class="text-xs invisible" />
-                                <button type="button" @click="addItem"
-                                    :disabled="!newItem.product_id || newItem.total_pieces <= 0"
-                                    class="w-full mt-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium">
-                                    + Add
-                                </button>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="addItem"
+                                        :disabled="!newItem.product_id || newItem.total_pieces <= 0"
+                                        class="flex-1 mt-1 px-4 py-2.5 text-white rounded-lg disabled:opacity-50 font-medium transition-colors"
+                                        :class="editingIndex !== null ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'">
+                                        {{ editingIndex !== null ? '✓ Update' : '+ Add' }}
+                                    </button>
+                                    <button v-if="editingIndex !== null" type="button" @click="cancelEdit"
+                                        class="mt-1 px-3 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1567,7 +1658,10 @@ const submit = (andPrint = false) => {
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 <tr v-for="(item, index) in form.items" :key="index"
-                                    :class="{ 'bg-emerald-50/60': item.is_free }">
+                                    :class="[
+                                        item.is_free ? 'bg-emerald-50/60' : '',
+                                        editingIndex === index ? 'bg-orange-50 ring-2 ring-inset ring-orange-200' : ''
+                                    ]">
                                     <td class="px-2 py-3">{{ index + 1 }}</td>
                                     <td class="px-2 py-3">
                                         <div class="font-medium" :class="{ 'text-emerald-700': item.is_free }">
@@ -1618,14 +1712,25 @@ const submit = (andPrint = false) => {
                                             (item.trade_discount_amount || 0))
                                         }}
                                     </td>
-                                    <td class="px-2 py-3">
-                                        <button type="button" @click="removeItem(index)"
-                                            class="text-red-600 hover:text-red-800">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                    <td class="px-2 py-3 whitespace-nowrap">
+                                        <div class="flex items-center gap-1">
+                                            <button v-if="!item.is_free" type="button" @click="editItem(index)"
+                                                class="p-1 text-indigo-600 hover:text-indigo-800 transition-colors"
+                                                title="Edit item">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" @click="removeItem(index)"
+                                                class="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                                title="Remove item">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="form.items.length === 0">
