@@ -198,6 +198,9 @@ class SyncController extends Controller
                         'check_out_longitude' => $visitData['check_out_longitude'] ?? null,
                         'notes' => $visitData['notes'] ?? null,
                     ]);
+                    // Update booker location
+                    $orderBooker->updateLocation($visitData['latitude'] ?? null, $visitData['longitude'] ?? null);
+
                     // Store local_id mapped to server_id if needed, or just acknowledge success
                     $syncedIds['visits'][] = $visitData['local_id'] ?? $visit->id;
                 }
@@ -228,6 +231,9 @@ class SyncController extends Controller
                         'lat' => $invoiceData['lat'] ?? null,
                         'lng' => $invoiceData['lng'] ?? null,
                     ]);
+
+                    // Update booker location
+                    $orderBooker->updateLocation($invoiceData['lat'] ?? null, $invoiceData['lng'] ?? null);
 
                     if (!empty($invoiceData['items']) && is_array($invoiceData['items'])) {
                         foreach ($invoiceData['items'] as $itemData) {

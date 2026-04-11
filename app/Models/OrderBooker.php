@@ -22,7 +22,28 @@ class OrderBooker extends Model
         'code',
         'name',
         'user_id',
+        'last_latitude',
+        'last_longitude',
+        'last_location_updated_at',
     ];
+
+    protected $casts = [
+        'last_location_updated_at' => 'datetime',
+    ];
+
+    /**
+     * Update the booker's current location.
+     */
+    public function updateLocation($lat, $lng)
+    {
+        if ($lat && $lng) {
+            $this->update([
+                'last_latitude' => $lat,
+                'last_longitude' => $lng,
+                'last_location_updated_at' => now(),
+            ]);
+        }
+    }
 
     /**
      * Get the van for this order booker.

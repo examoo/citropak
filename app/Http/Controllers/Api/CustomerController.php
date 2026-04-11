@@ -46,6 +46,9 @@ class CustomerController extends Controller
             'longitude' => $request->longitude,
         ]);
 
+        // Update Booker Location
+        $orderBooker->updateLocation($request->latitude, $request->longitude);
+
         return response()->json([
             'message' => 'Checked in successfully.',
             'visit_id' => $visit->id,
@@ -77,6 +80,9 @@ class CustomerController extends Controller
             'check_out_longitude' => $request->longitude,
             'notes' => $request->notes,
         ]);
+
+        // Update Booker Location
+        $visit->orderBooker->updateLocation($request->latitude, $request->longitude);
 
         return response()->json([
              'message' => 'Checked out successfully.',

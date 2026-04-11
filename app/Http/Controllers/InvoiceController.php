@@ -346,8 +346,11 @@ class InvoiceController extends Controller
 
         return Inertia::render('Invoices/Edit', [
             'invoice' => $invoice,
+            'vans' => Van::active()->with('distribution')->get(),
+            'orderBookers' => OrderBooker::with(['distribution', 'van'])->get(),
             'products' => Product::active()->with(['brand', 'category', 'packing', 'productType'])->get(),
             'schemes' => Scheme::active()->with(['brand', 'product'])->get(),
+            'distributions' => Distribution::where('status', 'active')->get(['id', 'name']),
             'availableStocks' => $availableStocks,
         ]);
     }
@@ -358,6 +361,11 @@ class InvoiceController extends Controller
     public function update(Request $request, Invoice $invoice)
     {
         $validated = $request->validate([
+            'distribution_id' => 'required|exists:distributions,id',
+            'van_id' => 'required|exists:vans,id',
+            'order_booker_id' => 'required|exists:order_bookers,id',
+            'customer_id' => 'required|exists:customers,id',
+            'invoice_date' => 'required|date',
             'invoice_type' => 'required|in:sale,damage,shelf_rent',
             'is_credit' => 'boolean',
             'notes' => 'nullable|string',
@@ -411,6 +419,11 @@ class InvoiceController extends Controller
 
             // Update invoice
             $invoice->update([
+                'distribution_id' => $validated['distribution_id'],
+                'van_id' => $validated['van_id'],
+                'order_booker_id' => $validated['order_booker_id'],
+                'customer_id' => $validated['customer_id'],
+                'invoice_date' => $validated['invoice_date'],
                 'invoice_type' => $validated['invoice_type'],
                 'is_credit' => $validated['is_credit'] ?? false,
                 'notes' => $validated['notes'] ?? null,

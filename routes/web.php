@@ -141,6 +141,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('sale-tax-invoices-reports/export', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'export'])->name('sale-tax-invoices-reports.export');
     Route::get('sale-tax-invoices-reports', [\App\Http\Controllers\SaleTaxInvoicesReportController::class, 'index'])->name('sale-tax-invoices-reports.index');
     Route::get('productivity-report', [\App\Http\Controllers\ProductivityReportController::class, 'index'])->name('productivity-report.index');
+    Route::get('tracking', [\App\Http\Controllers\TrackingController::class, 'index'])->name('tracking.index');
     Route::get('day-closing', [\App\Http\Controllers\DayClosingController::class, 'index'])->name('day-closing.index');
     Route::get('customer-wise-discount-reports', [\App\Http\Controllers\CustomerWiseDiscountReportController::class, 'index'])->name('customer-wise-discount-reports.index');
     Route::get('percentage-based-parties-report', [\App\Http\Controllers\PercentageBasedPartiesReportController::class, 'index'])->name('percentage-based-parties-report.index');
