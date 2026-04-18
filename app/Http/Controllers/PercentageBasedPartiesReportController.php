@@ -53,7 +53,8 @@ class PercentageBasedPartiesReportController extends Controller
             ->select(
                 'invoices.customer_id',
                 'products.brand_id',
-                DB::raw('SUM(invoice_items.line_total) as total_sale')
+                DB::raw('SUM(invoice_items.line_total) as total_sale'),
+                DB::raw('SUM(CAST(invoice_items.discount AS DECIMAL(15,4)) - IFNULL(CAST(invoice_items.scheme_discount_amount AS DECIMAL(15,4)), 0)) as total_manual_discount')
             )
             ->groupBy('invoices.customer_id', 'products.brand_id')
             ->get();
@@ -61,13 +62,18 @@ class PercentageBasedPartiesReportController extends Controller
         // Index: [customer_id][brand_id] = total_sale
         $salesIndex = [];
         foreach ($salesRaw as $row) {
-            $salesIndex[$row->customer_id][$row->brand_id] = (float) $row->total_sale;
+            $salesIndex[$row->customer_id][$row->brand_id] = [
+                'total_sale' => (float) $row->total_sale,
+                'total_manual_discount' => (float) $row->total_manual_discount
+            ];
         }
 
         // Total sale per customer (across all shown brands)
         $customerTotalSale = [];
+        $customerTotalManualDiscount = [];
         foreach ($salesIndex as $custId => $brandSales) {
-            $customerTotalSale[$custId] = array_sum($brandSales);
+            $customerTotalSale[$custId] = array_sum(array_column($brandSales, 'total_sale'));
+            $customerTotalManualDiscount[$custId] = array_sum(array_column($brandSales, 'total_manual_discount'));
         }
 
         // Format report data
@@ -78,15 +84,18 @@ class PercentageBasedPartiesReportController extends Controller
             $brandDiscounts = [];
             foreach ($brands as $brand) {
                 $brandPercentage = $customer->brandPercentages->firstWhere('brand_id', $brand->id);
-                $saleAmount      = $salesIndex[$custId][$brand->id] ?? 0;
+                $brandSaleData   = $salesIndex[$custId][$brand->id] ?? ['total_sale' => 0, 'total_manual_discount' => 0];
+                $saleAmount      = $brandSaleData['total_sale'];
+                $manualDiscount  = $brandSaleData['total_manual_discount'];
                 $salePercent     = $custTotal > 0 ? round(($saleAmount / $custTotal) * 100, 2) : 0;
 
                 $brandDiscounts[] = [
-                    'brand_id'      => $brand->id,
-                    'brand_name'    => $brand->name,
-                    'percentage'    => $brandPercentage ? $brandPercentage->percentage : 0,
-                    'sale_amount'   => $saleAmount,
-                    'sale_percent'  => $salePercent,
+                    'brand_id'        => $brand->id,
+                    'brand_name'      => $brand->name,
+                    'percentage'      => $brandPercentage ? $brandPercentage->percentage : 0,
+                    'sale_amount'     => $saleAmount,
+                    'manual_discount' => $manualDiscount,
+                    'sale_percent'    => $salePercent,
                 ];
             }
 
@@ -101,6 +110,7 @@ class PercentageBasedPartiesReportController extends Controller
                 'route'                      => $customer->route,
                 'brand_discounts'            => $brandDiscounts,
                 'total_sale'                 => $custTotal,
+                'total_manual_discount'      => $customerTotalManualDiscount[$custId] ?? 0,
                 'total_brands_with_discount' => collect($brandDiscounts)->where('percentage', '>', 0)->count(),
             ];
         });

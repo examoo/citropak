@@ -739,7 +739,7 @@ const addItem = () => {
 
     // Calculate total discount (scheme + manual)
     // Manual discount is now used for Brand Discount as well
-    const manualDiscountFromPercent = grossAmount * (newItem.value.manual_discount_percentage / 100);
+    const manualDiscountFromPercent = exclusiveAmount * (newItem.value.manual_discount_percentage / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
     const totalDiscountAmount = (newItem.value.scheme_discount || 0) + totalManualDiscount;
 
@@ -1117,15 +1117,26 @@ const recalculateBrandSchemes = async (brandId) => {
 };
 
 // Calculate item discount (scheme + manual)
+// Calculate item total discount (scheme + manual)
 const getItemDiscount = (item) => {
-    const grossAmount = item.total_pieces * item.net_unit_price;
-    const manualDiscountFromPercent = grossAmount * ((item.manual_discount_percentage || 0) / 100);
-    return (item.scheme_discount || 0) + manualDiscountFromPercent + (item.manual_discount_amount || 0);
+    return getItemSchemeDiscount(item) + getItemManualDiscount(item);
+};
+
+// Calculate item scheme discount
+const getItemSchemeDiscount = (item) => {
+    return parseFloat(item.scheme_discount) || 0;
+};
+
+// Calculate item manual discount
+const getItemManualDiscount = (item) => {
+    const exclusiveAmount = item.total_pieces * (parseFloat(item.exclusive_price) || 0);
+    const manualDiscountFromPercent = exclusiveAmount * ((item.manual_discount_percentage || 0) / 100);
+    return manualDiscountFromPercent + (parseFloat(item.manual_discount_amount) || 0);
 };
 
 // Calculate item exclusive amount
 const getItemExclusive = (item) => {
-    return item.exclusive_price * item.total_pieces;
+    return (parseFloat(item.exclusive_price) || 0) * item.total_pieces;
 };
 
 // Calculate item FED amount
@@ -1183,6 +1194,14 @@ const totalGrossAmount = computed(() => {
 
 const totalDiscount = computed(() => {
     return form.items.reduce((sum, item) => sum + getItemDiscount(item), 0);
+});
+
+const totalSchemeDiscount = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemSchemeDiscount(item), 0);
+});
+
+const totalManualDiscount = computed(() => {
+    return form.items.reduce((sum, item) => sum + getItemManualDiscount(item), 0);
 });
 
 const totalTradeDiscount = computed(() => {
@@ -1651,7 +1670,8 @@ const submit = (andPrint = false) => {
                                     <th class="px-2 py-3 text-right">Adv.Tax</th>
                                     <th class="px-2 py-3 text-right">Gross</th>
                                     <th class="px-2 py-3 text-right">Trade Disc.</th>
-                                    <th class="px-2 py-3 text-right">Discount</th>
+                                    <th class="px-2 py-3 text-right">Scheme Disc.</th>
+                                    <th class="px-2 py-3 text-right">Cust. Disc.</th>
                                     <th class="px-2 py-3 text-right">Net</th>
                                     <th class="px-2 py-3"></th>
                                 </tr>
@@ -1704,8 +1724,11 @@ const submit = (andPrint = false) => {
                                     <td class="px-2 py-3 text-right text-amber-600">
                                         {{ formatAmount(item.trade_discount_amount || 0) }}
                                     </td>
+                                    <td class="px-2 py-3 text-right text-orange-600">
+                                        -{{ formatAmount(getItemSchemeDiscount(item)) }}
+                                    </td>
                                     <td class="px-2 py-3 text-right text-red-600">
-                                        -{{ formatAmount(getItemDiscount(item)) }}
+                                        -{{ formatAmount(getItemManualDiscount(item)) }}
                                     </td>
                                     <td class="px-2 py-3 text-right font-semibold text-emerald-600">
                                         {{ formatAmount(item.gross_amount - getItemDiscount(item) -
@@ -1772,8 +1795,12 @@ const submit = (andPrint = false) => {
                                 <div class="font-bold text-lg">{{ formatAmount(totalGrossAmount) }}</div>
                             </div>
                             <div class="bg-white p-3 rounded-lg border border-red-200">
-                                <div class="text-red-500 text-xs uppercase">Total Discount</div>
-                                <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalDiscount) }}</div>
+                                <div class="text-red-500 text-xs uppercase">Scheme Discount</div>
+                                <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalSchemeDiscount) }}</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-red-200">
+                                <div class="text-red-500 text-xs uppercase">Cust. Discount</div>
+                                <div class="font-bold text-lg text-red-600">-{{ formatAmount(totalManualDiscount) }}</div>
                             </div>
                             <div class="bg-amber-50 p-3 rounded-lg border border-amber-200">
                                 <div class="text-amber-600 text-xs uppercase">Total Trade Discount</div>

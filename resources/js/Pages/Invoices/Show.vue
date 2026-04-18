@@ -55,6 +55,12 @@ const getItemSchemeDiscount = (item) => {
     // Do NOT fallback to total discount, as that confuses the user
     return parseFloat(item.scheme_discount_amount || item.scheme_discount || 0);
 };
+// Helper to handle manual discount (Percentage + Fixed)
+const getItemManualDiscount = (item) => {
+    const totalDiscount = parseFloat(item.discount) || 0;
+    const schemeDiscount = getItemSchemeDiscount(item);
+    return Math.max(0, totalDiscount - schemeDiscount);
+};
 
 // Totals
 // Split Items
@@ -85,7 +91,7 @@ const regularTotalAdvTax = computed(() => sumItems(regularItems.value, i => pars
 const regularTotalGross = computed(() => sumItems(regularItems.value, getItemGross));
 const regularTotalTradeDiscount = computed(() => sumItems(regularItems.value, i => parseFloat(i.retail_margin || 0))); // retail_margin is trade discount amount
 const regularTotalSchemeDiscount = computed(() => sumItems(regularItems.value, getItemSchemeDiscount)); // discount field holds scheme+manual
-const regularTotalManualDiscountAmount = computed(() => sumItems(regularItems.value, i => parseFloat(i.manual_discount_amount || 0)));
+const regularTotalManualDiscountAmount = computed(() => sumItems(regularItems.value, getItemManualDiscount));
 const regularTotalNet = computed(() => sumItems(regularItems.value, getItemNet));
 
 // Grand Totals (All Items)
@@ -98,7 +104,7 @@ const totalAdvTax = computed(() => sumItems(props.invoice.items || [], i => pars
 const totalGross = computed(() => sumItems(props.invoice.items || [], getItemGross));
 const totalRetailMargin = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.retail_margin || 0)));
 const grandTotalSchemeDiscountAmount = computed(() => sumItems(props.invoice.items || [], getItemSchemeDiscount)); // This is "Scheme Discount" column sum
-const grandTotalManualDiscountAmount = computed(() => sumItems(props.invoice.items || [], i => parseFloat(i.manual_discount_amount || 0))); // This is "Cust.Disc Amt" column sum
+const grandTotalManualDiscountAmount = computed(() => sumItems(props.invoice.items || [], getItemManualDiscount)); // This is "Cust.Disc Amt" column sum
 const grandTotalNet = computed(() => sumItems(props.invoice.items || [], getItemNet));
 
 // Extract unique schemes applied in this invoice
@@ -361,7 +367,7 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(parseFloat(item.manual_discount_percentage) || 0) }}%</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
-                                    formatAmount(parseFloat(item.manual_discount_amount) || 0) }}</td>
+                                    formatAmount(getItemManualDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right font-medium">{{
                                     formatAmount(getItemNet(item)) }}</td>
                             </tr>
@@ -427,7 +433,7 @@ const resyncFbr = () => {
                                 <td class="border border-black px-1 py-1 text-right">{{
                                     formatAmount(parseFloat(item.manual_discount_percentage) || 0) }}%</td>
                                 <td class="border border-black px-1 py-1 text-right">{{
-                                    formatAmount(parseFloat(item.manual_discount_amount) || 0) }}</td>
+                                    formatAmount(getItemManualDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right font-medium">{{
                                     formatAmount(getItemNet(item)) }}</td>
                             </tr>

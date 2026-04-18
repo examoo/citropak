@@ -69,6 +69,8 @@ const getItemGross = (item) => {
     if (item.gross_amount) return parseFloat(item.gross_amount);
     return getItemExclusive(item) + getItemFed(item) + getItemSalesTax(item);
 };
+const getItemSchemeDiscount = (item) => parseFloat(item.scheme_discount_amount) || 0;
+const getItemManualDiscount = (item) => Math.max(0, (parseFloat(item.discount) || 0) - getItemSchemeDiscount(item));
 const getItemNet = (item) => parseFloat(item.line_total) || 0;
 
 // Helper to group items by brand
@@ -103,8 +105,9 @@ const getInvoiceTotals = (invoice) => {
         regularTotalSalesTax: sumItems(regularItems, getItemSalesTax),
         regularTotalExtraTax: sumItems(regularItems, getItemExtraTax),
         regularTotalGross: sumItems(regularItems, getItemGross),
-        regularTotalTradeDiscount: sumItems(regularItems, i => parseFloat(i.retail_margin || 0)),
-        regularTotalSchemeDiscount: sumItems(regularItems, i => parseFloat(i.discount || 0)),
+        totalTradeDiscount: sumItems(regularItems, i => parseFloat(i.retail_margin || 0)),
+        regularTotalSchemeDiscount: sumItems(regularItems, getItemSchemeDiscount),
+        regularTotalManualDiscount: sumItems(regularItems, getItemManualDiscount),
         regularTotalNet: sumItems(regularItems, getItemNet),
         totalQty: sumItems(items, i => i.total_pieces || 0),
         totalExclusive: sumItems(items, getItemExclusive),
@@ -112,8 +115,9 @@ const getInvoiceTotals = (invoice) => {
         totalSalesTax: sumItems(items, getItemSalesTax),
         totalExtraTax: sumItems(items, getItemExtraTax),
         totalGross: sumItems(items, getItemGross),
-        totalRetailMargin: sumItems(items, i => parseFloat(i.retail_margin || 0)),
-        totalSchemeDiscount: sumItems(items, i => parseFloat(i.discount || 0)),
+        totalTradeDiscount: sumItems(items, i => parseFloat(i.retail_margin || 0)),
+        totalSchemeDiscount: sumItems(items, getItemSchemeDiscount),
+        totalManualDiscount: sumItems(items, getItemManualDiscount),
         totalAdvTax: sumItems(items, i => parseFloat(i.adv_tax_amount || 0)),
         totalNet: sumItems(items, getItemNet),
     };
@@ -245,21 +249,12 @@ const grandTotals = computed(() => {
                 <div class="grid grid-cols-2 gap-6 mb-4 text-xs">
                     <!-- Left: Customer Info -->
                     <div>
-                        <!-- Customer Info QR -->
-                        <div class="mb-2">
-                            <div class="flex flex-col items-center w-fit">
-                                <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
-                                    <QrcodeVue :value="getQrData(invoice)" :size="60" level="L" render-as="svg" />
-                                </div>
-                                <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
-                            </div>
-                        </div>
-
                         <div class="font-bold text-sm mb-1">Customer Detail:</div>
 
                         <div class="space-y-1">
                             <div><span class="text-gray-600">CustomerCode:</span> <span class="font-medium">{{ invoice.customer?.customer_code }}</span></div>
                             <div><span class="text-gray-600">CustomerName:</span> <span class="font-medium">{{ invoice.customer?.shop_name }}</span></div>
+                            <div><span class="text-gray-600">Agreement %:</span> <span class="font-medium text-blue-600">{{ invoice.customer?.percentage || 0 }}%</span></div>
                             <div><span class="text-gray-600">CustomerAddress:</span> {{ invoice.customer?.address }}</div>
                             <div><span class="text-gray-600">CNIC/NTN:</span> {{ invoice.customer?.ntn_number || invoice.customer?.cnic || '' }}</div>
                             <div><span class="text-gray-600">Phone#:</span> {{ invoice.customer?.phone || '0' }}</div>
@@ -294,6 +289,16 @@ const grandTotals = computed(() => {
                                 <div><span class="font-semibold">Date:</span> {{ formatDate(invoice.invoice_date) }}</div>
                                 <div><span class="font-semibold">Van#:</span> {{ invoice.van?.code }}</div>
                                 <div v-if="invoice.fbr_invoice_number"><span class="font-semibold">FBR Inv#:</span> {{ invoice.fbr_invoice_number }}</div>
+
+                                <!-- Invoice QR moved to right under Van# -->
+                                <div class="mt-2 flex justify-end">
+                                    <div class="flex flex-col items-center">
+                                        <div class="w-16 h-16 bg-white p-0.5 border border-gray-200">
+                                            <QrcodeVue :value="getQrData(invoice)" :size="60" level="L" render-as="svg" />
+                                        </div>
+                                        <div class="text-[8px] font-bold mt-0.5">Invoice QR</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -314,7 +319,8 @@ const grandTotals = computed(() => {
                             <th class="border border-black px-1 py-1 text-right">Extra<br/>Tax</th>
                             <th class="border border-black px-1 py-1 text-right">Gross<br/>Value</th>
                             <th class="border border-black px-1 py-1 text-right">Trade<br/>Discount</th>
-                            <th class="border border-black px-1 py-1 text-right">Scheme<br/>Discount</th>
+                            <th class="border border-black px-1 py-1 text-right">Scheme<br/>Disc.</th>
+                            <th class="border border-black px-1 py-1 text-right">Cust.<br/>Disc.</th>
                             <th class="border border-black px-1 py-1 text-right">Net Sale<br/>Value</th>
                         </tr>
                     </thead>
@@ -323,7 +329,7 @@ const grandTotals = computed(() => {
                         <template v-for="(group, groupName) in getInvoiceTotals(invoice).groupedItems" :key="groupName">
                             <!-- Group Header -->
                             <tr class="bg-gray-50 print:bg-white text-left break-inside-avoid">
-                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase">
+                                <td colspan="14" class="border border-black px-2 py-1 font-bold text-sm uppercase">
                                     {{ groupName }}
                                 </td>
                             </tr>
@@ -341,7 +347,8 @@ const grandTotals = computed(() => {
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
-                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSchemeDiscount(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemManualDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                             </tr>
                         </template>
@@ -358,13 +365,14 @@ const grandTotals = computed(() => {
                              <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).regularTotalGross) }}</td>
                              <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).regularTotalTradeDiscount) }}</td>
                              <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).regularTotalSchemeDiscount) }}</td>
+                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).regularTotalManualDiscount) }}</td>
                              <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).regularTotalNet) }}</td>
                         </tr>
 
                         <!-- Free Scheme Section -->
                         <template v-if="getInvoiceTotals(invoice).freeItems.length > 0">
                             <tr class="break-inside-avoid">
-                                <td colspan="13" class="border border-black px-2 py-1 font-bold text-sm uppercase bg-gray-50 print:bg-white">
+                                <td colspan="14" class="border border-black px-2 py-1 font-bold text-sm uppercase bg-gray-50 print:bg-white">
                                     Free Items
                                 </td>
                             </tr>
@@ -380,7 +388,8 @@ const grandTotals = computed(() => {
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemExtraTax(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemGross(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right">{{ formatAmount(item.retail_margin) }}</td>
-                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(parseFloat(item.discount) || 0) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemSchemeDiscount(item)) }}</td>
+                                <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getItemManualDiscount(item)) }}</td>
                                 <td class="border border-black px-1 py-1 text-right font-medium">{{ formatAmount(getItemNet(item)) }}</td>
                             </tr>
                         </template>
@@ -395,8 +404,9 @@ const grandTotals = computed(() => {
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalSalesTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalExtraTax) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalGross) }}</td>
-                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalRetailMargin) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalTradeDiscount) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalSchemeDiscount) }}</td>
+                            <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalManualDiscount) }}</td>
                             <td class="border border-black px-1 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalNet) }}</td>
                         </tr>
                     </tfoot>
@@ -419,7 +429,7 @@ const grandTotals = computed(() => {
                                 </tr>
                                 <tr class="border-b border-black">
                                     <td class="px-2 py-1">Total Discount:</td>
-                                    <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalRetailMargin + getInvoiceTotals(invoice).totalSchemeDiscount) }}</td>
+                                    <td class="px-2 py-1 text-right">{{ formatAmount(getInvoiceTotals(invoice).totalTradeDiscount + getInvoiceTotals(invoice).totalSchemeDiscount + getInvoiceTotals(invoice).totalManualDiscount) }}</td>
                                 </tr>
                                 <tr class="border-b border-black">
                                     <td class="px-2 py-1">Advance Tax:</td>
@@ -434,7 +444,7 @@ const grandTotals = computed(() => {
                     </div>
 
                     <!-- Urdu Note -->
-                    <div class="mt-4 text-[9px] text-gray-600 font-urdu text-right" dir="rtl">
+                    <div class="mt-4 text-[12px] text-gray-900 font-urdu text-right font-bold" dir="rtl">
                         نوٹ: اپنا مال موقع پر چیک کر کے پورا کر لیں ۔ رقم کی ادائیگی نقد یا ادھار بل وصول کر کے کریں ۔ کمپنی نمائندے سے بل کے بغیر ادائیگی یا ذاتی لین دین کی کمپنی ذمہ دار نہ ہوگی
                     </div>
                 </div>

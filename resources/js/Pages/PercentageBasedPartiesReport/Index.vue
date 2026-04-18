@@ -207,6 +207,7 @@ const formatCurrency = (value) =>
                                 <th class="px-3 py-2">Van</th>
                                 <th class="px-3 py-2">Route</th>
                                 <th class="px-3 py-2 text-right">Total Sale</th>
+                                <th class="px-3 py-2 text-right">Total Disc</th>
                                 <!-- Brand columns -->
                                 <th v-for="brand in brands.filter(b => filters.brand_ids.length === 0 || filters.brand_ids.map(Number).includes(b.id))"
                                     :key="brand.id" class="px-3 py-2 text-center bg-blue-50 min-w-[130px]">
@@ -222,6 +223,7 @@ const formatCurrency = (value) =>
                                     class="px-3 py-1 text-center bg-blue-50 font-normal text-xs border-t border-blue-100">
                                     <span class="text-purple-600">Disc%</span> |
                                     <span class="text-green-600">Sale</span> |
+                                    <span class="text-red-500">Disc Rs</span> |
                                     <span class="text-blue-600">Sale%</span>
                                 </th>
                                 <th></th>
@@ -241,6 +243,9 @@ const formatCurrency = (value) =>
                                 <td class="px-3 py-2 text-right font-semibold text-gray-800">
                                     {{ formatCurrency(party.total_sale) }}
                                 </td>
+                                <td class="px-3 py-2 text-right font-semibold text-red-600">
+                                    {{ formatCurrency(party.total_manual_discount) }}
+                                </td>
                                 <!-- Brand columns -->
                                 <td v-for="brandDiscount in party.brand_discounts" :key="brandDiscount.brand_id"
                                     class="px-3 py-2 text-center bg-blue-50/30">
@@ -255,6 +260,12 @@ const formatCurrency = (value) =>
                                         <span
                                             :class="brandDiscount.sale_amount > 0 ? 'text-green-600 font-semibold' : 'text-gray-300'">
                                             {{ formatCurrency(brandDiscount.sale_amount) }}
+                                        </span>
+                                        <span class="text-gray-300">|</span>
+                                        <!-- Manual Discount Amount -->
+                                        <span
+                                            :class="brandDiscount.manual_discount > 0 ? 'text-red-500 font-semibold' : 'text-gray-300'">
+                                            {{ formatCurrency(brandDiscount.manual_discount) }}
                                         </span>
                                         <span class="text-gray-300">|</span>
                                         <!-- Sale % -->
