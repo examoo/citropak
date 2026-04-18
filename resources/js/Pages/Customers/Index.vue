@@ -223,6 +223,7 @@ const openModal = (customer = null) => {
         form.channel_id = customer.channel_id;
         form.ntn_number = customer.ntn_number;
         form.distribution = customer.distribution;
+        form.distribution_id = customer.distribution_id;
         form.day = customer.day;
         form.status = customer.status;
         form.atl = customer.atl || 'active';
@@ -893,7 +894,7 @@ const submitImport = () => {
 
                 <form @submit.prevent="submit" class="space-y-4">
                     <!-- Distribution Select (Only if Global View) -->
-                    <div v-if="!currentDistribution?.id && !isEditing">
+                    <div v-if="!currentDistribution?.id">
                         <SearchableSelect v-model="form.distribution_id" label="Distribution"
                             :options="getAttributes('distribution')" option-value="id" option-label="value"
                             placeholder="Select a distribution" :error="form.errors.distribution_id" required />
