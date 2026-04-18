@@ -39,7 +39,8 @@ const productTotals = computed(() => ({
     pro: props.products.reduce((sum, p) => sum + Number(p.pro), 0),
     free: props.products.reduce((sum, p) => sum + Number(p.free), 0),
     gross_sale: props.products.reduce((sum, p) => sum + Number(p.gross_sale), 0),
-    discount: props.products.reduce((sum, p) => sum + Number(p.discount), 0),
+    scheme_discount: props.products.reduce((sum, p) => sum + Number(p.scheme_discount), 0),
+    customer_discount: props.products.reduce((sum, p) => sum + Number(p.customer_discount), 0),
     net_sale: props.products.reduce((sum, p) => sum + Number(p.net_sale), 0),
 }));
 
@@ -109,8 +110,8 @@ const print = () => window.print();
                                 <th class="px-2 py-2 text-right">Pro</th>
                                 <th class="px-2 py-2 text-right">Free</th>
                                 <th class="px-2 py-2 text-right">Gross Sale</th>
-                                <th class="px-2 py-2 text-right">Discount</th>
-                                <th class="px-2 py-2 text-right">%</th>
+                                <th class="px-2 py-2 text-right">Scheme Disc.</th>
+                                <th class="px-2 py-2 text-right">Cust. Disc.</th>
                                 <th class="px-2 py-2 text-right">Net Sale Value</th>
                             </tr>
                         </thead>
@@ -125,8 +126,8 @@ const print = () => window.print();
                                 <td class="px-2 py-2 text-right">{{ product.pro }}</td>
                                 <td class="px-2 py-2 text-right">{{ product.free }}</td>
                                 <td class="px-2 py-2 text-right">{{ formatCurrency(product.gross_sale) }}</td>
-                                <td class="px-2 py-2 text-right">{{ formatCurrency(product.discount) }}</td>
-                                <td class="px-2 py-2 text-right">{{ product.percentage }}%</td>
+                                <td class="px-2 py-2 text-right text-orange-600">{{ formatCurrency(product.scheme_discount) }}</td>
+                                <td class="px-2 py-2 text-right text-red-600">{{ formatCurrency(product.customer_discount) }}</td>
                                 <td class="px-2 py-2 text-right font-bold text-green-600">{{ formatCurrency(product.net_sale) }}</td>
                             </tr>
                         </tbody>
@@ -139,8 +140,8 @@ const print = () => window.print();
                                 <td class="px-2 py-2 text-right">{{ productTotals.pro }}</td>
                                 <td class="px-2 py-2 text-right">{{ productTotals.free }}</td>
                                 <td class="px-2 py-2 text-right">{{ formatCurrency(productTotals.gross_sale) }}</td>
-                                <td class="px-2 py-2 text-right">{{ formatCurrency(productTotals.discount) }}</td>
-                                <td class="px-2 py-2 text-right"></td>
+                                <td class="px-2 py-2 text-right">{{ formatCurrency(productTotals.scheme_discount) }}</td>
+                                <td class="px-2 py-2 text-right">{{ formatCurrency(productTotals.customer_discount) }}</td>
                                 <td class="px-2 py-2 text-right">{{ formatCurrency(productTotals.net_sale) }}</td>
                             </tr>
                         </tfoot>
@@ -219,12 +220,12 @@ const print = () => window.print();
                             <span class="font-bold">{{ formatCurrency(summary.total_gross) }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Total Discount</span>
-                            <span class="font-bold text-red-600">{{ formatCurrency(summary.total_discount) }}</span>
+                            <span class="text-gray-600">Scheme Discount</span>
+                            <span class="font-bold text-orange-600">{{ formatCurrency(summary.total_scheme_discount) }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Total Percentage</span>
-                            <span class="font-bold">{{ summary.total_percentage }}%</span>
+                            <span class="text-gray-600">Trade Discount</span>
+                            <span class="font-bold text-amber-600">{{ formatCurrency(summary.total_trade_discount) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Total Advance Tax</span>

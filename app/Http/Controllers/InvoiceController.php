@@ -219,18 +219,27 @@ class InvoiceController extends Controller
                 $grossAmount = $itemData['gross_amount'] ?? ($exclusiveAmount + $fedAmount + $salesTaxAmount + $extraTaxAmount);
                 
                 // Scheme + Manual discounts go in discount field (Total)
-                $schemeDiscount = $itemData['scheme_discount'] ?? 0; // Legacy field usage
-                $schemeDiscountAmount = $schemeDiscount ?? 0;
-                $manualDiscountAmount = $itemData['manual_discount_amount'] ?? 0;
-                $manualDiscountPercentage = $itemData['manual_discount_percentage'] ?? 0;
+                $schemeDiscountAmount = $itemData['scheme_discount_amount'] ?? ($itemData['scheme_discount'] ?? 0);
                 
-                // If frontend sends total_discount, trust it. Otherwise sum up.
-                // Ideally: discount column = scheme_discount_amount + manual_discount_amount
-                $totalDiscount = $itemData['total_discount'] ?? ($schemeDiscountAmount + $manualDiscountAmount);
-                
-                // Trade discount (retail margin) goes separately
+                // Calculate manual discount: percentage base is (Gross - Trade) as per new requirement
                 $tradeDiscountPercent = $itemData['trade_discount_percent'] ?? 0;
                 $tradeDiscountAmount = $itemData['trade_discount_amount'] ?? ($grossAmount * $tradeDiscountPercent / 100);
+                
+                $manualDiscountPercentage = $itemData['manual_discount_percentage'] ?? 0;
+                $manualDiscountFixed = $itemData['manual_discount_amount'] ?? 0;
+                
+                // Calculate full manual discount amount if not already calculated by frontend
+                $manualDiscountAmount = ($manualDiscountPercentage > 0) 
+                    ? (($grossAmount - $tradeDiscountAmount) * ($manualDiscountPercentage / 100)) + $manualDiscountFixed
+                    : $manualDiscountFixed;
+
+                // If frontend sends manual_discount_amount already as a total, we should trust it if it looks calculated
+                if (isset($itemData['manual_discount_amount']) && $itemData['manual_discount_amount'] > $manualDiscountFixed) {
+                    $manualDiscountAmount = $itemData['manual_discount_amount'];
+                }
+                
+                // discount column = scheme_discount_amount + manual_discount_amount
+                $totalDiscount = $itemData['total_discount'] ?? ($schemeDiscountAmount + $manualDiscountAmount);
                 
                 // Line total = Gross - Discount - Trade Discount
                 $lineTotal = $grossAmount - $totalDiscount - $tradeDiscountAmount;
@@ -259,7 +268,7 @@ class InvoiceController extends Controller
                     'adv_tax_amount' => $advTaxAmount,
                     'gross_amount' => $grossAmount,
                     'scheme_id' => $itemData['scheme_id'] ?? null,
-                    'scheme_discount' => $schemeDiscount,
+                    'scheme_discount' => $schemeDiscountAmount,
                     'discount' => $totalDiscount, // Scheme + Manual discounts only
                     'retail_margin' => $tradeDiscountAmount, // Trade discount AMOUNT
                     'line_total' => $lineTotal,

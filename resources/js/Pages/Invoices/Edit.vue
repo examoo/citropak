@@ -472,7 +472,7 @@ const addItem = () => {
     const grossAmt = exclAmt + fedAmt + sTaxAmt + xTaxAmt;
     
     const tradeDisAmt = (grossAmt / (1 + (newItem.value.trade_discount_percent / 100))) * (newItem.value.trade_discount_percent / 100);
-    const manualDisAmt = exclAmt * (newItem.value.manual_discount_percentage / 100) + newItem.value.manual_discount_amount;
+    const manualDisAmt = (grossAmt - tradeDisAmt) * (newItem.value.manual_discount_percentage / 100) + newItem.value.manual_discount_amount;
     const totalDisAmt = (newItem.value.scheme_discount || 0) + manualDisAmt;
     
     const taxableForAdv = grossAmt - tradeDisAmt - totalDisAmt;

@@ -32,7 +32,15 @@ class SalesSheetController extends Controller
 
         // Aggregate by product
         $productAggregates = [];
-        $totalAdvanceTax = 0;
+        $summary = [
+            'gross_sale' => 0,
+            'scheme_discount' => 0,
+            'customer_discount' => 0,
+            'trade_discount' => 0,
+            'advance_tax' => 0,
+            'net_sale' => 0,
+        ];
+
         foreach ($invoices as $invoice) {
             foreach ($invoice->items as $item) {
                 $productId = $item->product_id;
@@ -47,8 +55,10 @@ class SalesSheetController extends Controller
                         'pro' => 0,
                         'free' => 0,
                         'gross_sale' => 0,
-                        'discount' => 0,
-                        'percentage' => 0,
+                        'scheme_discount' => 0,
+                        'customer_discount' => 0,
+                        'trade_discount' => 0,
+                        'customer_percentage' => 0,
                         'net_sale' => 0,
                     ];
                 }
@@ -64,29 +74,52 @@ class SalesSheetController extends Controller
                     if ($isFreeItem) {
                         $productAggregates[$productId]['free'] += $pieces;
                     } else {
+                        $grossAmt = $item->gross_amount ?? 0;
+                        $tradeAmt = $item->retail_margin ?? 0; // = retail_margin column = trade discount amount
+                        $schDisc = $item->scheme_discount_amount ?? ($item->scheme_discount ?? 0);
+                        
+                        // Mirror Show.vue: Customer Discount = Total Discount - Scheme Discount
+                        $totalDisc = $item->discount ?? 0;
+                        $custDisc = max(0, $totalDisc - $schDisc);
+
                         $productAggregates[$productId]['qty'] += $pieces;
                         $productAggregates[$productId]['issued'] += $pieces;
-                        $productAggregates[$productId]['gross_sale'] += $item->line_total ?? 0;
-                        $productAggregates[$productId]['discount'] += $item->scheme_discount ?? 0;
-                        $productAggregates[$productId]['net_sale'] += ($item->line_total ?? 0) - ($item->scheme_discount ?? 0);
+                        $productAggregates[$productId]['gross_sale'] += $grossAmt;
+                        $productAggregates[$productId]['scheme_discount'] += $schDisc;
+                        $productAggregates[$productId]['customer_discount'] += $custDisc;
+                        $productAggregates[$productId]['trade_discount'] += $tradeAmt;
+                        $productAggregates[$productId]['net_sale'] += ($grossAmt - $schDisc - $custDisc - $tradeAmt);
+
+                        // Update global summary accumulators
+                        $summary['gross_sale'] += $grossAmt;
+                        $summary['scheme_discount'] += $schDisc;
+                        $summary['customer_discount'] += $custDisc;
+                        $summary['trade_discount'] += $tradeAmt;
+                        $summary['advance_tax'] += ($item->adv_tax_amount ?? 0);
+                        $summary['net_sale'] += ($grossAmt - $schDisc - $custDisc - $tradeAmt);
                     }
-                    
-                    // Accumulate advance tax (fed_amount + tax) - Only for sales? 
-                    // Assuming tax is only for sales. If damage acts as a return, logic might differ but user asked for "damage piece also".
-                    $totalAdvanceTax += ($item->fed_amount ?? 0) + ($item->tax ?? 0);
                 }
             }
         }
 
-        // Calculate percentage and unit_price for each product
-        foreach ($productAggregates as &$product) {
+        // Calculate percentages and finalize products array
+        $products = [];
+        foreach ($productAggregates as $productId => $data) {
+            $product = $data;
             if ($product['gross_sale'] > 0) {
-                $product['percentage'] = round(($product['discount'] / $product['gross_sale']) * 100, 2);
+                $calcBase = $product['gross_sale'] - $product['trade_discount'];
+                $product['customer_percentage'] = $calcBase > 0 
+                    ? round(($product['customer_discount'] / $calcBase) * 100, 2) 
+                    : 0;
+            } else {
+                $product['customer_percentage'] = 0;
             }
+            
             // Calculate unit price from gross_sale / qty if not set
             if ($product['unit_price'] == 0 && $product['qty'] > 0) {
                 $product['unit_price'] = round($product['gross_sale'] / $product['qty'], 2);
             }
+            $products[] = $product;
         }
 
         // Credit Summary Bills (invoices marked as credit)
@@ -107,28 +140,27 @@ class SalesSheetController extends Controller
             'amount' => $rec->amount,
         ]);
 
-        // Summary Totals
-        $totalGross = collect($productAggregates)->sum('gross_sale');
-        $totalDiscount = collect($productAggregates)->sum('discount');
-        $totalNetSale = collect($productAggregates)->sum('net_sale');
         $totalCredit = $creditInvoices->sum('amount');
         $totalRecovery = $recoveries->sum('amount');
-        // Total Cash = Net Sale - Credit + Recovery (recovery is money received)
-        $totalCashSales = $totalNetSale - $totalCredit + $totalRecovery;
+        $totalCashSales = $summary['net_sale'] - $totalCredit + $totalRecovery;
 
         // Get Van name for header
         $van = Van::find($vanId);
 
         return Inertia::render('SalesSheet/Index', [
-            'products' => array_values($productAggregates),
+            'products' => $products,
             'creditBills' => $creditInvoices,
             'recoveryBills' => $recoveries,
             'summary' => [
-                'total_gross' => $totalGross,
-                'total_discount' => $totalDiscount,
-                'total_percentage' => $totalGross > 0 ? round(($totalDiscount / $totalGross) * 100, 2) : 0,
-                'total_advance_tax' => $totalAdvanceTax,
-                'total_sale_value' => $totalNetSale,
+                'total_gross' => $summary['gross_sale'],
+                'total_scheme_discount' => $summary['scheme_discount'],
+                'total_customer_discount' => $summary['customer_discount'],
+                'total_trade_discount' => $summary['trade_discount'],
+                'total_customer_percentage' => ($summary['gross_sale'] - $summary['trade_discount']) > 0
+                    ? round(($summary['customer_discount'] / ($summary['gross_sale'] - $summary['trade_discount'])) * 100, 2)
+                    : 0,
+                'total_advance_tax' => $summary['advance_tax'],
+                'total_sale_value' => $summary['net_sale'],
                 'total_credit' => $totalCredit,
                 'total_recovery' => $totalRecovery,
                 'total_cash_sales' => $totalCashSales,

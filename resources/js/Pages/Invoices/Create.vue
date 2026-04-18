@@ -739,7 +739,7 @@ const addItem = () => {
 
     // Calculate total discount (scheme + manual)
     // Manual discount is now used for Brand Discount as well
-    const manualDiscountFromPercent = exclusiveAmount * (newItem.value.manual_discount_percentage / 100);
+    const manualDiscountFromPercent = (grossAmount - tradeDiscountAmount) * (newItem.value.manual_discount_percentage / 100);
     const totalManualDiscount = manualDiscountFromPercent + newItem.value.manual_discount_amount;
     const totalDiscountAmount = (newItem.value.scheme_discount || 0) + totalManualDiscount;
 
@@ -1129,8 +1129,8 @@ const getItemSchemeDiscount = (item) => {
 
 // Calculate item manual discount
 const getItemManualDiscount = (item) => {
-    const exclusiveAmount = item.total_pieces * (parseFloat(item.exclusive_price) || 0);
-    const manualDiscountFromPercent = exclusiveAmount * ((item.manual_discount_percentage || 0) / 100);
+    const baseForDiscount = (parseFloat(item.gross_amount) || 0) - (parseFloat(item.trade_discount_amount) || 0);
+    const manualDiscountFromPercent = baseForDiscount * ((item.manual_discount_percentage || 0) / 100);
     return manualDiscountFromPercent + (parseFloat(item.manual_discount_amount) || 0);
 };
 
