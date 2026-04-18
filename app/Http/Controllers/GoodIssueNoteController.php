@@ -22,16 +22,16 @@ class GoodIssueNoteController extends Controller
         $search = $request->query('search');
         $status = $request->query('status');
         $vanId = $request->query('van_id');
-        
+
         $gins = GoodIssueNote::query()
             ->with(['van', 'issuedBy', 'distribution', 'items'])
-            ->when($search, function($q) use ($search) {
+            ->when($search, function ($q) use ($search) {
                 $q->where('gin_number', 'like', "%{$search}%");
             })
-            ->when($status, function($q) use ($status) {
+            ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
-            ->when($vanId, function($q) use ($vanId) {
+            ->when($vanId, function ($q) use ($vanId) {
                 $q->where('van_id', $vanId);
             })
             ->latest()
@@ -51,7 +51,8 @@ class GoodIssueNoteController extends Controller
     public function create()
     {
         $userDistributionId = auth()->user()->distribution_id ?? session('current_distribution_id');
-        if($userDistributionId === 'all') $userDistributionId = null;
+        if ($userDistributionId === 'all')
+            $userDistributionId = null;
 
         return Inertia::render('GoodIssueNotes/Create', [
             'vans' => Van::active()->with('distribution')->get(['id', 'code', 'distribution_id']),
@@ -70,7 +71,8 @@ class GoodIssueNoteController extends Controller
     public function store(Request $request)
     {
         $userDistributionId = $request->user()->distribution_id ?? session('current_distribution_id');
-        if($userDistributionId === 'all') $userDistributionId = null;
+        if ($userDistributionId === 'all')
+            $userDistributionId = null;
 
         $validated = $request->validate([
             'van_id' => 'required|exists:vans,id',
@@ -153,7 +155,7 @@ class GoodIssueNoteController extends Controller
                 // Only process positive quantities (skip returned/0-qty items)
                 if ($item->quantity > 0 && $item->stock_id) {
                     $stock = Stock::find($item->stock_id);
-                    
+
                     if (!$stock) {
                         throw new \Exception("Stock record not found for product: {$item->product->name}");
                     }
@@ -163,11 +165,11 @@ class GoodIssueNoteController extends Controller
                     } else {
                         // FORCE UPDATE: User requested to update status regardless of stock
                         // throw new \Exception("Insufficient stock for product: {$item->product->name} (Required: {$item->quantity}, Available: {$stock->quantity})");
-                        
+
                         // Option 1: Deduct anyway (negative stock)?
                         // Option 2: Deduct what is available?
                         // Option 3: Just ignore?
-                        
+
                         // Decision: Deduct anyway to keep track of debt/negative stock, OR just proceed. 
                         // Given 'Good Issue Note', it implies stock IS gone. So we should decrement.
                         $stock->decrement('quantity', $item->quantity);
@@ -198,13 +200,37 @@ class GoodIssueNoteController extends Controller
      */
     public function cancel(GoodIssueNote $goodIssueNote)
     {
-        if ($goodIssueNote->status !== 'draft') {
-            return redirect()->back()->withErrors(['error' => 'Only draft GINs can be cancelled.']);
+        if ($goodIssueNote->status === 'cancelled') {
+            return redirect()->back()->withErrors(['error' => 'GIN is already cancelled.']);
         }
 
-        $goodIssueNote->update(['status' => 'cancelled']);
+        DB::beginTransaction();
+        try {
+            // If issued, revert stock
+            if ($goodIssueNote->status === 'issued') {
+                foreach ($goodIssueNote->items as $item) {
+                    if ($item->quantity > 0 && $item->stock_id) {
+                        $stock = Stock::find($item->stock_id);
+                        if ($stock) {
+                            $stock->increment('quantity', $item->quantity);
+                        }
+                    }
+                }
 
-        return redirect()->back()->with('success', 'GIN cancelled successfully.');
+                // Clear GIN link from invoices
+                \App\Models\Invoice::where('good_issue_note_id', $goodIssueNote->id)
+                    ->update(['good_issue_note_id' => null]);
+            }
+
+            $goodIssueNote->update(['status' => 'cancelled']);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'GIN cancelled successfully. ' . ($goodIssueNote->status === 'issued' ? 'Stock has been reverted.' : ''));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Failed to cancel GIN: ' . $e->getMessage()]);
+        }
     }
 
     /**
@@ -238,14 +264,14 @@ class GoodIssueNoteController extends Controller
         // Also exclude invoices that are purely returns/damage if needed, but usually GIN includes all stock leaving.
         // Assuming 'damage' invoices might not need stock *issue* if they are returns, but here we stick to 'sale' or all types unless specified.
         // User request: "all invoice items".
-        
+
         $items = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->where('invoices.van_id', $vanId)
             ->whereDate('invoices.invoice_date', $date)
             // ->where('invoices.status', '!=', 'cancelled') // If status exists
             ->select(
-                'invoice_items.product_id', 
+                'invoice_items.product_id',
                 'invoice_items.is_free',
                 DB::raw('SUM(invoice_items.total_pieces) as total_qty'),
                 DB::raw('AVG(invoice_items.price) as avg_unit_price')
@@ -255,4 +281,9 @@ class GoodIssueNoteController extends Controller
 
         return response()->json($items);
     }
+
+    /**
+     * Recreate an issued GIN (revert stock and create a new draft).
+     */
 }
+

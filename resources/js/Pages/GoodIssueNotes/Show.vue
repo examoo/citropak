@@ -115,9 +115,12 @@ const issueGin = () => {
 };
 
 const cancelGin = () => {
+    const isIssued = props.gin.status === 'issued';
     Swal.fire({
-        title: 'Cancel GIN?',
-        text: 'This will mark the GIN as cancelled.',
+        title: isIssued ? 'Revert Stock & Cancel?' : 'Cancel GIN?',
+        text: isIssued 
+            ? 'This will return all items back to the warehouse stock and mark the GIN as cancelled.' 
+            : 'This will mark the GIN as cancelled.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -174,13 +177,13 @@ const printGin = () => {
                         Issue GIN
                     </button>
 
-                    <button v-if="gin.status === 'draft'" @click="cancelGin"
+                    <button v-if="gin.status === 'draft' || gin.status === 'issued'" @click="cancelGin"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Cancel
+                        Cancel GIN
                     </button>
                 </div>
             </div>
